@@ -767,16 +767,14 @@ crystal_heart = {
         end
         
         -- collect heart if the player dashes into it
-        if hit~=nil and hit.dash_effect_time>0 then
-
+        if hit and hit.dash_effect_time>0 then
             hit.dash_time=-1
             destroy_object(this)
-            init_object(smoke, this.x+2, this.y+4)
+            init_smoke(this.x+2, this.y+4)
             slow_player = true
         
         -- make player bounce and move the heart 
-        elseif hit ~=nil then
-            
+        elseif hit then
             if this.y+8 > hit.y then
                 hit.spd.y=-2
                 this.y_speed = 2
