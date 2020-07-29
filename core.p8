@@ -181,8 +181,8 @@ player={
     this.djump=max_djump
     this.dash_time=0
     this.dash_effect_time=0
-    this.dash_target={x=0,y=0}
-    this.dash_accel={x=0,y=0}
+    this.dash_target=make_vec(0,0)
+    this.dash_accel=make_vec(0,0)
     this.hitbox={x=1,y=3,w=6,h=5}
     this.spr_off=0
     this.was_on_ground=false
@@ -200,6 +200,8 @@ player={
 
     -- horizontal input
     local input=btn(1) and 1 or (btn(0) and -1 or 0)
+    -- vertical input
+    local inputv=btn(3) and 1 or (btn(2) and -1 or 0)
 
     -- spike collision and bottom death
     if spikes_at(this.x+this.hitbox.x,this.y+this.hitbox.y,this.hitbox.w,this.hitbox.h,this.spd.x,this.spd.y) or
@@ -282,8 +284,8 @@ player={
     if this.dash_time>0 then
       init_smoke(this.x,this.y)
       this.dash_time-=1
-      this.spd.x=appr(this.spd.x,this.dash_target.x,this.dash_accel.x)
-      this.spd.y=appr(this.spd.y,this.dash_target.y,this.dash_accel.y)
+      this.spd=make_vec(appr(this.spd.x,this.dash_target.x,this.dash_accel.x),
+                        appr(this.spd.y,this.dash_target.y,this.dash_accel.y))
     else
       --horizontal movement
       local maxrun=1
@@ -307,26 +309,26 @@ player={
       -- wall slide
       -- <booster> --
       if input!=0 and this.is_solid(input,0) then
-      	if this.is_booster(0,0) then
-      		--this check is seperate so
-      		--you can't wallslide on ice
-      		if hot then
-      			maxfall=-1.5
-      			--wallslide particles
-        	if rnd(10)<2 then
-          	init_smoke(this.x+input*6,this.y)
-        	end
+        if this.is_booster(0,0) then
+          --this check is seperate so
+          --you can't wallslide on ice
+          if hot then
+            maxfall=-1.5
+            --wallslide particles
+            if rnd(10)<2 then
+              init_smoke(this.x+input*6,this.y)
+            end
+          end
+        else
+          maxfall=0.4
+          --wallslide particles
+          if rnd(10)<2 then
+            init_smoke(this.x+input*6,this.y)
+          end
         end
-      	else
-        maxfall=0.4
-        --wallslide particles
-        if rnd(10)<2 then
-          init_smoke(this.x+input*6,this.y)
-        end
-       end
       end
-						-- </booster> --
-						
+    -- </booster> --
+
       --apply gravity
       if not on_ground then
         this.spd.y=appr(this.spd.y,maxfall,gravity)
@@ -347,8 +349,8 @@ player={
           if wall_dir!=0 then
             psfx(4)
             this.jbuffer=0
-            this.spd.y=-2
-            this.spd.x=-wall_dir*(maxrun+1)
+            this.spd=make_vec(-wall_dir*(maxrun+1),-2)
+
             --walljump particles
             init_smoke(this.x+wall_dir*6,this.y)
           end
@@ -366,14 +368,12 @@ player={
         has_dashed=true
         this.dash_effect_time=10
 
-        --vertical input
-        local v_input=btn(2) and -1 or (btn(3) and 1 or 0)
 
         -- calculate dash speeds
-        this.spd.x=input!=0 and
-        input*(v_input!=0 and d_half or d_full) or
-        (v_input!=0 and 0 or this.flip.x and -1 or 1)
-        this.spd.y=v_input!=0 and v_input*(input!=0 and d_half or d_full) or 0
+        this.spd=make_vec(input!=0 and
+        input*(inputv!=0 and d_half or d_full) or
+        (inputv!=0 and 0 or this.flip.x and -1 or 1),
+        inputv!=0 and inputv*(input!=0 and d_half or d_full) or 0)
 
         --effects
         psfx(5)
@@ -381,10 +381,10 @@ player={
         shake=6
 
         -- dash target speeds and accels
-        this.dash_target.x=2*sign(this.spd.x)
-        this.dash_target.y=(this.spd.y>=0 and 2 or 1.5)*sign(this.spd.y)
-        this.dash_accel.x=this.spd.y==0 and 1.5 or 1.06066017177
-        this.dash_accel.y=this.spd.x==0 and 1.5 or 1.06066017177
+        this.dash_target=make_vec(2*sign(this.spd.x),
+                                 (this.spd.y>=0 and 2 or 1.5)*sign(this.spd.y))
+        this.dash_accel=make_vec(this.spd.y==0 and 1.5 or 1.06066017177,
+                                 this.spd.x==0 and 1.5 or 1.06066017177)
       elseif this.djump<=0 and dash then
         -- failed dash smoke
         psfx(6)
@@ -450,7 +450,7 @@ function create_hair(obj)
 end
 
 function draw_hair(obj)
-  local last={x=obj.x+4-(obj.flip.x and -2 or 2),y=obj.y+(btn(3) and 4 or 3)}
+  local last=make_vec(obj.x+4-(obj.flip.x and -2 or 2),obj.y+(btn(3) and 4 or 3))
   foreach(obj.hair,function(h)
       h.x+=(last.x-h.x)/1.5
       h.y+=(last.y+0.5-h.y)/1.5
@@ -553,8 +553,8 @@ spring = {
         hit.spd.x*=0.2
         hit.spd.y=-3
         if not core then
-        	hit.djump=max_djump
-								end
+          hit.djump=max_djump
+        end
         this.delay=10
         init_smoke(this.x,this.y)
 
@@ -603,10 +603,9 @@ side_spring = {
       if hit  and this.dir*hit.spd.x<=0 then
         this.spr=9
         hit.x=this.x+this.dir*4
-        hit.spd.x=this.dir*3
-        hit.spd.y=-1.5
+        hit.spd=make_vec(this.dir*3,-1.5)
         if not core then
-        	hit.djump=max_djump
+          hit.djump=max_djump
         end
         hit.dash_time=0
         hit.dash_effect_time=0
@@ -743,12 +742,10 @@ end
 
 smoke={
   init=function(this)
-    this.spd.y=-0.1
-    this.spd.x=0.3+rnd(0.2)
+    this.spd=make_vec(0.3+rnd(0.2),-0.1)
     this.x+=-1+rnd(2)
     this.y+=-1+rnd(2)
-    this.flip.x=maybe()
-    this.flip.y=maybe()
+    this.flip=make_vec(maybe(),maybe())
   end,
   update=function(this)
     this.spr+=0.2
@@ -917,8 +914,7 @@ fake_wall={
     this.hitbox.h=this.h*8+2
     local hit = this.collide(player,-1,-1)
     if hit and hit.dash_effect_time>0 then
-      hit.spd.x=-sign(hit.spd.x)*1.5
-      hit.spd.y=-1.5
+      hit.spd=make_vec(sign(hit.spd.x)*-1.5,-1.5)
       hit.dash_time=-1
       sfx_timer=20
       sfx(16)
@@ -987,7 +983,7 @@ wall_booster={
 			this.offset=(this.offset+1)%8
 		end
 		sspr(0,32+this.offset,8,8,this.x,this.y,8,8,this.left)
-		
+
 		--track ends
 		if frames>15 and hot then
 			pal(2,8)
@@ -1036,14 +1032,14 @@ function init_object(type,x,y,tile)
     -- <tilesystem> --
     spr=tile,
     -- </tilesystem> --
-    flip={x=false,y=false},
+    flip=make_vec(false,false),
 
     x=x,
     y=y,
     hitbox={x=0,y=0,w=8,h=8},
 
-    spd={x=0,y=0},
-    rem={x=0,y=0}
+    spd=make_vec(0,0),
+    rem=make_vec(0,0)
   }
   function obj.is_solid(ox,oy)
     return (oy>0 and not obj.is_platform(ox,0) and obj.is_platform(ox,oy))  -- one way platform
@@ -1055,13 +1051,13 @@ function init_object(type,x,y,tile)
   function obj.is_platform(ox,oy)
     return tile_flag_at(obj.x+obj.hitbox.x+ox,obj.y+obj.hitbox.y+oy,obj.hitbox.w,obj.hitbox.h,3)
   end
-  
+
   -- <booster> --
   obj.is_booster=function(ox,oy)
     return tile_flag_at(obj.x+obj.hitbox.x+ox,obj.y+obj.hitbox.y+oy,obj.hitbox.w,obj.hitbox.h,4)
   end
-		-- </booster> --
-		
+	-- </booster> --
+
   function obj.collide(type,ox,oy)
     for other in all(objects) do
       if other and other.type == type and other != obj and other.collideable and
@@ -1205,8 +1201,7 @@ function load_room(x,y)
   end
 
   --current room
-  room.x=x
-  room.y=y
+  room=make_vec(x,y)
 
   --replace new rooms with data
   if not same_room and level_data() then
@@ -1412,6 +1407,10 @@ end
 
 function two_digit_str(x)
   return x<10 and "0"..x or x
+end
+
+function make_vec(x,y) 
+  return {x=x,y=y}
 end
 
 function round(x)
