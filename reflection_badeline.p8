@@ -251,18 +251,18 @@ player={
       this.berry_count=0
     end
 
-    local fr=nil
+    local fr
     local fr1=fruitrain[1]
     local fr2=fruitrain[2]
-    if fr1~=nil then
-      if fr1.golden and fr2~=nil then
+    if fr1 then
+      if fr1.golden and fr2 then
         fr=fr2
       elseif fr1.golden==nil or level_index()==30 then
         fr=fr1
       end
     end
 
-    if this.berry_timer>5 and fr~=nil then
+    if this.berry_timer>5 and fr then
       -- to be implemented:
       -- save berry
       -- save golden
@@ -272,7 +272,7 @@ player={
       destroy_object(fr)
       this.berry_timer=-5
       this.berry_count+=1
-      if (fruitrain[1]~=nil) fruitrain[1].target=get_player()
+      if (fruitrain[1]) fruitrain[1].target=get_player()
     end
     -- </fruitrain> --
 
@@ -547,7 +547,7 @@ player_spawn = {
         local p=init_object(player,this.x,this.y)
         --- <fruitrain> ---
         local f=fruitrain[1]
-        if (f~=nil) f.target=p
+        if (f) f.target=p
       --- </fruitrain> ---
       end
     end
@@ -577,7 +577,7 @@ spring = {
       end
     elseif this.spr==10 then
       local hit = this.collide(player,0,0)
-      if hit  and hit.spd.y>=0 then
+      if hit and hit.spd.y>=0 then
         this.spr=11
         hit.y=this.y-4
         hit.spd.x*=0.2
@@ -629,7 +629,7 @@ side_spring = {
       end
     elseif this.spr==8 then
       local hit = this.collide(player,0,0)
-      if hit ~=nil and this.dir*hit.spd.x<=0 then
+      if hit and this.dir*hit.spd.x<=0 then
         this.spr=9
         hit.x=this.x+this.dir*4
         hit.spd.x=this.dir*3
@@ -640,7 +640,7 @@ side_spring = {
         this.delay=10
         init_object(smoke,this.x,this.y)
         local left=this.collide(fall_floor,-this.dir,0)
-        if left~=nil then
+        if left then
           break_fall_floor(left)
         end
         psfx(14)
@@ -686,7 +686,7 @@ refill = {
     if this.active then
       this.offset+=0.02
       local hit = this.collide(player,0,0)
-      if hit~=nil and hit.djump<max_djump then
+      if hit and hit.djump<max_djump then
         psfx(11)
         init_object(smoke,this.x,this.y)
         hit.djump=max_djump
@@ -770,15 +770,15 @@ function break_fall_floor(obj)
     obj.delay=15  --how long until it falls
     init_object(smoke,obj.x,obj.y)
     local hit=obj.collide(spring,0,-1)
-    if hit~=nil then
+    if hit then
       break_spring(hit)
     end
     hit=obj.collide(side_spring,1,0)
-    if hit~=nil then
+    if hit then
       break_spring(hit)
     end
     hit=obj.collide(side_spring,-1,0)
-    if hit~=nil then
+    if hit then
       break_spring(hit)
     end
   end
@@ -820,7 +820,7 @@ fruit={
   end,
   update=function(this)
     if not this.follow then
-      if this.collide(player,0,0)~=nil then
+      if this.collide(player,0,0) then
         get_player().berry_timer=0
         this.follow=true
         this.target=#fruitrain==0 and get_player() or fruitrain[#fruitrain]
@@ -829,7 +829,7 @@ fruit={
       end
     else
       local p=get_player()
-      if p~=nil then
+      if p then
         this.tx+=0.2*(this.target.x-this.tx)
         this.ty+=0.2*(this.target.y-this.ty)
         local a=atan2(this.x-this.tx,this.y_-this.ty)
@@ -1103,7 +1103,7 @@ tiles[61] =flag
 tiles[45] =badeline
 
 function init_object(type,x,y,tile)
-  if type.if_not_fruit~=nil and got_fruit[1+level_index()] then
+  if type.if_not_fruit and got_fruit[1+level_index()] then
     return
   end
 
@@ -1138,7 +1138,7 @@ function init_object(type,x,y,tile)
     local other
     for i=1,count(objects) do
       other=objects[i]
-      if other ~=nil and other.type == type and other != obj and other.collideable and
+      if other  and other.type == type and other != obj and other.collideable and
       other.x+other.hitbox.x+other.hitbox.w > obj.x+obj.hitbox.x+ox and
       other.y+other.hitbox.y+other.hitbox.h > obj.y+obj.hitbox.y+oy and
       other.x+other.hitbox.x < obj.x+obj.hitbox.x+obj.hitbox.w+ox and
@@ -1150,7 +1150,7 @@ function init_object(type,x,y,tile)
   end
 
   obj.check=function(type,ox,oy)
-    return obj.collide(type,ox,oy) ~=nil
+    return obj.collide(type,ox,oy) 
   end
 
   obj.move=function(ox,oy)
@@ -1203,7 +1203,7 @@ function init_object(type,x,y,tile)
   end
 
   add(objects,obj)
-  if obj.type.init~=nil then
+  if obj.type.init then
     obj.type.init(obj)
   end
   return obj

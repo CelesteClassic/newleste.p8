@@ -182,18 +182,18 @@ player =
       this.berry_count=0
     end
 
-    local fr=nil
+    local fr
     local fr1=fruitrain[1]
     local fr2=fruitrain[2]
-    if fr1~=nil then
-      if fr1.type.golden and fr2~=nil then
+    if fr1 then
+      if fr1.type.golden and fr2 then
         fr=fr2
       elseif fr1.type.golden==nil or level_index()==30 then
         fr=fr1
       end
     end
 
-    if this.berry_timer>5 and fr~=nil then
+    if this.berry_timer>5 and fr then
       -- to be implemented:
       -- save berry
       -- save golden
@@ -203,7 +203,7 @@ player =
       destroy_object(fr)
       this.berry_timer=-5
       this.berry_count+=1
-      if (fruitrain[1]~=nil) fruitrain[1].target=get_player()
+      if (fruitrain[1]) fruitrain[1].target=get_player()
     end
     -- </fruitrain> --
 
@@ -454,7 +454,7 @@ player_spawn = {
         local p=init_object(player,this.x,this.y)
         --- <fruitrain> ---
         local f=fruitrain[1]
-        if (f~=nil) f.target=p
+        if (f) f.target=p
       --- </fruitrain> ---
       end
     end
@@ -480,7 +480,7 @@ green_bubble = {  --by amegpo
   end,
   update=function(this)
     local hit=this.collide(player, 0, 0)
-    if hit~=nil then
+    if hit then
       if this.spr>0 then
         this.player=hit
         hit.visible=false
@@ -508,7 +508,7 @@ green_bubble = {  --by amegpo
           this.timer=0
         end
       end
-    elseif this.player~=nil then
+    elseif this.player then
       this.player.visible=true
       this.spr=0
       this.timer=0
@@ -556,7 +556,7 @@ fall_plat={
   end,
   update=function(this)
     local hit = this.collide(player,0,-1)
-    if hit~=nil then
+    if hit then
       if this.state==-1 then
         this.state = 0  -- shake
         this.timer = 10
@@ -579,7 +579,7 @@ fall_plat={
     if this.state==1 then
       this.yspd = appr(this.yspd,3,0.4)
       this.move_y(this.yspd)
-      if hit~=nil then
+      if hit then
         for i=0,this.y-this.last.y do
          if hit.is_solid(0,1) then
           break
@@ -616,7 +616,7 @@ snowball = {  --by amegpo
   update=function(this)
     this.x-=2
     local hit=this.collide(player, 0, 0)
-    if hit~=nil then
+    if hit then
       if hit.y<this.y then
         hit.djump=max_djump
         hit.spd.y=-2
@@ -670,15 +670,15 @@ moving_platform={
       if this.delay>0 then
         local tophit=this.collide(player,0,-1)
         local horhit=this.collide(player,1*this.dir,0)
-        if horhit~=nil then
+        if horhit then
           horhit.move_x(this.spdx,0)
         end
         local lastx=this.x
         this.move_x(this.spdx,0)
-        if horhit~=nil and horhit.is_solid(0,0) then
+        if horhit and horhit.is_solid(0,0) then
           kill_player(horhit)
         end
-        if tophit~=nil then
+        if tophit then
           this.start=true
           local input = btn(k_down) and 1 or (btn(k_up) and -1 or 0)
           local tomove=(frames%3==0 and 1 or 0)*input
@@ -745,7 +745,7 @@ spring = {
       end
     elseif this.spr==18 then
       local hit = this.collide(player,0,0)
-      if hit ~=nil and hit.spd.y>=0 then
+      if hit and hit.spd.y>=0 then
         this.spr=19
         hit.y=this.y-4
         hit.spd.x*=0.2
@@ -756,7 +756,7 @@ spring = {
 
         -- breakable below us
         local below=this.collide(fall_floor,0,1)
-        if below~=nil then
+        if below then
           break_fall_floor(below)
         end
 
@@ -797,7 +797,7 @@ side_spring = {
       end
     elseif this.spr==78 then
       local hit = this.collide(player,0,0)
-      if hit ~=nil and this.dir*hit.spd.x<=0 then
+      if hit and this.dir*hit.spd.x<=0 then
         this.spr=79
         hit.x=this.x+this.dir*4
         hit.spd.x=this.dir*3
@@ -808,7 +808,7 @@ side_spring = {
         this.delay=10
         init_object(smoke,this.x,this.y)
         local left=this.collide(fall_floor,-1,0)
-        if left~=nil then
+        if left then
           break_fall_floor(left)
         end
         psfx(8)
@@ -849,7 +849,7 @@ refill = {
     if this.active then
       this.offset+=0.02
       local hit = this.collide(player,0,0)
-      if hit~=nil and hit.djump<max_djump then
+      if hit and hit.djump<max_djump then
         psfx(6)
         init_object(smoke,this.x,this.y)
         hit.djump=max_djump
@@ -936,7 +936,7 @@ function break_fall_floor(obj)
     obj.delay=15  --how long until it falls
     init_object(smoke,obj.x,obj.y)
     local hit=obj.collide(spring,0,-1)
-    if hit~=nil then
+    if hit then
       break_spring(hit)
     end
   end
@@ -976,7 +976,7 @@ fruit={
   end,
   update=function(this)
     if not this.follow then
-      if this.collide(player,0,0)~=nil then
+      if this.collide(player,0,0) then
         get_player().berry_timer=0
         this.follow=true
         this.target=#fruitrain==0 and get_player() or fruitrain[#fruitrain]
@@ -985,7 +985,7 @@ fruit={
       end
     else
       local p=get_player()
-      if p~=nil then
+      if p then
         this.tx+=0.2*(this.target.x-this.tx)
         this.ty+=0.2*(this.target.y-this.ty)
         local a=atan2(this.x-this.tx,this.y_-this.ty)
@@ -1047,7 +1047,7 @@ fly_fruit={
     end
     -- collect
     local hit=this.collide(player,0,0)
-    if hit~=nil then
+    if hit then
       --- <fruitrain> ---
       init_object(smoke, this.x-6, this.y)
       init_object(smoke, this.x+6, this.y)
@@ -1134,7 +1134,7 @@ beeg_fake_wall={
   update=function(this)
     this.hitbox={x=-1,y=-1,w=18,h=this.h*8+2}
     local hit = this.collide(player,0,0)
-    if hit~=nil and hit.dash_effect_time>0 then
+    if hit and hit.dash_effect_time>0 then
       hit.spd.x=-sign(hit.spd.x)*1.5
       hit.spd.y=-1.5
       hit.dash_time=-1
@@ -1219,7 +1219,7 @@ platform={
     elseif this.x>128 then this.x=-16 end
     if not this.check(player,0,0) then
       local hit=this.collide(player,0,-1)
-      if hit~=nil then
+      if hit then
         hit.move_x(this.x-this.last,1)
       end
     end
@@ -1293,7 +1293,7 @@ room_title = {
 -----------------------
 
 function init_object(type,x,y)
-  if type.if_not_fruit~=nil and got_fruit[1+level_index()] then
+  if type.if_not_fruit and got_fruit[1+level_index()] then
     return
   end
   local obj = {}
@@ -1338,7 +1338,7 @@ function init_object(type,x,y)
     local other
     for i=1,count(objects) do
       other=objects[i]
-      if other ~=nil and other.type == type and other != obj and other.collideable and
+      if other  and other.type == type and other != obj and other.collideable and
       other.x+other.hitbox.x+other.hitbox.w > obj.x+obj.hitbox.x+ox and
       other.y+other.hitbox.y+other.hitbox.h > obj.y+obj.hitbox.y+oy and
       other.x+other.hitbox.x < obj.x+obj.hitbox.x+obj.hitbox.w+ox and
@@ -1350,7 +1350,7 @@ function init_object(type,x,y)
   end
 
   obj.check=function(type,ox,oy)
-    return obj.collide(type,ox,oy) ~=nil
+    return obj.collide(type,ox,oy) 
   end
 
   obj.move=function(ox,oy)
@@ -1408,7 +1408,7 @@ function init_object(type,x,y)
   end
 
   add(objects,obj)
-  if obj.type.init~=nil then
+  if obj.type.init then
     obj.type.init(obj)
   end
   return obj
@@ -1587,7 +1587,7 @@ function _update()
   -- update each object
   foreach(objects,function(obj)
       obj.move(obj.spd.x,obj.spd.y)
-      if obj.type.update~=nil then
+      if obj.type.update then
         obj.type.update(obj)
       end
     end)
@@ -1615,7 +1615,7 @@ function _draw()
   local bg_col = 9
   if flash_bg then
     bg_col = frames/5
-  elseif new_bg~=nil then
+  elseif new_bg then
     bg_col=2
   end
   cls(bg_col)
@@ -1623,7 +1623,7 @@ function _draw()
   -- clouds
   foreach(clouds, function(c)
       c.x += c.spd
-      rectfill(c.x,c.y,c.x+c.w,c.y+4+(1-c.w/64)*12,new_bg~=nil and 10 or 10)
+      rectfill(c.x,c.y,c.x+c.w,c.y+4+(1-c.w/64)*12,new_bg and 10 or 10)
       if c.x > 128 then
         c.x = -c.w
         c.y=rnd(128-8)
@@ -1698,7 +1698,7 @@ function _draw()
         break
       end
     end
-    if p~=nil then
+    if p then
       local diff=min(24,40-abs(p.x+4-64))
       rectfill(0,0,diff,128,0)
       rectfill(128-diff,0,128,128,0)
@@ -1709,7 +1709,7 @@ end
 
 function draw_object(obj)
 
-  if obj.type.draw ~=nil then
+  if obj.type.draw  then
     obj.type.draw(obj)
   elseif obj.spr > 0 then
     spr(obj.spr,obj.x,obj.y,1,1,obj.flip.x,obj.flip.y)

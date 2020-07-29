@@ -220,7 +220,7 @@ player={
       this.berry_count=0
     end
 
-    local fr=nil
+    local fr
     local fr1=fruitrain[1]
     local fr2=fruitrain[2]
     if fr1 then

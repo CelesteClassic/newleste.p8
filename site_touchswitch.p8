@@ -435,7 +435,7 @@ token = {
   end,
   update=function(this)
     local hit=this.collide(player,0,0)
-    if hit~=nil then
+    if hit then
       if not this.collected then
         this.collected=true
         init_object(smoke,this.x,this.y)
@@ -512,17 +512,17 @@ token_block={
       local bothit =  this.collide(player,0,2)
       local sidehit = this.collide(player,xdir,0)
       local tophit = this.collide(player,0,-1)
-      if ydir == 1 and bothit~=nil then
+      if ydir == 1 and bothit then
         bothit.move_y(flr(this.rem.y+yspd*ydir + 0.5))
       end
-      if sidehit~=nil then
+      if sidehit then
         sidehit.move_x(flr(this.rem.x+xspd*xdir + 0.5),0)
       end
-      if ydir == -1 and tophit~=nil then
+      if ydir == -1 and tophit then
         tophit.move_y(flr(this.rem.y+yspd*ydir + 0.5))
       end
       this.move(xspd*xdir,yspd*ydir)
-      if tophit~=nil then
+      if tophit then
         if ydir==1 then
           tophit.move_y(this.y-this.last.y)
         end
@@ -566,7 +566,7 @@ spring = {
       end
     elseif this.spr==18 then
       local hit = this.collide(player,0,0)
-      if hit ~=nil and hit.spd.y>=0 then
+      if hit  and hit.spd.y>=0 then
         this.spr=19
         hit.y=this.y-4
         hit.spd.x*=0.2
@@ -577,7 +577,7 @@ spring = {
 
         -- breakable below us
         local below=this.collide(fall_floor,0,1)
-        if below~=nil then
+        if below then
           break_fall_floor(below)
         end
 
@@ -618,7 +618,7 @@ balloon = {
       this.offset+=0.01
       this.y=this.start+sin(this.offset)*2
       local hit = this.collide(player,0,0)
-      if hit~=nil and hit.djump<max_djump then
+      if hit and hit.djump<max_djump then
         psfx(6)
         init_object(smoke,this.x,this.y)
         hit.djump=max_djump
@@ -692,7 +692,7 @@ function break_fall_floor(obj)
     obj.delay=15  --how long until it falls
     init_object(smoke,obj.x,obj.y)
     local hit=obj.collide(spring,0,-1)
-    if hit~=nil then
+    if hit then
       break_spring(hit)
     end
   end
@@ -726,7 +726,7 @@ fruit={
   end,
   update=function(this)
     local hit=this.collide(player,0,0)
-    if hit~=nil then
+    if hit then
       hit.djump=max_djump
       sfx_timer=20
       sfx(13)
@@ -774,7 +774,7 @@ fly_fruit={
     end
     -- collect
     local hit=this.collide(player,0,0)
-    if hit~=nil then
+    if hit then
       hit.djump=max_djump
       sfx_timer=20
       sfx(13)
@@ -828,7 +828,7 @@ fake_wall = {
   update=function(this)
     this.hitbox={x=-1,y=-1,w=18,h=18}
     local hit = this.collide(player,0,0)
-    if hit~=nil and hit.dash_effect_time>0 then
+    if hit and hit.dash_effect_time>0 then
       hit.spd.x=-sign(hit.spd.x)*1.5
       hit.spd.y=-1.5
       hit.dash_time=-1
@@ -908,7 +908,7 @@ platform={
     elseif this.x>128 then this.x=-16 end
     if not this.check(player,0,0) then
       local hit=this.collide(player,0,-1)
-      if hit~=nil then
+      if hit then
         hit.move_x(this.x-this.last,1)
       end
     end
@@ -961,7 +961,7 @@ big_chest={
   draw=function(this)
     if this.state==0 then
       local hit=this.collide(player,0,8)
-      if hit~=nil and hit.is_solid(0,1) then
+      if hit and hit.is_solid(0,1) then
         music(-1,500,7)
         sfx(37)
         pause_player=true
@@ -1015,7 +1015,7 @@ orb={
   draw=function(this)
     this.spd.y=appr(this.spd.y,0,0.5)
     local hit=this.collide(player,0,0)
-    if this.spd.y==0 and hit~=nil then
+    if this.spd.y==0 and hit then
       music_timer=45
       sfx(51)
       freeze=10
@@ -1095,7 +1095,7 @@ room_title = {
 -----------------------
 
 function init_object(type,x,y)
-  if type.if_not_fruit~=nil and got_fruit[1+level_index()] then
+  if type.if_not_fruit and got_fruit[1+level_index()] then
     return
   end
   local obj = {}
@@ -1133,7 +1133,7 @@ function init_object(type,x,y)
     local other
     for i=1,count(objects) do
       other=objects[i]
-      if other ~=nil and other.type == type and other != obj and other.collideable and
+      if other  and other.type == type and other != obj and other.collideable and
       other.x+other.hitbox.x+other.hitbox.w > obj.x+obj.hitbox.x+ox and
       other.y+other.hitbox.y+other.hitbox.h > obj.y+obj.hitbox.y+oy and
       other.x+other.hitbox.x < obj.x+obj.hitbox.x+obj.hitbox.w+ox and
@@ -1145,7 +1145,7 @@ function init_object(type,x,y)
   end
 
   obj.check=function(type,ox,oy)
-    return obj.collide(type,ox,oy) ~=nil
+    return obj.collide(type,ox,oy)
   end
 
   obj.move=function(ox,oy)
@@ -1198,7 +1198,7 @@ function init_object(type,x,y)
   end
 
   add(objects,obj)
-  if obj.type.init~=nil then
+  if obj.type.init then
     obj.type.init(obj)
   end
   return obj
@@ -1357,7 +1357,7 @@ function _update()
   -- update each object
   foreach(objects,function(obj)
       obj.move(obj.spd.x,obj.spd.y)
-      if obj.type.update~=nil then
+      if obj.type.update then
         obj.type.update(obj)
       end
     end)
@@ -1415,7 +1415,7 @@ function _draw()
   local bg_col = 0
   if flash_bg then
     bg_col = frames/5
-  elseif new_bg~=nil then
+  elseif new_bg then
     bg_col=2
   end
   rectfill(0,0,128,128,bg_col)
@@ -1424,7 +1424,7 @@ function _draw()
   if not is_title() then
     foreach(clouds, function(c)
         c.x += c.spd
-        rectfill(c.x,c.y,c.x+c.w,c.y+4+(1-c.w/64)*12,new_bg~=nil and 14 or 1)
+        rectfill(c.x,c.y,c.x+c.w,c.y+4+(1-c.w/64)*12,new_bg and 14 or 1)
         if c.x > 128 then
           c.x = -c.w
           c.y=rnd(128-8)
@@ -1498,7 +1498,7 @@ function _draw()
         break
       end
     end
-    if p~=nil then
+    if p then
       local diff=min(24,40-abs(p.x+4-64))
       rectfill(0,0,diff,128,0)
       rectfill(128-diff,0,128,128,0)
@@ -1509,7 +1509,7 @@ end
 
 function draw_object(obj)
 
-  if obj.type.draw ~=nil then
+  if obj.type.draw  then
     obj.type.draw(obj)
   elseif obj.spr > 0 then
     spr(obj.spr,obj.x,obj.y,1,1,obj.flip.x,obj.flip.y)
