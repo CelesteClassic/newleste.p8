@@ -221,14 +221,13 @@ player={
     end
 
     local fr
-    local fr1=fruitrain[1]
-    local fr2=fruitrain[2]
-    if fr1 then
-      if fr1.golden and fr2 then
-        fr=fr2
-      elseif not fr1.golden or level_index()==30 then
-        fr=fr1
-      end
+    for f in all(fruitrain) do
+        if f.type==fruit and (not f.golden or level_index()==0) then
+            fr=f
+            if not f.golden then
+                break
+            end
+        end
     end
 
     if this.berry_timer>5 and fr then
