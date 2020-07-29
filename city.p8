@@ -951,146 +951,145 @@ flag = {
 }
 
 zip_mover={
- init=function(this)
-  this.sx=this.x
-  this.sy=this.y
-  this.lx=this.x
-  this.ly=this.y
- 
-  this.mapx=(room.x*16)+(this.x/8)
-  this.mapy=(room.y*16)+(this.y/8)
-  
-  i=1
-  while mget(this.mapx+i,this.mapy) != 80 and not fget(mget(this.mapx+i,this.mapy),0) do
-   i+=1
-  end  
-  this.width = i
-  
-  j=1
-  while mget(this.mapx,this.mapy+j) != 80 and not fget(mget(this.mapx,this.mapy+j),0) do
-   j+=1
-  end  
-  this.height = j
-  
-  this.hitbox.w=this.width*8
-  this.hitbox.h=this.height*8
-  
-  for i=room.x*16,(room.x*16)+level_tlength() do
-   for j=room.y*16,(room.y*16)+level_theight() do
-    if mget(i,j) == mget(this.mapx-1,this.mapy) + 64 then
-     this.gearx=(i*8)-(room.x*128)
-     this.geary=(j*8)-(room.y*128)
+  init=function(this)
+    this.sx=this.x
+    this.sy=this.y
+    this.lx=this.x
+    this.ly=this.y
+
+    this.mapx=(room.x*16)+(this.x/8)
+    this.mapy=(room.y*16)+(this.y/8)
+
+    i=1
+    while mget(this.mapx+i,this.mapy) != 80 and not fget(mget(this.mapx+i,this.mapy),0) do
+      i+=1
     end
-   end
-  end
-  
-  this.state=0
- end,
- update=function(this)
-  if this.state==4 then
-   if this.timer>0 then
-    this.timer-=1
-    this.x+=this.spdx/3
-    this.y+=this.spdy/3
-   else
+    this.width = i
+
+    j=1
+    while mget(this.mapx,this.mapy+j) != 80 and not fget(mget(this.mapx,this.mapy+j),0) do
+      j+=1
+    end
+    this.height = j
+
+    this.hitbox.w=this.width*8
+    this.hitbox.h=this.height*8
+
+    for i=room.x*16,(room.x*16)+level_tlength() do
+      for j=room.y*16,(room.y*16)+level_theight() do
+        if mget(i,j) == mget(this.mapx-1,this.mapy) + 64 then
+          this.gearx=(i*8)-(room.x*128)
+          this.geary=(j*8)-(room.y*128)
+        end
+      end
+    end
+
     this.state=0
-   end
-  elseif this.state==3 then
-   if this.timer>0 then
-    this.timer-=1
-   else
-    this.timer=30
-    this.state=4
-   end
-  elseif this.state==2 then
-   if this.timer>0 then
-    this.timer-=1
-    this.x-=this.spdx
-    this.y-=this.spdy
-   else
-    sfx(5)
-    this.timer=20
-    this.state=3
-   end
-  elseif this.state == 1 then
-   if this.timer>0 then
-    this.timer-=1
-   else
-    this.spdx=(this.x-this.gearx)/10
-    this.spdy=(this.y-this.geary)/10
-    this.timer=10
-    this.state=2
-   end
-  elseif this.state == 0 then
-   hit = this.collide(player,0,-1)
-   if hit!=nil then
-    sfx(7)
-    this.timer=5
-    this.state=1
-   end
+  end,
+  update=function(this)
+    if this.state==4 then
+      if this.timer>0 then
+        this.timer-=1
+        this.x+=this.spdx/3
+        this.y+=this.spdy/3
+      else
+        this.state=0
+      end
+    elseif this.state==3 then
+      if this.timer>0 then
+        this.timer-=1
+      else
+        this.timer=30
+        this.state=4
+      end
+    elseif this.state==2 then
+      if this.timer>0 then
+        this.timer-=1
+        this.x-=this.spdx
+        this.y-=this.spdy
+      else
+        sfx(5)
+        this.timer=20
+        this.state=3
+      end
+    elseif this.state == 1 then
+      if this.timer>0 then
+        this.timer-=1
+      else
+        this.spdx=(this.x-this.gearx)/10
+        this.spdy=(this.y-this.geary)/10
+        this.timer=10
+        this.state=2
+      end
+    elseif this.state == 0 then
+      hit = this.collide(player,0,-1)
+      if hit!=nil then
+        sfx(7)
+        this.timer=5
+        this.state=1
+      end
+    end
+
+    this.hitbox.w += 2
+    this.hitbox.h += 1
+
+    hit = this.collide(player,-1,-1)
+
+    this.hitbox.w -= 2
+    this.hitbox.h -= 1
+
+    if hit!=nil then
+      hit.x+=this.x-this.lx
+      hit.y+=this.y-this.ly
+
+      if hit.is_solid(0,0) then
+        kill_player(hit)
+      end
+    end
+
+    if this.x != this.lx or this.y != this.ly then
+      sfx(16)
+    end
+
+    this.lx=this.x
+    this.ly=this.y
+  end,
+  draw=function(this)
+    w=(this.width-1)*8
+    h=(this.height-1)*8
+
+    line(this.sx+(w/2),this.sy+(h/2),this.gearx+(w/2),this.geary+(h/2),4)
+    line(this.sx+(w/2)+7,this.sy+(h/2)+7,this.gearx+(w/2)+7,this.geary+(h/2)+7,4)
+
+    rect(this.sx+(w/2),this.sy+(h/2),this.sx+(w/2)+7,this.sy+(h/2)+7,4)
+    rect(this.gearx+(w/2),this.geary+(h/2),this.gearx+(w/2)+7,this.geary+(h/2)+7,4)
+
+    spr(64,this.gearx+(w/2),this.geary+(h/2))
+    spr(64,this.sx+(w/2),this.sy+(h/2))
+
+    for i=0,this.width-1 do
+      for j=0,this.height-1 do
+        spr(81,this.x+(i*8),this.y+(j*8))
+      end
+    end
+
+    for i=0,this.width-1 do
+      spr(96,this.x+(i*8),this.y)
+      spr(96,this.x+(i*8),this.y+h+5)
+    end
+
+    for i=0,this.height-1 do
+      spr(65,this.x,this.y+(i*8))
+      spr(65,this.x+w+5,this.y+(i*8))
+    end
+
+    spr(80,this.x,this.y)
+    spr(80,this.x+w,this.y,1,1,true)
+    spr(80,this.x,this.y+h,1,1,false,true)
+    spr(80,this.x+w,this.y+h,1,1,true,true)
+
+    spr(112,this.x+(w/2),this.y)
   end
-  
-  this.hitbox.w += 2
-  this.hitbox.h += 1
-  
-  hit = this.collide(player,-1,-1)
-  
-  this.hitbox.w -= 2
-  this.hitbox.h -= 1
-  
-  if hit!=nil then
-   hit.x+=this.x-this.lx
-   hit.y+=this.y-this.ly
-   
-   if hit.is_solid(0,0) then
-    kill_player(hit)
-   end
-  end
-  
-  
-  if this.x != this.lx or this.y != this.ly then
-   sfx(16)
-  end
-  
-  this.lx=this.x
-  this.ly=this.y
- end,
- draw=function(this) 
-  w=(this.width-1)*8
-  h=(this.height-1)*8
-  
-  line(this.sx+(w/2),this.sy+(h/2),this.gearx+(w/2),this.geary+(h/2),4)
-  line(this.sx+(w/2)+7,this.sy+(h/2)+7,this.gearx+(w/2)+7,this.geary+(h/2)+7,4)
-  
-  rect(this.sx+(w/2),this.sy+(h/2),this.sx+(w/2)+7,this.sy+(h/2)+7,4)
-  rect(this.gearx+(w/2),this.geary+(h/2),this.gearx+(w/2)+7,this.geary+(h/2)+7,4)
-  
-  spr(64,this.gearx+(w/2),this.geary+(h/2))
-  spr(64,this.sx+(w/2),this.sy+(h/2))
-  
-  for i=0,this.width-1 do
-   for j=0,this.height-1 do
-    spr(81,this.x+(i*8),this.y+(j*8))
-   end
-  end 
-  
-  for i=0,this.width-1 do
-   spr(96,this.x+(i*8),this.y)
-   spr(96,this.x+(i*8),this.y+h+5)
-  end
-  
-  for i=0,this.height-1 do
-   spr(65,this.x,this.y+(i*8))
-   spr(65,this.x+w+5,this.y+(i*8))
-  end
- 
-  spr(80,this.x,this.y)
-  spr(80,this.x+w,this.y,1,1,true)
-  spr(80,this.x,this.y+h,1,1,false,true)
-  spr(80,this.x+w,this.y+h,1,1,true,true)
-  
-  spr(112,this.x+(w/2),this.y)
- end
 }
 
 -- object functions --
