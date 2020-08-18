@@ -181,7 +181,7 @@ function do_dash(this, input)
   local d_half=d_full*0.70710678118
   local input = btn(k_right) and 1 or (btn(k_left) and -1 or 0)
 
-  init_object(smoke,this.x,this.y)
+  init_smoke(this.x,this.y)
   this.djump-=1
   this.dash_time=4
   has_dashed=true
@@ -628,7 +628,7 @@ green_bubble = {  --by amegpo
       if this.dead_timer==60 then
         this.dead_timer=0
         this.spr=124
-        init_object(smoke, this.x, this.y)
+        init_smoke(this.x,this.y)
       end
     end
   end,
@@ -728,7 +728,7 @@ snowball = {  --by amegpo
         hit.spd.y=-2
         psfx(1)
         hit.dash_time=-1
-        init_object(smoke, this.x, this.y)
+        init_smoke(this.x, this.y)
         destroy_object(this)
       else
         kill_player(hit)
@@ -760,8 +760,8 @@ moving_platform={
     this.collideable=true
     moving_platform.init(this)
     this.dir=dir
-    init_object(smoke,this.x,this.y)
-    init_object(smoke,this.x+8,this.y)
+    init_smoke(this.x,this.y)
+    init_smoke(this.x+8,this.y)
   end,
   update=function(this)
     if this.hide_for>0 then
@@ -810,8 +810,8 @@ moving_platform={
         elseif this.death_delay>0 then
           this.death_delay-=1
         else
-          init_object(smoke,this.x,this.y)
-          init_object(smoke,this.x+8,this.y)
+          init_smoke(this.x,this.y)
+          init_smoke(this.x+8,this.y)
           this.hide_for=60
           this.collideable=false
         end
@@ -1051,6 +1051,7 @@ smoke={
     this.flip.y=maybe()
   end,
   update=function(this)
+  	printh(this.spr)
     this.spr+=0.2
     if this.spr>=32 then
       destroy_object(this)
@@ -1224,8 +1225,8 @@ beeg_fake_wall={
       sfx(16)
       destroy_object(this)
       for i=0,this.h-1 do
-        init_object(smoke,this.x,this.y+8*i)
-        init_object(smoke,this.x+8,this.y+8*i)
+        init_smoke(this.x,this.y+8*i)
+        init_smoke(this.x+8,this.y+8*i)
       end
       if this.has_fruit then
         init_object(fruit,this.x+4,this.y+4)
