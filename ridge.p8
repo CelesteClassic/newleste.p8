@@ -55,7 +55,7 @@ for i=0,16 do
 end
 
 particles={}
-for i=0,24 do
+for i=0,36 do
   add(particles,{
     x=rnd128(),
     y=rnd128(),
@@ -63,6 +63,9 @@ for i=0,24 do
     spd=0.25+rnd(5),
     off=rnd(1),
     c=6+rnd(2),
+    -- <wind> --
+    wspd=0,
+    -- <wind> --
   })
 end
 
@@ -840,7 +843,9 @@ function init_object(type,x,y,tile)
   
   function obj.move(ox,oy,start)
     for axis in all({"x","y"}) do
-      obj.rem[axis]+=axis=="x" and ox or oy
+      -- <wind> --
+      obj.rem[axis]+=axis=="x" and ox+(obj.type==player and obj.dash_time<=0 and wind_spd or 0) or oy
+      -- </wind> --
       local amt=flr(obj.rem[axis]+0.5)
       obj.rem[axis]-=amt
       if obj.solids then
@@ -909,24 +914,18 @@ end
 
 function next_level()
   local next_lvl=lvl_id+1
-  if next_lvl==3 then --wind music
-    music(30,500,7)
-  elseif next_lvl==2 then
-    music(20,500,7)
-  end
   load_level(next_lvl)
 end
 
 function load_level(lvl)
   has_dashed=false
-  has_key=false
   
   --remove existing objects
   foreach(objects,destroy_object)
   
   --reset camera speed
   cam_spdx=0
-		cam_spdy=0
+	cam_spdy=0
 		
   local diff_room=lvl_id~=lvl
   
@@ -935,13 +934,13 @@ function load_level(lvl)
   
   --set level globals
   local tbl=get_lvl()
-  lvl_x,lvl_y,lvl_w,lvl_h,lvl_title=tbl[1],tbl[2],tbl[3]*16,tbl[4]*16,tbl[5]
+  lvl_x,lvl_y,lvl_w,lvl_h,wind_spd=tbl[1],tbl[2],tbl[3]*16,tbl[4]*16,tbl[5] or 0
   lvl_pw=lvl_w*8
   lvl_ph=lvl_h*8
   
   
   --reload map
-  --level title setup
+  --timer setup
   if diff_room then reload() end 
   ui_timer=5
   
@@ -1066,10 +1065,18 @@ function _draw()
   
   -- particles
   foreach(particles, function(p)
-    p.x+=p.spd-cam_spdx
     p.y+=sin(p.off)-cam_spdy
     p.off+=min(0.05,p.spd/32)
-    rectfill(p.x+camx,p.y%128+camy,p.x+p.s+camx,p.y%128+p.s+camy,p.c)
+    -- <wind> --
+      p.wspd=appr(p.wspd,wind_spd*12,0.5)
+      if wind_spd!=0 then 
+        p.x += p.wspd - cam_spdx 
+        line(p.x+camx,p.y+camy,p.x+p.wspd*-1.5+camx,p.y+camy,7)  
+      else 
+        p.x+=p.spd+p.wspd-cam_spdx
+        rectfill(p.x+camx,p.y%128+camy,p.x+p.s+camx+p.wspd*-1.5,p.y%128+p.s+camy,p.c)
+      end
+    -- </wind> --
     if p.x>132 then 
       p.x=-4
       p.y=rnd128()
@@ -1217,7 +1224,7 @@ end
 
 --level table
 --strings follow this format:
---"x,y,w,h,title"
+--"x,y,w,h,wind speed"
 levels={
 	"0,0,1,1",
   "1,0,3,1"
