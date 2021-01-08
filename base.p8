@@ -674,8 +674,7 @@ function init_object(type,x,y,tile)
   function obj.is_solid(ox,oy)
     return (oy>0 and not obj.is_flag(ox,0,3) and obj.is_flag(ox,oy,3)) or  -- one way platform or
            obj.is_flag(ox,oy,0) or 
-           obj.check(fall_floor,ox,oy) or
-           obj.check(fake_wall,ox,oy)
+           obj.check(fall_floor,ox,oy)
   end
   
   function obj.is_flag(ox,oy,flag)
