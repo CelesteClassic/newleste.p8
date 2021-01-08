@@ -794,13 +794,13 @@ function load_level(lvl)
   
   --set level globals
   local tbl=get_lvl()
-  lvl_x,lvl_y,lvl_w,lvl_h,lvl_title=tbl[1],tbl[2],tbl[3]*16,tbl[4]*16,tbl[5]
+  lvl_x,lvl_y,lvl_w,lvl_h=tbl[1],tbl[2],tbl[3]*16,tbl[4]*16
   lvl_pw=lvl_w*8
   lvl_ph=lvl_h*8
   
   
   --reload map
-  --level title setup
+  --time drawing setup
   if diff_room then reload() end 
   ui_timer=5
   
@@ -1076,7 +1076,7 @@ end
 
 --level table
 --strings follow this format:
---"x,y,w,h,title"
+--"x,y,w,h"
 levels={
 	"0,0,1,1",
   "1,0,3,1"
