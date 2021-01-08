@@ -295,7 +295,7 @@ function create_hair(obj)
 end
 
 function set_hair_color(djump)
-  pal(8,djump==1 and 8 or djump==2 and 7+(frames\3)%2*4 or 12)
+  pal(8,djump==1 and 8 or 12)
 end
 
 function draw_hair(obj,facing)
@@ -768,17 +768,11 @@ end
 
 function next_level()
   local next_lvl=lvl_id+1
-  if next_lvl==3 then --wind music
-    music(30,500,7)
-  elseif next_lvl==2 then
-    music(20,500,7)
-  end
   load_level(next_lvl)
 end
 
 function load_level(lvl)
   has_dashed=false
-  has_key=false
   
   --remove existing objects
   foreach(objects,destroy_object)
