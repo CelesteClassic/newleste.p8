@@ -818,25 +818,23 @@ snowball_controller={
 
 green_bubble={
   init=function(this)
-    this.poff=0
     this.t=0
   end,
   update=function(this)
-    if frames%2==0 then this.poff=(this.poff+1)%8 end
   end, 
   draw=function(this)
   	local x,y=this.x,this.y
   	this.t+=0.2
-  	local dr=1
-  	local sx=round(sin(this.t/4))
-  	ovalfill(x-dr-sx,y-dr+sx,x+7+dr+sx,y+7+dr-sx,3)
-  	oval(x-dr-sx,y-dr+sx,x+7+dr+sx,y+7+dr-sx,11)
+  	local sx=max(0,sgn(sin(this.t/4)))
+    for f in all({ovalfill,oval}) do
+      f(x-2-sx,y-3+sx,x+9+sx,y+10-sx,f==ovalfill and 3 or 11)
+    end
   	for dx=2,5 do
-    local _t,bx=(this.t+3*dx)%8
-    local bx=sgn(dx-4)*round(sin(_t/16))
-    rectfill(x+dx-bx,y+8-_t,x+dx-bx,y+8-_t,6)
+      local _t=(this.t+3*dx)%8
+      local bx=sgn(dx-4)*round(sin(_t/16))
+      rectfill(x+dx-bx,y+8-_t,x+dx-bx,y+8-_t,6)
   	end
-  	rectfill(x+5+0.5*sx,y+1+0.5*sx,x+6+0.5*sx,y+2+0.5*sx,7)
+  	rectfill(x+5,y+sx,x+6,y+1+sx,7)
   end 
 }
 
