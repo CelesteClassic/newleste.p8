@@ -952,22 +952,23 @@ function _draw()
   end
 
   -- <transition>
+  camera()
+  color(0)
   if tstate>=0 then
     local t20=tpos+20
-    local yedge=camy+127
     if tstate==0 then
-      po1tri(tpos,camy,t20,camy,tpos,yedge)
-      if(tpos>camx) rectfill(camx,camy,tpos,yedge,0)
-      if(tpos>148+camx) then
+      po1tri(tpos,0,t20,0,tpos,127)
+      if(tpos>0) rectfill(0,0,tpos,127)
+      if(tpos>148) then
         tstate=1
-        tpos=camx-20
+        tpos=-20
       end
     else
-      po1tri(t20,camy,t20,yedge,tpos,yedge)
-      if(tpos<108+camx) rectfill(t20,camy,camx+127,yedge,0)
-      if(tpos>148+camx) then
+      po1tri(t20,0,t20,127,tpos,127)
+      if(tpos<108) rectfill(t20,0,127,127)
+      if(tpos>148) then
         tstate=-1
-        tpos=camx-20
+        tpos=-20
       end
     end
     tpos+=14
@@ -1059,7 +1060,7 @@ end
 function p01traph(l,r,lt,rt,y0,y1)
   lt,rt=(lt-l)/(y1-y0),(rt-r)/(y1-y0)
   for y0=y0,y1 do
-    rectfill(l,y0,r,y0,0)
+    rectfill(l,y0,r,y0)
     l+=lt
     r+=rt
   end
