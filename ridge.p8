@@ -815,24 +815,120 @@ snowball_controller={
   end
 }
 --- </snowball> ---
+-- <green_bubble> --
+function do_dash(this, input)
+  local d_full=5
+  local d_half=d_full*0.70710678118
+  local input = btn(➡️) and 1 or (btn(⬅️) and -1 or 0)
+
+  this.init_smoke()
+  this.djump-=1
+  this.dash_time=4
+  has_dashed=true
+  this.dash_effect_time=10
+  local v_input=(btn(⬆️) and -1 or (btn(⬇️) and 1 or 0))
+  if input!=0 then
+    if v_input!=0 then
+      this.spd.x=input*d_half
+      this.spd.y=v_input*d_half
+    else
+      this.spd.x=input*d_full
+      this.spd.y=0
+    end
+  elseif v_input!=0 then
+    this.spd.x=0
+    this.spd.y=v_input*d_full
+  else
+    this.spd.x=(this.flip.x and -1 or 1)
+    this.spd.y=0
+  end
+
+  psfx(5)
+  freeze=2
+  this.dash_target_x=2*sign(this.spd.x)
+  this.dash_target_y=2*sign(this.spd.y)
+  this.dash_accel_x=1.5
+  this.dash_accel_y=1.5
+
+  if this.spd.y<0 then
+    this.dash_target_y*=.75
+  end
+
+  if this.spd.y!=0 then
+    this.dash_accel_x*=0.70710678118
+  end
+  if this.spd.x!=0 then
+    this.dash_accel_y*=0.70710678118
+  end
+end
 
 green_bubble={
   init=function(this)
     this.poff=0
+    this.timer=0
+    this.dead_timer=0
+    this.shake=0
+    this.draw_x=this.x
+    this.draw_y=this.y
+    this.player=nil
+    this.hitbox=rectangle(0,0,12,12)
   end,
   update=function(this)
     if frames%2==0 then this.poff=(this.poff+1)%8 end
+    local hit=this.check(player, 0, 0)
+    if hit~=nil then
+      if not this.invisible then
+        this.player=hit
+        hit.invisible=true
+        if this.timer==0 then
+          this.timer=1
+          this.shake=5
+        end
+      end
+      this.draw_x=this.x
+      this.draw_y=this.y
+      if this.timer>0 then
+        if this.shake>0 then
+          this.draw_x+=rnd(2)-1
+          this.draw_y+=rnd(2)-1
+          this.shake-=1
+        end
+        hit.x=this.x+3
+        hit.y=this.y+3
+        this.timer+=1
+        if this.timer==20 or btnp(❎) then
+          hit.invisible=false
+          do_dash(hit)
+          hit.djump=max_djump
+          this.invisible=true
+          this.timer=0
+        end
+      end
+    elseif this.player~=nil then
+      this.player.invisible=false
+      this.invisible=true
+      this.timer=0
+      this.player=nil
+    end
+    if this.invisible then
+      this.dead_timer+=1
+      if this.dead_timer==60 then
+        this.dead_timer=0
+        this.invisible=false
+        this.init_smoke()
+      end
+    end
   end, 
   draw=function(this)
     local r=6
-    circfill(this.x+r,this.y+r,r,3)
-    circ(this.x+r,this.y+r,r,1)
-    sspr(48,32+this.poff,8,11,this.x+2,this.y+1)
-    sspr(50,32+this.poff,2,7,this.x+2,this.y+3,2,7,true)
-    sspr(50,35+this.poff,2,7,this.x+9,this.y+3)
+    circfill(this.draw_x+r,this.draw_y+r,r,3)
+    circ(this.draw_x+r,this.draw_y+r,r,1)
+    sspr(48,32+this.poff,8,11,this.draw_x+2,this.draw_y+1)
+    sspr(50,32+this.poff,2,7,this.draw_x+2,this.draw_y+3,2,7,true)
+    sspr(50,35+this.poff,2,7,this.draw_x+9,this.draw_y+3)
     
-    line(this.x+8,this.y+1, this.x+11,this.y+4,7)
-    line(this.x+7,this.y+1, this.x+10,this.y+4,7)
+    line(this.draw_x+8,this.draw_y+1, this.draw_x+11,this.draw_y+4,7)
+    line(this.draw_x+7,this.draw_y+1, this.draw_x+10,this.draw_y+4,7)
 
     --[[line(this.x+5,this.y+1, this.x+8,this.y+1,7)
     line(this.x+4,this.y+2, this.x+7,this.y+2,7)]]
@@ -846,6 +942,7 @@ green_bubble={
     line(this.x+5,this.y, this.x+8,this.y,1)]]--
   end 
 }
+-- </green_bubble> --
 
 psfx=function(num)
   if sfx_timer<=0 then
@@ -1209,11 +1306,16 @@ function _draw()
 end
 
 function draw_object(obj)
-  (obj.type.draw or draw_obj_sprite)(obj)
+  -- <green_bubble> --
+  if not obj.invisible then 
+    (obj.type.draw or draw_obj_sprite)(obj)
+  end 
+  -- </green_bubble> --
 end
 
 function draw_obj_sprite(obj)
   spr(obj.spr,obj.x,obj.y,1,1,obj.flip.x,obj.flip.y)
+
 end
 
 function draw_time(x,y)
