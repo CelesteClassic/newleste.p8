@@ -823,18 +823,19 @@ green_bubble={
   update=function(this)
   end, 
   draw=function(this)
-  	local x,y=this.x,this.y
-  	this.t+=0.2
-  	local sx=max(0,sgn(sin(this.t/4)))
+    this.t+=0.05
+  	local x,y,t=this.x,this.y,this.t
+    local sx=sin(t)>=0.5 and 1 or 0
+    local sy=sin(t)<-0.5 and 1 or 0
     for f in all({ovalfill,oval}) do
-      f(x-2-sx,y-3+sx,x+9+sx,y+10-sx,f==ovalfill and 3 or 11)
+      f(x-2-sx,y-2-sy,x+9+sx,y+9+sy,f==oval and 11 or 3)
     end
   	for dx=2,5 do
-      local _t=(this.t+3*dx)%8
+      local _t=(5*t+3*dx)%8
       local bx=sgn(dx-4)*round(sin(_t/16))
       rectfill(x+dx-bx,y+8-_t,x+dx-bx,y+8-_t,6)
   	end
-  	rectfill(x+5,y+sx,x+6,y+1+sx,7)
+  	rectfill(x+5+sx,y+1-sy,x+6+sx,y+2-sy,7)
   end 
 }
 
