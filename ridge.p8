@@ -909,7 +909,7 @@ arrow_platform={
     else 
       this.break_timer=0
     end 
-    if this.break_timer==30 then 
+    if this.break_timer==16 then 
       this.init_smoke()
       this.init_smoke(8)
       this.death_timer=60
@@ -923,10 +923,17 @@ arrow_platform={
   end,
   draw=function(this)
     if (this.death_timer>0) return 
-    pal(13,this.break_timer>15 and 8 or this.active and 11 or 13)
-    spr(71,this.x,this.y,2.0,1.0,this.dir==-1)
+    local x,y=this.x,this.y 
+    pal(13,this.active and 11 or 13)
+    if this.break_timer>8 then 
+      x+=rnd(2)-1
+      y+=rnd(2)-1
+      pal(13,8)
+    end
+    
+    spr(71,x,y,2.0,1.0,this.dir==-1)
     if not this.check(player,0,-1) and not this.is_solid(0,-1) then
-      line(this.x+2,this.y-1,this.x+13,this.y-1,13)
+      line(x+2,y-1,x+13,y-1,13)
     end
     pal()
   end
