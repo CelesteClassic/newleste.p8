@@ -828,7 +828,7 @@ green_bubble={
     this.hitbox=rectangle(0,0,12,12)
   end,
   update=function(this)
-    local hit=this.check(player, 0, 0)
+    local hit=this.player_here()
     if hit and not this.invisible then
       hit.invisible=true
       hit.spd=vector(0,0)
