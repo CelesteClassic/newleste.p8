@@ -885,16 +885,51 @@ arrow_platform={
   init=function(this)
     this.dir=this.spr==71 and -1 or 1
     this.solid_obj=true
+    this.solids=true
+    this.hitbox.w=16
+    this.break_timer,this.death_timer=0,0
+    this.start_x,this.start_y=this.x,this.y
   end,
   update=function(this)
+    if this.death_timer>0 then 
+      this.death_timer-=1
+      if this.death_timer==0 then 
+        this.x,this.y=this.start_x,this.start_y
+        this.init_smoke()
+        this.init_smoke(8)
+        this.break_timer=0
+        this.collideable=true
+        this.active=false
+      else
+        return 
+      end 
+    end 
+    if this.spd.x==0 and this.active then 
+      this.break_timer+=1
+    else 
+      this.break_timer=0
+    end 
+    if this.break_timer==30 then 
+      this.init_smoke()
+      this.init_smoke(8)
+      this.death_timer=60
+      this.collideable=false
+    end
+    this.spd.y=0
     if this.check(player,0,-1) then 
-      this.spd.x=0.65*this.dir
+      this.spd=vector(this.dir,btn(⬆️) and -1 or btn(⬇️) and 1 or 0)
+      this.active=true
     end
-    if this.is_solid(this.dir,0) then 
-      this.spd.x=0 
+  end,
+  draw=function(this)
+    if (this.death_timer>0) return 
+    pal(13,this.break_timer>15 and 8 or this.active and 11 or 13)
+    spr(71,this.x,this.y,2.0,1.0,this.dir==-1)
+    if not this.check(player,0,-1) and not this.is_solid(0,-1) then
+      line(this.x+2,this.y-1,this.x+13,this.y-1,13)
     end
-  end 
-
+    pal()
+  end
 
 }
 
@@ -996,9 +1031,13 @@ function init_object(type,x,y,tile)
       -- </wind> --
       local amt=flr(obj.rem[axis]+0.5)
       obj.rem[axis]-=amt
+      -- <solids> --
+      local riding=obj.check(player,0,-1)
+      -- </solids> --
       if obj.solids then
         local step=sign(amt)
         local d=axis=="x" and step or 0
+        local p=obj[axis]
         for i=start,abs(amt) do
           if not obj.is_solid(d,step-d) then
             obj[axis]+=step
@@ -1007,28 +1046,27 @@ function init_object(type,x,y,tile)
             break
           end
         end
+        amt=obj[axis]-p --save how many px moved to use later for solids
       else
-        -- <solids> --
-        local riding=obj.check(player,0,-1)
         obj[axis]+=amt
-        
-        if obj.solid_obj and amt>0 then 
-          obj.collideable=false 
-          local hit=obj.player_here()
-          if hit then 
-            hit.move(axis=="x" and amt>0 and obj.right()-hit.left() or amt<0 and obj.left()-hit.right() or 0, 
-                     axis=="y" and amt>0 and obj.bot()-hit.top() or amt<0 and obj.top()-hit.bot() or 0,
-                     1)
-            if(obj.player_here()) then 
-              kill_player(hit)
-            end 
-          elseif riding then 
-            riding.move(axis=="x" and amt or 0, axis=="y" and amt or 0,1)
-          end
-          obj.collideable=true 
-        end
-        -- <solids> --
       end
+      -- <solids> --
+      if obj.solid_obj and obj.collideable then
+        obj.collideable=false 
+        local hit=obj.player_here()
+        if hit then 
+          hit.move(axis=="x" and (amt>0 and obj.right()-hit.left() or amt<0 and obj.left()-hit.right()) or 0, 
+                  axis=="y" and (amt>0 and obj.bot()-hit.top() or amt<0 and obj.top()-hit.bot()) or 0,
+                  1)
+          if(obj.player_here()) then 
+            kill_player(hit)
+          end 
+        elseif riding then 
+          riding.move(axis=="x" and amt or 0, axis=="y" and amt or 0,1)
+        end
+        obj.collideable=true 
+      end
+      -- </solids> --
     end
   end
 
