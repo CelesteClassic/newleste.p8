@@ -1,265 +1,112 @@
 pico-8 cartridge // http://www.pico-8.com
 version 29
 __lua__
--- newleste.p8 base cart
+--newleste.p8 base cart
 
--- original game by
--- matt thorson and noel berry
+--original game by:
+--matt thorson + noel berry
 
--- globals --
--------------
+--based on taco's evercore,
+--meep's smalleste
+--and akliant's hex loading
+--with help from gonengazit
 
--- <fruitrain> --
---full_restart=false
--- </fruitrain> --
-room = { x=0, y=0 }
-objects = {}
-freeze=0
-shake=0
-delay_restart=0
---has_dashed=false
-sfx_timer=0
---pause_player=false
+-- [data structures]
 
-time_ticking=true
-
-bg_col=0
-cloud_col=1
-
-bg_music=0
-current_music=0
-level_table=
-{[3]={
---insert mapdata here in strings
---the 2 should be replaced with the level index (0 indexed)
-  }
-}
-height_table={
-  [2]=2
-}
-length_table={
-  [2]=2
-}
-reserve_levels={}
-
---not using tables to conserve tokens
-cam_x=0
-cam_y=0
-cam_spdx=0
-cam_spdy=0
-cam_gain=0.25
-
-function level_length()
-  return length_table[level_index()] or 1
+function vector(x,y)
+  return {x=x,y=y}
 end
 
-function level_height()
-  return height_table[level_index()] or 1
+function rectangle(x,y,w,h)
+  return {x=x,y=y,w=w,h=h}
 end
 
-function level_data()
-  return level_table[level_index()]
-end
+-- [globals]
 
-function level_tlength()
-  return level_length()*16
-end
+objects,got_fruit,
+freeze,delay_restart,sfx_timer,music_timer,
+ui_timer=
+{},{},
+0,0,0,0,-99
 
-function level_theight()
-  return level_height()*16
-end
-
-function level_plength()
-  return level_length()*128
-end
-
-function level_pheight()
-  return level_height()*128
-end
-
-function setuparea(level)
-  if level==0 then
-    bg_col=0
-    cloud_col=1
-
-    bg_music=30
-  else
-    bg_col=0
-    cloud_col=1
-
-    bg_music=0
-  end
-end
-
---[[k_left=0
-k_right=1
-k_up=2
-k_down=3
-k_jump=4
-k_dash=5]]--
-
---- <snowball> ---
-snowball_timer=0
-is_snowball=false
-player_y=0
---- </snowball> ---
-
---- <wind> ---
-wind_particlespd=6
-is_wind=false
---- </wind> ---
-
--- entry point --
------------------
+-- [entry point]
 
 function _init()
-  begin_game()
+  max_djump,deaths,frames,seconds,minutes,music_timer,time_ticking=1,0,0,0,0,0,true
+  music(0,0,7)
+  load_level(1)
 end
 
-function begin_game()
-  frames=0
-  deaths=0
-  max_djump=1
-  centiseconds=0
-  seconds=0
-  minutes=0
-  got_fruit={}
-  load_room(1,0)
-end
 
-function level_index()
-  return room.x+room.y*8
-end
-
-function is_end()
-  return level_index()==30
-end
-
-function get_fruit()
-  local froot=0
-  for _ in pairs(got_fruit) do
-    froot+=1
-  end
-  return froot
-end
+-- [effects]
 
 function rnd128()
   return rnd(128)
 end
--- effects --
--------------
 
-clouds = {}
+clouds={}
 for i=0,16 do
   add(clouds,{
-      x=rnd128(),
-      y=rnd128(),
-      spd=1+rnd(4),
-      w=32+rnd(32)
-    })
+    x=rnd128(),
+    y=rnd128(),
+    spd=1+rnd(4),
+    w=32+rnd(32)
+  })
 end
 
-particles = {}
-for i=0,24 do
+particles={}
+for i=0,36 do
   add(particles,{
-      x=rnd128(),
-      y=rnd128(),
-      s=rnd(5)\4,
-      spd=0.25+rnd(5),
-      off=rnd(1),
-      c=6+rnd(2)
-    })
+    x=rnd128(),
+    y=rnd128(),
+    s=flr(rnd(1.25)),
+    spd=0.25+rnd(5),
+    off=rnd(1),
+    c=6+rnd(2),
+    -- <wind> --
+    wspd=0,
+    -- <wind> --
+  })
 end
 
-dead_particles = {}
+dead_particles={}
 
--- player entity --
--------------------
+-- [player entity]
 
-function do_dash(this, input)
-  local d_full=5
-  local d_half=d_full*0.70710678118
-  local input = btn(k_right) and 1 or (btn(k_left) and -1 or 0)
-
-  init_smoke(this.x,this.y)
-  this.djump-=1
-  this.dash_time=4
-  has_dashed=true
-  this.dash_effect_time=10
-  local v_input=(btn(k_up) and -1 or (btn(k_down) and 1 or 0))
-  if input!=0 then
-    if v_input!=0 then
-      this.spd.x=input*d_half
-      this.spd.y=v_input*d_half
-    else
-      this.spd.x=input*d_full
-      this.spd.y=0
-    end
-  elseif v_input!=0 then
-    this.spd.x=0
-    this.spd.y=v_input*d_full
-  else
-    this.spd.x=(this.flip.x and -1 or 1)
-    this.spd.y=0
-  end
-
-  psfx(3)
-  freeze=2
-  this.dash_target.x=2*sign(this.spd.x)
-  this.dash_target.y=2*sign(this.spd.y)
-  this.dash_accel.x=1.5
-  this.dash_accel.y=1.5
-
-  if this.spd.y<0 then
-    this.dash_target.y*=.75
-  end
-
-  if this.spd.y!=0 then
-    this.dash_accel.x*=0.70710678118
-  end
-  if this.spd.x!=0 then
-    this.dash_accel.y*=0.70710678118
-  end
-end
 player={
-  init=function(this)
-    this.p_jump=false
-    this.p_dash=false
-    this.grace=0
-    this.jbuffer=0
+  init=function(this) 
+    this.grace,this.jbuffer=0,0
     this.djump=max_djump
-    this.dash_time=0
-    this.dash_effect_time=0
-    this.dash_target={x=0,y=0}
-    this.dash_accel={x=0,y=0}
-    this.hitbox={x=1,y=3,w=6,h=5}
+    this.dash_time,this.dash_effect_time=0,0
+    this.dash_target_x,this.dash_target_y=0,0
+    this.dash_accel_x,this.dash_accel_y=0,0
+    this.hitbox=rectangle(1,3,6,5)
     this.spr_off=0
-    this.was_on_ground=false
     this.solids=true
     create_hair(this)
     -- <fruitrain> --
     this.berry_timer=0
     this.berry_count=0
-  -- </fruitrain> --
+    -- </fruitrain> --
   end,
   update=function(this)
     if pause_player then
       return
     end
-
+    
     -- horizontal input
-    local input=btn(1) and 1 or (btn(0) and -1 or 0)
-
-    -- spike collision and bottom death
-    if spikes_at(this.x+this.hitbox.x,this.y+this.hitbox.y,this.hitbox.w,this.hitbox.h,this.spd.x,this.spd.y) or
-    this.y>level_pheight() then
-      kill_player(this)
+    local h_input=btn(➡️) and 1 or btn(⬅️) and -1 or 0
+    
+    -- spike collision / bottom death
+    if spikes_at(this.x+this.hitbox.x,this.y+this.hitbox.y,this.hitbox.w,this.hitbox.h,this.spd.x,this.spd.y)
+	   or	this.y>lvl_ph then
+	    kill_player(this)
     end
 
-    --ground and terrain checks
+    -- on ground checks
     local on_ground=this.is_solid(0,1)
 
-    -- <fruitrain> --
+        -- <fruitrain> --
     if on_ground then
       this.berry_timer+=1
     else
@@ -267,103 +114,90 @@ player={
       this.berry_count=0
     end
 
-    local fr
     for f in all(fruitrain) do
-        if f.type==fruit and (not f.golden or level_index()==0) then
-            fr=f
-            if not f.golden then
-                break
-            end
-        end
-    end
-
-    if this.berry_timer>5 and fr then
-      -- to be implemented:
-      -- save berry
-      -- save golden
-      got_fruit[fr.level+1]=true
-      init_object(lifeup, fr.x, fr.y)
-      del(fruitrain, fr)
-      destroy_object(fr)
-      this.berry_timer=-5
-      this.berry_count+=1
-      if (fruitrain[1]) fruitrain[1].target=get_player()
+      if f.type==fruit and not f.golden then
+        if this.berry_timer>5 and f then
+          -- to be implemented:
+          -- save berry
+          -- save golden
+          this.berry_timer=-5
+          this.berry_count+=1
+          got_fruit[f.level]=true
+          init_object(lifeup, f.x, f.y,this.berry_count)
+          del(fruitrain, f)
+          destroy_object(f)
+          if (fruitrain[1]) fruitrain[1].target=this
+        end 
+      end
     end
     -- </fruitrain> --
-
-    -- landing particles
+    
+    -- landing smoke
     if on_ground and not this.was_on_ground then
-      init_smoke(this.x,this.y+4)
+      this.init_smoke(0,4)
     end
 
-    --jump buffer+jump input
-    if btn(4) and not this.p_jump then
+    -- jump and dash input
+    local jump,dash=btn(🅾️) and not this.p_jump,btn(❎) and not this.p_dash
+    this.p_jump,this.p_dash=btn(🅾️),btn(❎)
+
+    -- jump buffer
+    if jump then
       this.jbuffer=4
     elseif this.jbuffer>0 then
       this.jbuffer-=1
     end
-
-    this.p_jump=btn(4)
-
-    --dash input
-    local dash = btn(5) and not this.p_dash
-    this.p_dash = btn(5)
-
-    --grace frames + dash restore
+    
+    -- grace frames and dash restoration
     if on_ground then
       this.grace=6
       if this.djump<max_djump then
         psfx(7)
         this.djump=max_djump
       end
-    elseif this.grace > 0 then
+    elseif this.grace>0 then
       this.grace-=1
     end
 
-    --dash effect timer
-    --for dash-triggered events,
-    --such as berry blocks
+    -- dash effect timer (for dash-triggered events, e.g., berry blocks)
     this.dash_effect_time-=1
 
-    --dash startup period
-    --accel to dash target speed
+    -- dash startup period, accel toward dash target speed
     if this.dash_time>0 then
-      init_smoke(this.x,this.y)
+      this.init_smoke()
       this.dash_time-=1
-      this.spd.x=appr(this.spd.x,this.dash_target.x,this.dash_accel.x)
-      this.spd.y=appr(this.spd.y,this.dash_target.y,this.dash_accel.y)
+      this.spd=vector(appr(this.spd.x,this.dash_target_x,this.dash_accel_x),appr(this.spd.y,this.dash_target_y,this.dash_accel_y))
     else
-      --horizontal movement
+      -- x movement
       local maxrun=1
       local accel=on_ground and 0.6 or 0.4
       local deccel=0.15
-
+    
       -- set x speed
-      this.spd.x=abs(this.spd.x)<=maxrun and
-      appr(this.spd.x,input*maxrun,accel) or
-      appr(this.spd.x,sign(this.spd.x)*maxrun,deccel)
-
-      --facing direction
-      if this.spd.x!=0 then
-        this.flip.x=this.spd.x<0
+      this.spd.x=abs(this.spd.x)<=1 and 
+        appr(this.spd.x,h_input*maxrun,accel) or 
+        appr(this.spd.x,sign(this.spd.x)*maxrun,deccel)
+      
+      -- facing direction
+      if this.spd.x~=0 then
+        this.flip.x=(this.spd.x<0)
       end
 
-      --vertical movement
+      -- y movement
       local maxfall=2
-      local gravity=abs(this.spd.y)>0.15 and 0.21 or 0.105
-
+    
       -- wall slide
-      if input!=0 and this.is_solid(input,0) then
+      if h_input~=0 and this.is_solid(h_input,0) then
         maxfall=0.4
-        --wallslide particles
+        -- wall slide smoke
         if rnd(10)<2 then
-          init_smoke(this.x+input*6,this.y)
+          this.init_smoke(h_input*6)
         end
       end
 
-      --apply gravity
+      -- apply gravity
       if not on_ground then
-        this.spd.y=appr(this.spd.y,maxfall,gravity)
+        this.spd.y=appr(this.spd.y,maxfall,abs(this.spd.y)>0.15 and 0.21 or 0.105)
       end
 
       -- jump
@@ -374,111 +208,106 @@ player={
           this.jbuffer=0
           this.grace=0
           -- <cloud> --
-          local cloudhit=this.collide(bouncy_cloud,0,1)
+          local cloudhit=this.check(bouncy_cloud,0,1)
           if cloudhit and cloudhit.time>0.5 then
           	this.spd.y=-3
           else
           	this.spd.y=-2
+          	if cloudhit then 
+          		cloudhit.time=0.25
+							cloudhit.state=1
+          	end
           end
           -- </cloud> --
-          init_smoke(this.x,this.y+4)
+          this.init_smoke(0,4)
         else
           -- wall jump
-          local wall_dir=this.is_solid(-3,0) and -1 or this.is_solid(3,0) and 1 or 0
-          if wall_dir!=0 then
+          local wall_dir=(this.is_solid(-3,0) and -1 or this.is_solid(3,0) and 1 or 0)
+          if wall_dir~=0 then
             psfx(4)
             this.jbuffer=0
             this.spd.y=-2
             this.spd.x=-wall_dir*(maxrun+1)
-            --walljump particles
-            init_smoke(this.x+wall_dir*6,this.y)
+            -- wall jump smoke
+            this.init_smoke(wall_dir*6)
           end
         end
       end
-
+    
       -- dash
       local d_full=5
-      local d_half=3.5355339059
+      local d_half=3.5355339059 -- 5 * sqrt(2)
 
-      if this.djump>0 and dash then
-        init_smoke(this.x,this.y)
-        this.djump-=1
+      -- <green_bubble> --
+      if this.djump>0 and dash or this.do_dash then
+        this.do_dash=false
+      -- </green_bubble> -- 
+        this.init_smoke()
+        this.djump-=1   
         this.dash_time=4
         has_dashed=true
         this.dash_effect_time=10
-
-        --vertical input
-        local v_input=btn(2) and -1 or (btn(3) and 1 or 0)
-
+        -- vertical input
+        local v_input=btn(⬆️) and -1 or btn(⬇️) and 1 or 0
         -- calculate dash speeds
-        this.spd.x=input!=0 and
-        input*(v_input!=0 and d_half or d_full) or
-        (v_input!=0 and 0 or this.flip.x and -1 or 1)
-        this.spd.y=v_input!=0 and v_input*(input!=0 and d_half or d_full) or 0
-
-        --effects
+        this.spd=vector(h_input~=0 and 
+        h_input*(v_input~=0 and d_half or d_full) or 
+        (v_input~=0 and 0 or this.flip.x and -1 or 1)
+        ,v_input~=0 and v_input*(h_input~=0 and d_half or d_full) or 0)
+        -- effects
         psfx(5)
         freeze=2
-        shake=6
-
         -- dash target speeds and accels
-        this.dash_target.x=2*sign(this.spd.x)
-        this.dash_target.y=(this.spd.y>=0 and 2 or 1.5)*sign(this.spd.y)
-        this.dash_accel.x=this.spd.y==0 and 1.5 or 1.06066017177
-        this.dash_accel.y=this.spd.x==0 and 1.5 or 1.06066017177
+        this.dash_target_x=2*sign(this.spd.x)
+        this.dash_target_y=(this.spd.y>=0 and 2 or 1.5)*sign(this.spd.y)
+        this.dash_accel_x=this.spd.y==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
+        this.dash_accel_y=this.spd.x==0 and 1.5 or 1.06066017177
       elseif this.djump<=0 and dash then
         -- failed dash smoke
         psfx(6)
-        init_smoke(this.x,this.y)
+        this.init_smoke()
       end
     end
-
+    
     -- animation
     this.spr_off+=0.25
-    if not on_ground then
-      -- wallslide or midair
-      this.spr=this.is_solid(input,0) and 5 or 3
-    elseif btn(3) then
-      -- crouch
-      this.spr=6
-    elseif btn(2) then
-      --look up
-      this.spr=7
-    else
-      -- walk or stand
-      this.spr=1+(this.spd.x~=0 and (btn(0) or btn(1)) and this.spr_off%4 or 0)
+    this.spr = not on_ground and (this.is_solid(h_input,0) and 5 or 3) or  -- wall slide or mid air
+      btn(⬇️) and 6 or -- crouch
+      btn(⬆️) and 7 or -- look up
+      1+(this.spd.x~=0 and h_input~=0 and this.spr_off%4 or 0) -- walk or stand
+    
+   	--move camera to player
+   	--this must be before next_level
+   	--to avoid loading jank
+    move_camera(this)
+    
+    -- exit level off the top (except summit)
+    if this.y<-4 and levels[lvl_id+1] then
+      next_level()
     end
-
-    -- exit level from top
-    if this.y<-4 and not is_end() then
-      next_room()
-    end
-
+    
     -- was on the ground
     this.was_on_ground=on_ground
-    move_camera(this)
-    --- <snowball> ---
-    player_y=this.y
-    --- </snowball> ---
   end,
+  
   draw=function(this)
     -- clamp in screen
-    if this.x<-1 or this.x>level_plength()-7 then
-      this.x=clamp(this.x,-1,level_plength()-7)
-      this.spd.x=0
-    end
-
-    -- draw player hair + sprite
+  		if this.x<-1 or this.x>lvl_pw-7 then
+   		this.x=clamp(this.x,-1,lvl_pw-7)
+   		this.spd.x=0
+  		end
+    -- draw player hair and sprite
     set_hair_color(this.djump)
-    draw_hair(this)
-    spr(this.spr,this.x,this.y,1,1,this.flip.x)
+    draw_hair(this,this.flip.x and -1 or 1)
+    draw_obj_sprite(this)
     unset_hair_color()
   end
 }
 
-function psfx(num)
-  if sfx_timer<=0 then
-    sfx(num)
+function create_hair(obj)
+  obj.hair={}
+  for i=1,5 do
+    add(obj.hair,vector(obj.x,obj.y))
   end
 end
 
@@ -486,35 +315,30 @@ function set_hair_color(djump)
   pal(8,djump==1 and 8 or 12)
 end
 
-function create_hair(obj)
-  obj.hair={}
-  for i=0,4 do
-    add(obj.hair,{x=obj.x,y=obj.y,size=clamp(3-i,1,2)})
+function draw_hair(obj,facing)
+  local last=vector(obj.x+4-facing*2,obj.y+(btn(⬇️) and 4 or 3))
+  for i,h in pairs(obj.hair) do
+    h.x+=(last.x-h.x)/1.5
+    h.y+=(last.y+0.5-h.y)/1.5
+    circfill(h.x,h.y,clamp(4-i,1,2),8)
+    last=h
   end
-end
-
-function draw_hair(obj)
-  local last={x=obj.x+4-(obj.flip.x and -2 or 2),y=obj.y+(btn(3) and 4 or 3)}
-  foreach(obj.hair,function(h)
-      h.x+=(last.x-h.x)/1.5
-      h.y+=(last.y+0.5-h.y)/1.5
-      circfill(h.x,h.y,h.size,8)
-      last=h
-    end)
 end
 
 function unset_hair_color()
   pal(8,8)
 end
 
-player_spawn = {
+-- [other entities]
+
+player_spawn={
   init=function(this)
     sfx(0)
     this.spr=3
-    this.target= this.y
-    this.y=min(this.y+48,level_pheight())
-    cam_x=this.x
-    cam_y=this.y
+    this.target=this.y
+    this.y=min(this.y+48,lvl_ph)
+		cam_x=clamp(this.x,64,lvl_pw-64)
+		cam_y=clamp(this.y,64,lvl_ph-64)
     this.spd.y=-4
     this.state=0
     this.delay=0
@@ -523,17 +347,17 @@ player_spawn = {
     for i=1,#fruitrain do
       local f=init_object(fruit,this.x,this.y,fruitrain[i].spr)
       f.follow=true
-      f.target=i==1 and get_player() or fruitrain[i-1]
+      f.target=i==1 and this or fruitrain[i-1]
       f.r=fruitrain[i].r
       f.level=fruitrain[i].level
       fruitrain[i]=f
     end
-  --- </fruitrain> ---
+    --- </fruitrain> ---
   end,
   update=function(this)
     -- jumping up
     if this.state==0 then
-      if this.y < this.target+16 then
+      if this.y<this.target+16 then
         this.state=1
         this.delay=3
       end
@@ -548,15 +372,14 @@ player_spawn = {
         elseif this.y>this.target then
           -- clamp at target y
           this.y=this.target
-          this.spd.y=0
+          this.spd=vector(0,0)
           this.state=2
           this.delay=5
-          shake=5
-          init_smoke(this.x,this.y+4)
+          this.init_smoke(0,4)
           sfx(1)
         end
       end
-    -- landing
+    -- landing and spawning player object
     elseif this.state==2 then
       this.delay-=1
       this.spr=6
@@ -565,502 +388,155 @@ player_spawn = {
         local p=init_object(player,this.x,this.y)
         --- <fruitrain> ---
         if (fruitrain[1]) fruitrain[1].target=p
-      --- </fruitrain> ---
+        --- </fruitrain> ---
       end
     end
-
     move_camera(this)
   end,
   draw=function(this)
-    draw_hair(this)
-    spr(this.spr,this.x,this.y)
+    set_hair_color(max_djump)
+    draw_hair(this,1)
+    draw_obj_sprite(this)
+    unset_hair_color()
   end
 }
 
---- <bubble> ---
-green_bubble = {  --by amegpo
-  init=function(this)
-    this.timer=0
-    this.dead_timer=0
-    this.shake=0
-    this.draw_x=this.x
-    this.draw_y=this.y
-    this.player=nil
-  end,
-  update=function(this)
-    local hit=this.collide(player, 0, 0)
-    if hit then
-      if this.spr>0 then
-        this.player=hit
-        hit.visible=false
-        if this.timer==0 then
-          this.timer=1
-          this.shake=5
-        end
-      end
-      this.draw_x=this.x
-      this.draw_y=this.y
-      if this.timer>0 then
-        if this.shake>0 then
-          this.draw_x+=rnd(2)-1
-          this.draw_y+=rnd(2)-1
-          this.shake-=1
-        end
-        hit.x=this.x
-        hit.y=this.y
-        this.timer+=1
-        if this.timer==20 or btnp(k_dash) then
-          hit.visible=true
-          do_dash(hit)
-          hit.djump=max_djump
-          this.spr=0
-          this.timer=0
-        end
-      end
-    elseif this.player then
-      this.player.visible=true
-      this.spr=0
-      this.timer=0
-      this.player=nil
-    end
-    if this.spr==0 then
-      this.dead_timer+=1
-      if this.dead_timer==60 then
-        this.dead_timer=0
-        this.spr=124
-        init_smoke(this.x,this.y)
-      end
-    end
-  end,
-  draw=function(this)
-    spr(this.spr,this.draw_x,this.draw_y)
-  end
-
-}
---- </bubble> ---
--- <falling_platform>
-fall_plat={
-  init=function(this)
-    this.yspd = 0
-    this.state = -1
-    this.timer = -1
-    this.last = {x=this.x,y=this.y}
-    this.finished = false
-  end,
-  clip_out=function(player)
-    local clipped=player.collide(fall_plat,0,0)
-    if clipped == nil then return end
-    for i=1,8 do
-      if player.collide(fall_plat,0,0) then
-        player.y += 1
-      else
-        break
-      end
-    end
-    if player.is_solid(0,1) then
-      kill_player(player)
-    end
-  end,
-  update=function(this)
-    local hit = this.collide(player,0,-1)
-    if hit then
-      if this.state==-1 then
-        this.state = 0  -- shake
-        this.timer = 10
-      end
-    end
-
-    if this.is_solid(0,1) and not this.finished then
-      this.finished = true
-      this.state = 0  -- shake
-      this.timer = 6
-    end
-
-    if this.timer >= 0 then
-      this.timer -= 1
-      if this.timer==0 then
-        this.state = 1  -- falling
-      end
-    end
-
-    if this.state==1 then
-      this.yspd = appr(this.yspd,3,0.4)
-      this.move_y(this.yspd)
-      if hit then
-        for i=0,this.y-this.last.y do
-         if hit.is_solid(0,1) then
-          break
-         else
-          hit.y += 1
-         end
-        end
-      end
-            local tophit = this.collide(player,0,1)
-            if tophit!=nil then
-                tophit.move_y(this.y-this.last.y,1)
-        fall_plat.clip_out(tophit)
-            end
-    end
-
-    this.last.x = this.x
-    this.last.y = this.y
-  end,
-  draw=function(this)
-    if this.state==0 then
-      spr(70,this.x+rnd(2),this.y+rnd(2))
-    else
-      spr(70,this.x,this.y)
-    end
-  end
-}
-add(types,fall_plat)
--- </falling_platform>
---- <snowball> ---
-snowball = {  --by amegpo
-  init=function(this)
-  end,
-  update=function(this)
-    this.x-=2
-    local hit=this.collide(player, 0, 0)
-    if hit then
-      if hit.y<this.y then
-        hit.djump=max_djump
-        hit.spd.y=-2
-        psfx(1)
-        hit.dash_time=-1
-        init_smoke(this.x, this.y)
-        destroy_object(this)
-      else
-        kill_player(hit)
-      end
-    end
-    if this.x<=-8 then
-      destroy_object(this)
-    end
-  end
-}
---- </snowball> ---
---- <moving_platform> ---
-moving_platform={
-  init=function(this)
-    this.initial={x=this.x,y=this.y}
-    this.start=false
-    this.dir=1
-    this.hitbox.w=16
-    this.hide_for=0
-    this.delay=15
-    this.death_delay=0
-    this.spdx = 0
-    this.solids=true
-  end,
-  respawn=function(this)
-    local dir=this.dir
-    this.x=this.initial.x
-    this.y=this.initial.y
-    this.collideable=true
-    moving_platform.init(this)
-    this.dir=dir
-    init_smoke(this.x,this.y)
-    init_smoke(this.x+8,this.y)
-  end,
-  update=function(this)
-    if this.hide_for>0 then
-      this.hide_for-=1
-      if this.hide_for==0 then
-        moving_platform.respawn(this)
-      end
-    else
-      if this.start then
-        this.spdx=(frames%3==0 and 1 or 0)*this.dir
-
-      end
-      if this.delay>0 then
-        local tophit=this.collide(player,0,-1)
-        local horhit=this.collide(player,1*this.dir,0)
-        if horhit then
-          horhit.move_x(this.spdx,0)
-        end
-        local lastx=this.x
-        this.move_x(this.spdx,0)
-        if horhit and horhit.is_solid(0,0) then
-          kill_player(horhit)
-        end
-        if tophit then
-          this.start=true
-          local input = btn(k_down) and 1 or (btn(k_up) and -1 or 0)
-          local tomove=(frames%3==0 and 1 or 0)*input
-          if not tophit.is_solid(0,tomove-1) then
-            if input==1 then
-              this.move_y(tomove)
-              tophit.move_y(tomove)
-            else
-              tophit.move_y(tomove)
-              this.move_y(tomove)
-            end
-          end
-          tophit.move_x(this.x-lastx,1)
-        end
-      end
-      if this.start and this.is_solid(this.dir,0) then
-        if this.delay>0 then
-          this.delay-=1
-          if this.delay==0 then
-            this.death_delay=10
-          end
-        elseif this.death_delay>0 then
-          this.death_delay-=1
-        else
-          init_smoke(this.x,this.y)
-          init_smoke(this.x+8,this.y)
-          this.hide_for=60
-          this.collideable=false
-        end
-      else
-        this.delay=15
-      end
-    end
-  end,
-  draw=function(this)
-    if this.hide_for<=0 then
-      if this.start and this.delay>0 then
-        pal(13,11)
-      elseif this.death_delay>0 then
-        pal(13,8)
-      end
-      spr(68,this.x,this.y,2,1,this.dir==-1)
-      if this.collide(player,0,-1)==nil and not this.is_solid(0,-1)then
-        line(this.x+2,this.y-1,this.x+13,this.y-1,13)
-      end
-      pal(13,13)
-    end
-
-  end
-}
---- </moving_platform> ---
-spring = {
-  init=function(this)
-    this.hide_in=0
-    this.hide_for=0
-  end,
-  update=function(this)
-    if this.hide_for>0 then
-      this.hide_for-=1
-      if this.hide_for<=0 then
-        this.spr=10
-        this.delay=0
-      end
-    elseif this.spr==10 then
-      local hit = this.collide(player,0,0)
-      if hit  and hit.spd.y>=0 then
-        this.spr=11
-        hit.y=this.y-4
-        hit.spd.x*=0.2
-        hit.spd.y=-3
-        hit.djump=max_djump
-        this.delay=10
-        init_smoke(this.x,this.y)
-
-        -- breakable below us
-        local below=this.collide(fall_floor,0,1)
-        if below then
-          break_fall_floor(below)
-        end
-
-        psfx(14)
-      end
-    elseif this.delay>0 then
-      this.delay-=1
-      if this.delay<=0 then
-        this.spr=10
-      end
-    end
-    -- begin hiding
-    if this.hide_in>0 then
-      this.hide_in-=1
-      if this.hide_in<=0 then
-        this.hide_for=60
-        this.spr=0
-      end
-    end
-  end
+spring={
+	init=function(this)
+		this.dy,this.delay=0,0
+	end,
+	update=function(this)
+		local hit=this.player_here()
+		if this.delay>0 then
+			this.delay-=1
+		elseif hit then
+			hit.y,hit.spd.y,hit.dash_time,hit.dash_effect_time,this.dy,this.delay,hit.djump=this.y-4,-3,0,0,4,10,max_djump
+			hit.spd.x*=0.2
+			psfx(14)
+		end
+	this.dy*=0.75
+	end,
+	draw=function(this)
+		local dy=flr(this.dy)
+		sspr(72,0,8,8-dy,this.x,this.y+dy)
+	end
 }
 
-side_spring = {
-  init=function(this)
-    this.hide_in=0
-    this.hide_for=0
-    this.delay=0
-    this.dir=this.spr==8 and 1 or -1
-    this.spr=8
-  end,
-  update=function(this)
-    if this.hide_for>0 then
-      this.hide_for-=1
-      if this.hide_for<=0 then
-        this.spr=8
-        this.delay=0
-      end
-    elseif this.spr==8 then
-      local hit = this.collide(player,0,0)
-      if hit  and this.dir*hit.spd.x<=0 then
-        this.spr=9
-        hit.x=this.x+this.dir*4
-        hit.spd.x=this.dir*3
-        hit.spd.y=-1.5
-        hit.djump=max_djump
-        hit.dash_time=0
-        hit.dash_effect_time=0
-        this.delay=10
-        init_smoke(this.x,this.y)
-        local left=this.collide(fall_floor,-this.dir,0)
-        if left then
-          break_fall_floor(left)
-        end
-        psfx(14)
-      end
-    elseif this.delay>0 then
-      this.delay-=1
-      if this.delay<=0 then
-        this.spr=8
-      end
-    end
-    -- begin hiding
-    if this.hide_in>0 then
-      this.hide_in-=1
-      if this.hide_in<=0 then
-        this.hide_for=60
-        this.spr=0
-      end
-    end
-  end,
-  draw=function(this)
-    spr(this.spr,this.x,this.y,1.0,1.0,this.dir==-1,false)
-  end
+side_spring={
+	init=function(this)
+		this.dx,this.dir=0,this.is_solid(-1,0) and 1 or -1
+	end,
+	update=function(this)
+		local hit=this.player_here()
+		if hit then
+			hit.x,hit.spd.x,hit.spd.y,hit.dash_time,hit.dash_effect_time,this.dx,hit.djump=this.x+this.dir*4,this.dir*3,-1.5,0,0,4,max_djump
+			psfx(14)
+		end
+		this.dx*=0.75
+	end,
+	draw=function(this)
+		local dx=flr(this.dx)
+		sspr(64,0,8-dx,8,this.x+dx*(this.dir-1)/-2,this.y,8-dx,8,this.dir==1)
+	end
 }
 
-function break_spring(obj)
-  if obj then
-    obj.hide_in=15
-  end
-end
 
--- </springelie> --
-
-refill = {
-  init=function(this)
+refill={
+  init=function(this) 
     this.offset=rnd(1)
     this.timer=0
-    this.hitbox={x=-1,y=-1,w=10,h=10}
+    this.hitbox=rectangle(-1,-1,10,10)
     this.active=true
   end,
-  update=function(this)
+  update=function(this) 
     if this.active then
       this.offset+=0.02
-      local hit = this.collide(player,0,0)
+      local hit=this.player_here()
       if hit and hit.djump<max_djump then
         psfx(11)
-        init_smoke(this.x,this.y)
+        this.init_smoke()
         hit.djump=max_djump
         this.active=false
         this.timer=60
       end
     elseif this.timer>0 then
       this.timer-=1
-    else
+    else 
       psfx(12)
-      init_smoke(this.x,this.y)
-      this.active=true
+      this.init_smoke()
+      this.active=true 
     end
   end,
   draw=function(this)
+    local x,y=this.x,this.y
     if this.active then
-      local off=sin(this.offset)+0.5
-      spr(this.spr,this.x,this.y+off)
-    else
+      spr(15,x,y+sin(this.offset)+0.5)
+    else  
       color(7)
-      line(this.x,this.y+4,this.x+3,this.y+7)
-      line(this.x+4,this.y+7,this.x+7,this.y+4)
-      line(this.x+7,this.y+3,this.x+4,this.y)
-      line(this.x+3,this.y,this.x,this.y+3)
+      line(x,y+4,x+3,y+7)
+      line(x+4,y+7,x+7,y+4)
+      line(x+7,y+3,x+4,y)
+      line(x+3,y,x,y+3)
     end
   end
 }
 
-fall_floor = {
+fall_floor={
   init=function(this)
     this.state=0
-    this.hitbox.h=7
   end,
   update=function(this)
     -- idling
-    if this.state == 0 then
-      if this.collide(player,0,-1) or this.collide(player,-1,0) or this.collide(player,1,0) then
-        break_fall_floor(this)
+    if this.state==0 then
+      if this.check(player,0,-1) or this.check(player,-1,0) or this.check(player,1,0) then
+        psfx(13)
+        this.state,this.delay=1,15
+        this.init_smoke()
       end
     -- shaking
     elseif this.state==1 then
       this.delay-=1
       if this.delay<=0 then
         this.state=2
-        this.delay=60  --how long it hides for
+        this.delay=60--how long it hides for
         this.collideable=false
       end
     -- invisible, waiting to reset
     elseif this.state==2 then
       this.delay-=1
-      if this.delay<=0 and not this.collide(player,0,0) then
+      if this.delay<=0 and not this.player_here() then
         psfx(12)
         this.state=0
         this.collideable=true
-        init_smoke(this.x,this.y)
+        this.init_smoke()
       end
     end
   end,
   draw=function(this)
-    if this.state!=2 then
-      spr(23+(this.state~=1 and 0 or (15-this.delay)/5),this.x,this.y)
-    else
-      color(7)
-      line(this.x,this.y,this.x,this.y+5)
-      line(this.x+1,this.y+6,this.x+6,this.y+6)
-      line(this.x+7,this.y+5,this.x+7,this.y)
-      line(this.x+1,this.y,this.x+6,this.y)
+    if this.state~=2 then
+      if this.state~=1 then
+        spr(23,this.x,this.y)
+      else
+        spr(26-this.delay/5,this.x,this.y)
+      end
     end
   end
 }
 
-function break_fall_floor(obj)
-  if obj.state==0 then
-    psfx(13)
-    obj.state=1
-    obj.delay=15  --how long until it falls
-    init_smoke(obj.x,obj.y)
-    break_spring(obj.collide(spring,0,-1))
-    break_spring(obj.collide(side_spring,1,0))
-    break_spring(obj.collide(side_spring,-1,0))
-  end
-end
-
 smoke={
   init=function(this)
-    this.spd.y=-0.1
-    this.spd.x=0.3+rnd(0.2)
+    this.spd=vector(0.3+rnd(0.2),-0.1)
     this.x+=-1+rnd(2)
     this.y+=-1+rnd(2)
-    this.flip.x=maybe()
-    this.flip.y=maybe()
+    this.flip=vector(maybe(),maybe())
   end,
   update=function(this)
-  	printh(this.spr)
     this.spr+=0.2
-    if this.spr>=32 then
+    if this.spr>=29 then
       destroy_object(this)
     end
   end
 }
-function init_smoke(x,y)
-  init_object(smoke,x,y,29)
-end
 
 --- <fruitrain> ---
 fruitrain={}
@@ -1072,15 +548,15 @@ fruit={
     this.follow=false
     this.tx=this.x
     this.ty=this.y
-    this.level=level_index()
-    this.golden=this.spr==14
+    this.level=lvl_id
+    this.golden=this.spr==11
     if(this.golden and deaths>0) then
       destroy_object(this)
     end
   end,
   update=function(this)
     if not this.follow then
-      local hit=this.collide(player,0,0)
+      local hit=this.player_here()
       if hit then
         hit.berry_timer=0
         this.follow=true
@@ -1089,288 +565,151 @@ fruit={
         add(fruitrain,this)
       end
     else
-      local p=get_player()
-      if p then
+      if this.target then
         this.tx+=0.2*(this.target.x-this.tx)
         this.ty+=0.2*(this.target.y-this.ty)
         local a=atan2(this.x-this.tx,this.y_-this.ty)
-        local k=((this.x-this.tx)^2+(this.y_-this.ty)^2) > this.r^2 and 0.2 or 0.1
+        local k=(this.x-this.tx)^2+(this.y_-this.ty)^2 > this.r^2 and 0.2 or 0.1
         this.x+=k*(this.tx+this.r*cos(a)-this.x)
         this.y_+=k*(this.ty+this.r*sin(a)-this.y_)
       end
     end
-    this.off+=1
-    this.y=this.y_+sin(this.off/40)*2.5
+    this.off+=0.025
+    this.y=this.y_+sin(this.off)*2.5
   end
 }
 --- </fruitrain> ---
 
 fly_fruit={
   if_not_fruit=true,
-  init=function(this)
+  init=function(this) 
     this.start=this.y
-    this.fly=false
     this.step=0.5
     this.sfx_delay=8
   end,
   update=function(this)
     --fly away
-    if this.fly then
-      if this.sfx_delay>0 then
-        this.sfx_delay-=1
-        if this.sfx_delay<=0 then
-          sfx_timer=20
-          sfx(10)
-        end
+    if has_dashed then
+     if this.sfx_delay>0 then
+      this.sfx_delay-=1
+      if this.sfx_delay<=0 then
+       sfx_timer=20
+       sfx(10)
       end
+     end
       this.spd.y=appr(this.spd.y,-3.5,0.25)
       if this.y<-16 then
         destroy_object(this)
       end
     -- wait
     else
-      if has_dashed then
-        this.fly=true
-      end
       this.step+=0.05
       this.spd.y=sin(this.step)*0.5
     end
     -- collect
-    local hit=this.collide(player,0,0)
-    if hit then
+    if this.player_here() then
       --- <fruitrain> ---
-      init_smoke(this.x-6, this.y)
-      init_smoke(this.x+6, this.y)
-      local f=init_object(fruit, this.x, this.y,12)
+      this.init_smoke(-6)
+      this.init_smoke(6)
+      local f=init_object(fruit, this.x, this.y,10)
       fruit.update(f)
       --- </fruitrain> ---
       destroy_object(this)
     end
   end,
   draw=function(this)
-    local off=0
-    if not this.fly then
-      local dir=sin(this.step)
-      if dir<0 then
-        off=1+max(0,sign(this.y-this.start))
-      end
-    else
-      off=(off+0.25)%3
+    spr(10,this.x,this.y)
+    for ox=-6,6,12 do
+      spr((has_dashed or sin(this.step)>=0) and 12 or (this.y>this.start and 14 or 13),this.x+ox,this.y-2,1,1,ox==-6)
     end
-    spr(16+off,this.x-6,this.y-2,1,1,true,false)
-    spr(this.spr,this.x,this.y)
-    spr(16+off,this.x+6,this.y-2)
   end
 }
 
-lifeup = {
+lifeup={
   init=function(this)
     this.spd.y=-0.25
     this.duration=30
     this.x-=2
     this.y-=4
     this.flash=0
---- <fruitrain> ---
-    this.num=get_player().berry_count+1
     sfx_timer=20
     sfx(9)
---- </fruitrain> ---
   end,
   update=function(this)
     this.duration-=1
-    if this.duration<= 0 then
+    if this.duration<=0 then
       destroy_object(this)
     end
   end,
   draw=function(this)
     this.flash+=0.5
-  str = this.num<=5 and this.num.."000" or "1UP"
-    ?str,this.x-2,this.y,7+this.flash%2
-  end
-}
---- <beeg fake wall> ---
-beeg_fake_wall={
-  init=function(this)
-    local match=nil
-    for o in all(corners) do
-      if o.x==this.x then
-        match=o
-        break
-      end
-    end
-    if (match==nil) then
-      destroy_object(this)
-      return
-    end
-    this.h=(this.y-match.y)/8+1
-    this.y=match.y
-    this.x-=8
-    this.has_fruit=false
-    for o in all(objects) do
-      if o.type==fruit and o.x==this.x and o.y==this.y then
-        this.has_fruit=true
-        destroy_object(o)
-        break
-      end
-    end
-  end,
-  update=function(this)
-    this.hitbox={x=-1,y=-1,w=18,h=this.h*8+2}
-    local hit = this.collide(player,0,0)
-    if hit and hit.dash_effect_time>0 then
-      hit.spd.x=-sign(hit.spd.x)*1.5
-      hit.spd.y=-1.5
-      hit.dash_time=-1
-      sfx_timer=20
-      sfx(16)
-      destroy_object(this)
-      for i=0,this.h-1 do
-        init_smoke(this.x,this.y+8*i)
-        init_smoke(this.x+8,this.y+8*i)
-      end
-      if this.has_fruit then
-        init_object(fruit,this.x+4,this.y+4)
-      end
-    end
-    this.hitbox={x=0,y=0,w=16,h=this.h*8}
-  end,
-  draw=function(this)
-    spr(64,this.x,this.y,2.0,1.0)
-    for i=1,this.h-2 do
-      spr(80,this.x,this.y+8*i)
-      spr(75,this.x+8,this.y+8*i)
-    end
-    spr(65,this.x,this.y+8*(this.h-1),1.0,1.0,true,true)
-    spr(81,this.x+8,this.y+8*(this.h-1))
-  end
-}
---- </beeg fake wall> ---
-fake_wall={
-  init=function(this)
-    local match
-    for o in all(corners) do
-      if o.x==this.x then
-        match=o
-        break
-      end
-    end
-    if (not match) then
-      destroy_object(this)
-      return
-    end
-    this.h=(this.y-match.y)/8+1
-    this.y=match.y
-    this.x-=8
-    for o in all(objects) do
-      if o.type==fruit and o.x==this.x and o.y==this.y then
-        this.has_fruit=true
-        destroy_object(o)
-        break
-      end
-    end
-  end,
-  update=function(this)
-    this.hitbox.w=18
-    this.hitbox.h=this.h*8+2
-    local hit = this.collide(player,-1,-1)
-    if hit and hit.dash_effect_time>0 then
-      hit.spd.x=-sign(hit.spd.x)*1.5
-      hit.spd.y=-1.5
-      hit.dash_time=-1
-      sfx_timer=20
-      sfx(16)
-      destroy_object(this)
-      for i=0,this.h-1 do
-        init_smoke(this.x,this.y+8*i)
-        init_smoke(this.x+8,this.y+8*i)
-      end
-      if this.has_fruit then
-        init_object(fruit,this.x+4,this.y+4,12)
-      end
-    end
-    this.hitbox.w=16
-    this.hitbox.h-=2
-  end,
-  draw=function(this)
-    local x,y,bot=this.x,this.y,this.y+8*(this.h-1)
-    spr(60,x,y,1,1,true,true)
-    spr(44,x+8,y)
-    for i=1,this.h-2 do
-      spr(45,x,y+8*i,2,1)
-    end
-    spr(44,x,bot,1,1,true,true)
-    spr(60,x+8,bot)
-  end
-}
-corner={
-  init=function(this)
-    add(corners,this)
-    destroy_object(this)
-  end
-}
-
-flag = {
-  init=function(this)
-    this.x+=5
-    this.show=false
-  end,
-  draw=function(this)
-    this.spr=61+(frames/5)%3
-    spr(this.spr,this.x,this.y)
-    if this.show then
-      rectfill(32,2,96,31,0)
-      spr(12,55,6)
-      ?"x"..get_fruit(),64,9,7
-      draw_time(41,16)
-      ?"deaths:"..deaths,48,24,7
-    elseif this.collide(player,0,0) then
-      time_ticking=false
-      sfx(15)
-      sfx_timer=30
-      this.show=true
-    end
+    --<fruitrain>--
+    ?this.spr<=5 and this.spr.."000" or "1UP",this.x-2,this.y,7+this.flash%2
+    --<fruitrain>--
   end
 }
 
 -- <cloud> --
 bouncy_cloud = {
 	init=function(this)
+		this.break_timer=0
 		this.time=0.25
 		this.state=0
 		this.start=this.y
-		this.hitbox.w=16
-		this.hitbox.h=0
+    this.hitbox=rectangle(0,0,16,0)
 		this.solids=true
 	end,
 	update=function(this)
-		local hit=this.collide(player,0,-1)
-		if this.state==0 then
-			--idle position
-			if hit and hit.spd.y>=0 then
-				this.state=1
+		
+		
+		--fragile cloud override
+		if this.break_timer==0 then
+			this.collideable=true
+		else
+			this.break_timer-=1
+			if this.break_timer==0 then
+				this.init_smoke()
+				this.init_smoke(8)
 			end
 		end
+		
+    local hit=this.check(player,0,-1)
+    --idle position
+		if this.state==0 and this.break_timer==0 and hit and hit.spd.y>=0 then
+			this.state=1
+		end
+		
 		if this.state==1 then
 			--in animation
 			local amt=-sin(this.time)
-			
-			this.move(0,amt)
+      local ry=this.rem.y
+			this.move(0,amt,0)
 			if hit then
-				hit.move(0,amt)
+        hit.rem.y=ry
+				hit.move(0,amt,0)
+        --smol bounce if player didn't jump
+        if this.time>=0.85 then 
+				  hit.spd.y=min(hit.spd.y,-1.5)
+				  hit.grace=0
+        end 
 			end
+      
 			
 			this.time+=0.05
 			
+      
 			if this.time>=1 then
 				this.state=2
 			end
 		elseif this.state==2 then
 			--returning to idle position
-			if hit then
-				hit.spd.y=-1
-				hit.grace=0
+      if this.spr==65 and this.break_timer==0 then
+				this.collideable=false
+				this.break_timer=60
+				this.init_smoke()
+				this.init_smoke(8)
 			end
-			this.rem={x=0,y=0}
+			this.rem=vector(0,0)
 			this.y=appr(this.y,this.start,1)
 			if this.y==this.start then
 				this.time=0.25
@@ -1379,136 +718,405 @@ bouncy_cloud = {
 		end
 	end,
 	draw=function(this)
-		spr(64,this.x,this.y-1)
-		spr(65,this.x+8,this.y-1)
+		if this.break_timer==0 then
+			if this.spr==65 then
+				pal(7,14)
+				pal(6,2)
+			end
+      spr(64,this.x,this.y-1,2.0,1.0)
+			pal()
+		end
 	end
 }
 -- </cloud> --
 
--- object functions --
------------------------
+fake_wall={
+  init=function(this)
+    local match 
+    for i=this.y,lvl_ph,8 do 
+      if tile_at(this.x/8,i/8)==83 then 
+        match=i 
+        break 
+      end 
+    end 
+    this.ph=match-this.y+8
+    this.x-=8
+    this.has_fruit=this.check(fruit,0,0)
+    destroy_object(this.has_fruit)
+  end,
+  update=function(this)
+    this.hitbox=rectangle(-1,-1,18,this.ph+2)
+    local hit = this.player_here()
+    if hit and hit.dash_effect_time>0 then
+      hit.spd=vector(sign(hit.spd.x)*-1.5,-1.5)
+      hit.dash_time=-1
+      sfx_timer=20
+      sfx(16)
+      destroy_object(this)
+      this.init_smoke_hitbox()
+      if this.has_fruit then
+        init_object(fruit,this.x+4,this.y+4,10)
+      end
+    end
+    this.hitbox=rectangle(0,0,16,this.ph)
+  end,
+  draw=function(this)
+    spr(66,this.x,this.y,2,1)
+    for i=8,this.ph-16,8 do
+      spr(82,this.x,this.y+i,2,1)
+    end
+    spr(66,this.x,this.y+this.ph-8,2,1,true,true)
+  end
+}
 
--- complete object list
--- used instead of add()
--- to save tokens
-tiles={
-  [1]  =player_spawn,
-  [8]  =side_spring,
-  [9]  =side_spring,
-  [10] =spring,
-  [12] =fruit,
-  [13] =fly_fruit,
-  [14] =fruit,
-  [15] =refill,
-  [23] =fall_floor,
-  [44] =corner,
-  [60] =fake_wall,
-  [61] =flag,
-  [64] =bouncy_cloud,
-  [66] =green_bubble,
-  [67] =snowball,
-  [70] =fall_plat
+--- <snowball> ---
+snowball = {
+  init=function(this) 
+    this.spd.x=-3
+    this.sproff=0
+  end,
+  update=function(this)
+    local hit=this.player_here()
+    this.sproff=(1+this.sproff)%8
+    this.spr=68+(this.sproff\2)%2
+    local b=this.sproff>=4
+    this.flip=vector(b,b)
+    if hit then
+      if hit.y<this.y then
+        hit.djump=max_djump
+        hit.spd.y=-2
+        psfx(3) --default jump sfx, maybe replace this?
+        hit.dash_time=-1
+        this.init_smoke()
+        destroy_object(this)
+      else
+        kill_player(hit)
+      end
+    end
+    if this.x<=-8 then
+      destroy_object(this)
+    end
+  end
+}
+snowball_controller={
+  init=function(this)
+    this.t,this.spr=0,0
+  end,
+  update=function(this)
+    this.t=(this.t+1)%60
+    if this.t==0 then 
+      for o in all(objects) do 
+        if o.type==player then 
+          init_object(snowball,cam_x+128,o.y,68)
+        end 
+      end
+    end 
+  end
+}
+--- </snowball> ---
+-- <green_bubble> --
+green_bubble={
+  init=function(this)
+    this.t=0
+    this.timer=0
+    this.shake=0
+    this.dead_timer=0
+    this.hitbox=rectangle(0,0,12,12)
+  end,
+  update=function(this)
+    local hit=this.player_here()
+    if hit and not this.invisible then
+      hit.invisible=true
+      hit.spd=vector(0,0)
+      hit.rem=vector(0,0)
+      hit.dash_time=0
+      if this.timer==0 then
+        this.timer=1
+        this.shake=5
+      end
+      hit.x,hit.y=this.x+1,this.y+1
+      this.timer+=1
+      if this.timer>10 or btnp(❎) then
+        hit.invisible=false
+        hit.djump=max_djump+1
+        hit.do_dash=true        
+        this.invisible=true
+        this.timer=0
+      end
+    elseif this.invisible then
+      this.dead_timer+=1
+      if this.dead_timer==60 then
+        this.dead_timer=0
+        this.invisible=false
+        this.init_smoke()
+      end
+    end 
+  end, 
+  draw=function(this)
+    this.t+=0.05
+  	local x,y,t=this.x,this.y,this.t
+    if this.shake>0 then
+      this.shake-=1
+      x+=rnd(2)-1
+      y+=rnd(2)-1
+    end
+    local sx=sin(t)>=0.5 and 1 or 0
+    local sy=sin(t)<-0.5 and 1 or 0
+    for f in all({ovalfill,oval}) do
+      f(x-2-sx,y-2-sy,x+9+sx,y+9+sy,f==oval and 11 or 3)
+    end
+  	for dx=2,5 do
+      local _t=(5*t+3*dx)%8
+      local bx=sgn(dx-4)*round(sin(_t/16))
+      rectfill(x+dx-bx,y+8-_t,x+dx-bx,y+8-_t,6)
+  	end
+  	rectfill(x+5+sx,y+1-sy,x+6+sx,y+2-sy,7)
+  end 
+}
+-- </green_bubble> --
+
+
+-- requires <solids> 
+arrow_platform={
+  init=function(this)
+    this.dir=this.spr==71 and -1 or 1
+    this.solid_obj=true
+    this.solids=true
+
+    while this.right()<lvl_pw and tile_at(this.right()/8,this.y/8)==73 do 
+      this.hitbox.w+=8
+    end 
+    while this.bot()<lvl_ph and tile_at(this.x/8,this.bot()/8)==73 do 
+      this.hitbox.h+=8
+    end 
+    this.break_timer,this.death_timer=0,0
+    this.start_x,this.start_y=this.x,this.y
+  end,
+  update=function(this)
+    if this.death_timer>0 then 
+      this.death_timer-=1
+      if this.death_timer==0 then 
+        this.x,this.y,this.spd=this.start_x,this.start_y,vector(0,0)
+        if this.player_here() then 
+          this.death_timer=1
+          return
+        else 
+          this.init_smoke_hitbox()
+          this.break_timer=0
+          this.collideable=true
+          this.active=false
+        end
+      else
+        return 
+      end 
+    end 
+
+    if this.spd.x==0 and this.active then 
+      this.break_timer+=1
+    else 
+      this.break_timer=0
+    end 
+    if this.break_timer==16 then 
+      this.init_smoke_hitbox()
+      this.death_timer=60
+      this.collideable=false
+    end
+
+    this.spd=vector(this.active and this.dir or 0,0)
+    local hit=this.check(player,0,-1)
+    if hit then 
+      this.spd=vector(this.dir,btn(⬇️) and 1 or btn(⬆️) and not hit.is_solid(0,-1) and -1 or 0)
+      this.active=true
+    end
+  end,
+  draw=function(this)
+    if (this.death_timer>0) return 
+
+    local x,y=this.x,this.y
+    pal(13,this.active and 11 or 13)
+    local shake=this.break_timer>8
+    if shake then 
+      x+=rnd(2)-1
+      y+=rnd(2)-1
+      pal(13,8)
+    end
+    local r,b=x+this.hitbox.w-1,y+this.hitbox.h-1
+    rectfill(x,y,r,b,1)
+    rect(x+1,y+2,r-1,b-1,13)
+    line(x+3,y+2,r-3,y+2,1)
+    local mx,my=x+this.hitbox.w/2,y+this.hitbox.h/2
+    spr(shake and 72 or this.spd.y~=0 and 73 or 71,mx-4,my+(this.break_timer<=8 and this.spd.y<0 and -3 or -4),1.0,1.0,this.dir==-1,this.spd.y>0)
+    if this.hitbox.h==8 and shake then 
+      rect(mx-3,my-3,mx+2,my+2,1)
+    end
+    line(x+1,y,r-1,y,13)
+    if not this.check(player,0,-1) and not this.is_solid(0,-1) then
+      line(x+2,y-1,r-2,y-1,13)
+    end
+    pal()
+  end
 
 }
 
+psfx=function(num)
+  if sfx_timer<=0 then
+   sfx(num)
+  end
+end
+
+-- [tile dict]
+tiles={
+  [1]=player_spawn,
+  [8]=side_spring,
+  [9]=spring,
+  [10]=fruit,
+  [11]=fruit,
+  [12]=fly_fruit,
+  [15]=refill,
+  [23]=fall_floor,
+  [64] =bouncy_cloud,
+  [65] =bouncy_cloud,
+  [67] = fake_wall,
+  [68] = snowball_controller,
+  [70] = green_bubble,
+  [71] = arrow_platform,
+  [72] = arrow_platform,
+}
+
+-- [object functions]
+
 function init_object(type,x,y,tile)
-  if type.if_not_fruit and got_fruit[1+level_index()] then
+  if type.if_not_fruit and got_fruit[lvl_id] then
     return
   end
 
   local obj={
     type=type,
     collideable=true,
-    -- <tilesystem> --
+    solids=false,
     spr=tile,
-    -- </tilesystem> --
-    flip={x=false,y=false},
-
+    flip=vector(),
     x=x,
     y=y,
-    hitbox={x=0,y=0,w=8,h=8},
-
-    spd={x=0,y=0},
-    rem={x=0,y=0}
+    hitbox=rectangle(0,0,8,8),
+    spd=vector(0,0),
+    rem=vector(0,0),
   }
+
   function obj.is_solid(ox,oy)
-    return (oy>0 and not obj.is_platform(ox,0) and obj.is_platform(ox,oy))  -- one way platform
-    -- <cloud> --
-    or oy>0 and not obj.collide(bouncy_cloud,ox,0) and obj.collide(bouncy_cloud,ox,oy)
-    -- </cloud> --
-    or solid_at(obj.x+obj.hitbox.x+ox,obj.y+obj.hitbox.y+oy,obj.hitbox.w,obj.hitbox.h)
-    or obj.collide(fall_floor,ox,oy)
-    or obj.collide(fake_wall,ox,oy)
+    return (oy>0 and not obj.is_flag(ox,0,3) and obj.is_flag(ox,oy,3)) or  -- one way platform or
+           -- <cloud> --
+           oy>0 and not obj.check(bouncy_cloud,ox,0) and obj.check(bouncy_cloud,ox,oy) or
+           -- </cloud> --
+           -- <arrow_platform> --
+           obj.check(arrow_platform,ox,oy) or
+           -- </arrow_platform> --
+           obj.is_flag(ox,oy,0) or 
+           obj.check(fall_floor,ox,oy) or
+           obj.check(fake_wall,ox,oy)
   end
-
-  function obj.is_platform(ox,oy)
-    return tile_flag_at(obj.x+obj.hitbox.x+ox,obj.y+obj.hitbox.y+oy,obj.hitbox.w,obj.hitbox.h,3)
+  
+  function obj.is_flag(ox,oy,flag)
+    return tile_flag_at(obj.x+obj.hitbox.x+ox,obj.y+obj.hitbox.y+oy,obj.hitbox.w,obj.hitbox.h,flag)
   end
-
-  function obj.collide(type,ox,oy)
+  -- <solids> --
+  function obj.left() 
+    return obj.x+obj.hitbox.x 
+  end 
+  function obj.right()
+    return obj.left()+obj.hitbox.w 
+  end 
+  function obj.top() 
+    return obj.y+obj.hitbox.y
+  end 
+  function obj.bot()
+    return obj.top()+obj.hitbox.h 
+  end 
+  -- rewritten obj.check is not strictly needed for solids, but saves a bunch of tokens given the helper functions
+  function obj.check(type,ox,oy)
     for other in all(objects) do
-      if other and other.type == type and other != obj and other.collideable and
-      other.x+other.hitbox.x+other.hitbox.w > obj.x+obj.hitbox.x+ox and
-      other.y+other.hitbox.y+other.hitbox.h > obj.y+obj.hitbox.y+oy and
-      other.x+other.hitbox.x < obj.x+obj.hitbox.x+obj.hitbox.w+ox and
-      other.y+other.hitbox.y < obj.y+obj.hitbox.y+obj.hitbox.h+oy then
+      if other and other.type==type and other~=obj and other.collideable and
+        other.right()>obj.left()+ox and 
+        other.bot()>obj.top()+oy and
+        other.left()<obj.right()+ox and 
+        other.top()<obj.bot()+oy then
         return other
       end
     end
   end
-
-  function obj.move(ox,oy)
-    -- [x] get move amount
-    obj.rem.x += ox
-    local amount = round(obj.rem.x)
-    obj.rem.x -= amount
-    obj.move_x(amount,0)
-
-    -- [y] get move amount
-    obj.rem.y += oy
-    amount = round(obj.rem.y)
-    obj.rem.y -= amount
-    obj.move_y(amount)
+  -- </solids> --
+  function obj.player_here()
+    return obj.check(player,0,0)
   end
-
-  function obj.move_x(amount,start)
-    if obj.solids then
-      local step = sign(amount)
-      for i=start,abs(amount) do
-        if not obj.is_solid(step,0) then
-          obj.x += step
-        else
-          obj.spd.x = 0
-          obj.rem.x = 0
-          break
+  
+  function obj.move(ox,oy,start)
+    for axis in all({"x","y"}) do
+      -- <wind> --
+      obj.rem[axis]+=axis=="x" and ox+(obj.type==player and obj.dash_time<=0 and wind_spd or 0) or oy
+      -- </wind> --
+      local amt=flr(obj.rem[axis]+0.5)
+      obj.rem[axis]-=amt
+      -- <solids> --
+      local riding=obj.check(player,0,-1)
+      -- </solids> --
+      if obj.solids then
+        local step=sign(amt)
+        local d=axis=="x" and step or 0
+        local p=obj[axis]
+        for i=start,abs(amt) do
+          if not obj.is_solid(d,step-d) then
+            obj[axis]+=step
+          else
+            obj.spd[axis],obj.rem[axis]=0,0
+            break
+          end
         end
+        amt=obj[axis]-p --save how many px moved to use later for solids
+      else
+        obj[axis]+=amt
       end
-    else
-      obj.x += amount
+      -- <solids> --
+      if obj.solid_obj and obj.collideable then
+        obj.collideable=false 
+        local hit=obj.player_here()
+        if hit then 
+          hit.move(axis=="x" and (amt>0 and obj.right()-hit.left() or amt<0 and obj.left()-hit.right()) or 0, 
+                  axis=="y" and (amt>0 and obj.bot()-hit.top() or amt<0 and obj.top()-hit.bot()) or 0,
+                  1)
+          if(obj.player_here()) then 
+            kill_player(hit)
+          end 
+        elseif riding then 
+          riding.move(axis=="x" and amt or 0, axis=="y" and amt or 0,1)
+        end
+        obj.collideable=true 
+      end
+      -- </solids> --
     end
   end
 
-  function obj.move_y(amount)
-    if obj.solids then
-      local step = sign(amount)
-      for i=0,abs(amount) do
-        if not obj.is_solid(0,step) then
-          obj.y += step
-        else
-          obj.spd.y = 0
-          obj.rem.y = 0
-          break
-        end
-      end
-    else
-      obj.y += amount
-    end
+  function obj.init_smoke(ox,oy) 
+    init_object(smoke,obj.x+(ox or 0),obj.y+(oy or 0),26)
   end
 
+  -- <fake_wall> <arrow_platform>
+
+  -- made into function because of repeated usage
+  -- can be removed if doesn't save tokens
+  function obj.init_smoke_hitbox()
+    for ox=0,obj.hitbox.w-8,8 do 
+      for oy=0,obj.hitbox.h-8,8 do 
+        obj.init_smoke(ox,oy) 
+      end 
+    end 
+  end 
+  -- </fake_wall> </arrow_platform>
   add(objects,obj)
+
   if obj.type.init then
     obj.type.init(obj)
   end
+
   return obj
 end
 
@@ -1520,309 +1128,285 @@ function kill_player(obj)
   sfx_timer=12
   sfx(2)
   deaths+=1
-  shake=10
   destroy_object(obj)
   dead_particles={}
-  for dir=0,7 do
+  for dir=0,0.875,0.125 do
     add(dead_particles,{
-        x=obj.x+4,
-        y=obj.y+4,
-        t=10,
-        spd={
-          x=sin(dir/8)*3,
-          y=cos(dir/8)*3
-        }
-      })
+      x=obj.x+4,
+      y=obj.y+4,
+      t=2,
+      dx=sin(dir)*3,
+      dy=cos(dir)*3
+    })
   end
-  -- <fruitrain> ---
+    -- <fruitrain> ---
   for f in all(fruitrain) do
     if (f.golden) full_restart=true
     del(fruitrain,f)
-
   end
   --- </fruitrain> ---
   delay_restart=15
   -- <transition>
   tstate=0
--- </transition>
+  -- </transition>
 end
 
--- room functions --
---------------------
+-- [room functions]
 
-function next_room()
-  local next_lvl=level_index()+1
-  load_room(next_lvl%8,next_lvl\8)
+
+function next_level()
+  local next_lvl=lvl_id+1
+  load_level(next_lvl)
 end
 
-function load_data(tbl,reserve)
-  for i=0,level_length()-1 do
-    for j=0,level_height()-1 do
-      if i~=0 or j~=0 then
-        replace_level(room.x+i,room.y+j,tbl[i*level_height()+j],reserve)
-      end
-    end
-  end
-end
-  
-
-function load_room(x,y)
+function load_level(lvl)
   has_dashed=false
-
+  
   --remove existing objects
   foreach(objects,destroy_object)
-  corners={}
   
-
-
-  --load/unload scrolling levels
-
-  local same_room=x+8*y==level_index()
-
-  --return old levels to reserve
-  if not same_room and level_data() then
-    load_data(reserve_levels,false)
-    reserve_levels={}
+  --reset camera speed
+  cam_spdx=0
+	cam_spdy=0
+		
+  local diff_room=lvl_id~=lvl
+  
+		--set level index
+  lvl_id=lvl
+  
+  --set level globals
+  local tbl=get_lvl()
+  lvl_x,lvl_y,lvl_w,lvl_h,wind_spd=tbl[1],tbl[2],tbl[3]*16,tbl[4]*16,tbl[5] or 0
+  lvl_pw=lvl_w*8
+  lvl_ph=lvl_h*8
+  
+  
+  --reload map
+  --timer setup
+  if diff_room then reload() end 
+  ui_timer=5
+  
+  --chcek for hex mapdata
+  if diff_room and get_data() then
+  	--replace old rooms with data
+  	for i=0,get_lvl()[3]-1 do
+      for j=0,get_lvl()[4]-1 do
+        replace_room(lvl_x+i,lvl_y+j,get_data()[i*get_lvl()[4]+j+1])
+      end
+  	end
   end
-
-  --current room
-  room.x=x
-  room.y=y
-
-  --replace new rooms with data
-  if not same_room and level_data() then
-    load_data(level_data(),true)
-  end
-
+  
   -- entities
-  for tx=0,level_tlength()-1 do
-    for ty=0,level_theight()-1 do
-      local tile = mget(x*16+tx,y*16+ty);
-      --- <moving_platform> ---
-      if tile==68 then
-        init_object(moving_platform,tx*8-8,ty*8).dir=-1
-      elseif tile==69 then
-        init_object(moving_platform,tx*8-8,ty*8).dir=1
-      --- </moving_platform> ---
-      --- <snowball> ---
-      elseif tile==67 then
-        is_snowball=true
-      --- </snowball> ---
-      --- <wind> ---
-      elseif tile==71 then
-        is_wind=true
-      ---</wind> ---
-      else
-        if tiles[tile] then
+  for tx=0,lvl_w-1 do
+    for ty=0,lvl_h-1 do
+      local tile=mget(lvl_x*16+tx,lvl_y*16+ty)
+      if tiles[tile] then
         init_object(tiles[tile],tx*8,ty*8,tile)
-        end
       end
     end
   end
-
-  setuparea(level_index())
 end
 
-function move_camera(obj)
-  --set camera speed
-  cam_spdx=cam_gain*(4+obj.x+0*obj.spd.x-cam_x)
-  cam_spdy=cam_gain*(4+obj.y+0*obj.spd.y-cam_y)
-
-  cam_x+=cam_spdx
-  cam_y+=cam_spdy
-
-  if cam_x<64 or cam_x>level_plength()-64 then
-    cam_spdx=0
-    cam_x=clamp(cam_x,64,level_plength()-64)
-  end
-  if cam_y<64 or cam_y>level_pheight()-64 then
-    cam_spdy=0
-    cam_y=clamp(cam_y,64,level_pheight()-64)
-  end
-end
-
--- update function --
------------------------
+-- [main update loop]
 
 function _update()
-  frames=(frames+1)%30
+  frames+=1
   if time_ticking then
-    centiseconds=100*frames\30
-    if frames==0 then
-      seconds=(seconds+1)%60
-      if seconds==0 then
-        minutes+=1
-      end
+    seconds+=frames\30
+    minutes+=seconds\60
+    seconds%=60
+  end
+  frames%=30
+  
+  if music_timer>0 then
+    music_timer-=1
+    if music_timer<=0 then
+      music(10,0,7)
     end
   end
-
+  
   if sfx_timer>0 then
     sfx_timer-=1
   end
-
-  -- music system
-  if current_music~=bg_music then
-    music(bg_music,0,7)
-    current_music=bg_music
-  end
-
+  
   -- cancel if freeze
-  if freeze>0 then freeze-=1 return end
-
+  if freeze>0 then 
+    freeze-=1
+    return
+  end
+  
   -- restart (soon)
   if delay_restart>0 then
+  		cam_spdx,cam_spdy=0,0
     delay_restart-=1
-    if delay_restart<=0 then
-      -- <fruitrain> --
+    if delay_restart==0 then
+    -- <fruitrain> --
       if full_restart then
         full_restart=false
         _init()
       -- </fruitrain> --
       else
-        load_room(room.x,room.y)
-      end
+        load_level(lvl_id)
+      end 
     end
   end
 
   -- update each object
   foreach(objects,function(obj)
-      obj.move(obj.spd.x,obj.spd.y)
-      if obj.type.update then
-        obj.type.update(obj)
-      end
-    end)
+    obj.move(obj.spd.x,obj.spd.y,obj.type==player and 0 or 1)
+    if obj.type.update then
+      obj.type.update(obj)
+    end
+  end)
+
 end
 
--- drawing functions --
------------------------
-function _draw()
-  if freeze>0 then return end
+-- [drawing functions]
 
+function _draw()
+  if freeze>0 then
+    return
+  end
+  
   -- reset all palette values
   pal()
-
-  --set cam draw position
+  
+	--set cam draw position
   local camx=round(cam_x)-64
   local camy=round(cam_y)-64
   camera(camx,camy)
 
   --local token saving
-  local xtiles=room.x*16
-  local ytiles=room.y*16
+  local xtiles=lvl_x*16
+  local ytiles=lvl_y*16
+  
+  -- draw bg color
+  cls(flash_bg and frames/5 or new_bg and 2 or 0)
 
-  -- clear screen
-  rectfill(camx,camy,camx+128,camy+128,bg_col)
-
-  -- clouds
+  -- bg clouds effect
   foreach(clouds, function(c)
-      c.x += c.spd-cam_spdx
-      rectfill(c.x+camx,c.y+camy,c.x+c.w+camx,c.y+4+(1-c.w/64)*12+camy,cloud_col)
-      if c.x > 128 then
-        c.x = -c.w
-        c.y=rnd(120)
-      end
-    end)
+    c.x+=c.spd-cam_spdx
+    rectfill(c.x+camx,c.y+camy,c.x+c.w+camx,c.y+16-c.w*0.1875+camy,new_bg and 14 or 1)
+    if c.x>128 then
+      c.x=-c.w
+      c.y=rnd(120)
+    end
+  end)
 
-  -- draw bg terrain
-  map(xtiles,ytiles,0,0,level_tlength(),level_theight(),4)
-
+		-- draw bg terrain
+  map(xtiles,ytiles,0,0,lvl_w,lvl_h,4)
+		
   -- draw terrain
-  map(xtiles,ytiles,0,0,level_tlength(),level_theight(),2)
-
+  map(xtiles,ytiles,0,0,lvl_w,lvl_h,2)
+  
   -- draw objects
-  foreach(objects,function(o)
-      draw_object(o)
-    end)
+  foreach(objects, draw_object)
 
   -- draw platforms
-  map(xtiles,ytiles,0,0,level_tlength(),level_theight(),8)
-
+  map(xtiles,ytiles,0,0,lvl_w,lvl_h,8)
+  
   -- particles
   foreach(particles, function(p)
-      p.x += p.spd-cam_spdx
-      p.y += sin(p.off)-cam_spdy
-      p.off+= min(0.05,p.spd/32)
-      rectfill(p.x+camx,p.y%128+camy,p.x+p.s+camx,p.y%128+p.s+camy,p.c)
-      if p.x>132 then
-        p.x=-4
-        p.y=rnd128()
-      elseif p.x<-4 then
-        p.x=128
-        p.y=rnd128()
+    p.y+=sin(p.off)-cam_spdy
+    p.off+=min(0.05,p.spd/32)
+    -- <wind> --
+      p.wspd=appr(p.wspd,wind_spd*12,0.5)
+      if wind_spd!=0 then 
+        p.x += p.wspd - cam_spdx 
+        line(p.x+camx,p.y+camy,p.x+p.wspd*-1.5+camx,p.y+camy,7)  
+      else 
+        p.x+=p.spd+p.wspd-cam_spdx
+        rectfill(p.x+camx,p.y%128+camy,p.x+p.s+camx+p.wspd*-1.5,p.y%128+p.s+camy,p.c)
       end
-    end)
-
+    -- </wind> --
+    if p.x>132 then 
+      p.x=-4
+      p.y=rnd128()
+   	elseif p.x<-4 then
+     	p.x=128
+     	p.y=rnd128()
+    end
+  end)
+  
   -- dead particles
   foreach(dead_particles, function(p)
-      p.x += p.spd.x
-      p.y += p.spd.y
-      p.t -=1
-      if p.t <= 0 then del(dead_particles,p) end
-      rectfill(p.x-p.t/5,p.y-p.t/5,p.x+p.t/5,p.y+p.t/5,14+p.t%2)
-    end)
+    p.x+=p.dx
+    p.y+=p.dy
+    p.t-=0.2
+    if p.t<=0 then
+      del(dead_particles,p)
+    end
+    rectfill(p.x-p.t,p.y-p.t,p.x+p.t,p.y+p.t,14+5*p.t%2)
+  end)
+
+  -- draw time
+  if ui_timer>=-30 then
+  	if ui_timer<0 then
+  		draw_time(camx+4,camy+4)
+  	end
+  	ui_timer-=1
+  end
+
   -- <transition>
+  camera()
+  color(0)
   if tstate>=0 then
     local t20=tpos+20
-    local yedge=camy+127
     if tstate==0 then
-      po1tri(tpos,camy,t20,camy,tpos,yedge)
-      if(tpos>camx) rectfill(camx,camy,tpos,yedge,0)
-      if(tpos>148+camx) then
+      po1tri(tpos,0,t20,0,tpos,127)
+      if(tpos>0) rectfill(0,0,tpos,127)
+      if(tpos>148) then
         tstate=1
-        tpos=camx-20
+        tpos=-20
       end
     else
-      po1tri(t20,camy,t20,yedge,tpos,yedge)
-      if(tpos<108+camx) rectfill(t20,camy,camx+127,yedge,0)
-      if(tpos>148+camx) then
+      po1tri(t20,0,t20,127,tpos,127)
+      if(tpos<108) rectfill(t20,0,127,127)
+      if(tpos>148) then
         tstate=-1
-        tpos=camx-20
+        tpos=-20
       end
     end
     tpos+=14
   end
--- </transition>
+  -- </transition>
 end
 
 function draw_object(obj)
-  if obj.type.draw  then
-    obj.type.draw(obj)
-  elseif obj.spr and obj.spr>0 then
-    spr(obj.spr,obj.x,obj.y,1,1,obj.flip.x,obj.flip.y)
-  end
+  -- <green_bubble> --
+  if not obj.invisible then 
+    (obj.type.draw or draw_obj_sprite)(obj)
+  end 
+  -- </green_bubble> --
+end
+
+function draw_obj_sprite(obj)
+  spr(obj.spr,obj.x,obj.y,1,1,obj.flip.x,obj.flip.y)
+
 end
 
 function draw_time(x,y)
-  rectfill(x,y,x+44,y+6,0)
-  print(two_digit_str(minutes\60)..":"..two_digit_str(minutes%60)..":"..two_digit_str(seconds).."."..two_digit_str(centiseconds),x+1,y+1,7)
+  rectfill(x,y,x+32,y+6,0)
+  ?two_digit_str(minutes\60)..":"..two_digit_str(minutes%60)..":"..two_digit_str(seconds),x+1,y+1,7
 end
 
--- helper functions --
-----------------------
-function get_player()
-  for obj in all(objects) do
-    if obj.type==player or obj.type==player_spawn then
-      return obj
-    end
-  end
-end
 
 function two_digit_str(x)
   return x<10 and "0"..x or x
 end
+
+-- [helper functions]
 
 function round(x)
   return flr(x+0.5)
 end
 
 function clamp(val,a,b)
-  return max(a, min(b, val))
+  return max(a,min(b,val))
 end
 
 function appr(val,target,amount)
-  return val > target
-  and max(val - amount, target)
-  or min(val + amount, target)
+  return val>target and max(val-amount,target) or min(val+amount,target)
 end
 
 function sign(v)
@@ -1833,13 +1417,9 @@ function maybe()
   return rnd(1)<0.5
 end
 
-function solid_at(x,y,w,h)
-  return tile_flag_at(x,y,w,h,0)
-end
-
 function tile_flag_at(x,y,w,h,flag)
-  for i=max(0,x\8),min(level_tlength()-1,(x+w-1)/8) do
-    for j=max(0,y\8),min(level_theight()-1,(y+h-1)/8) do
+  for i=max(0,x\8),min(lvl_w-1,(x+w-1)/8) do
+    for j=max(0,y\8),min(lvl_h-1,(y+h-1)/8) do
       if fget(tile_at(i,j),flag) then
         return true
       end
@@ -1848,74 +1428,29 @@ function tile_flag_at(x,y,w,h,flag)
 end
 
 function tile_at(x,y)
-  return mget(room.x * 16 + x, room.y * 16 + y)
+  return mget(lvl_x*16+x,lvl_y*16+y)
 end
 
 function spikes_at(x,y,w,h,xspd,yspd)
-  for i=max(0,x\8),min(level_tlength()-1,(x+w-1)/8) do
-    for j=max(0,y\8),min(level_theight()-1,(y+h-1)/8) do
-      local tile=tile_at(i,j)
-      if tile==22 and ((y+h-1)%8>=6 or y+h==j*8+8) and yspd>=0 or
-      tile==20 and y%8<=2 and yspd<=0 or
-      tile==19 and x%8<=2 and xspd<=0 or
-      tile==21 and ((x+w-1)%8>=6 or x+w==i*8+8) and xspd>=0 then
-        return true
-      end
+  local xw,yh=x+w-1,y+h-1
+  for i=max(0,x\8),min(lvl_w-1,xw/8) do
+    for j=max(0,y\8),min(lvl_h-1,yh/8) do
+      if({yh%8>=6 and yspd>=0,
+          y%8<=2 and yspd<=0,
+          x%8<=2 and xspd<=0,
+          xw%8>=6  and xspd>=0})[tile_at(i,j)-15] then
+            return true 
+      end 
     end
   end
 end
 
---returns mapdata string of level
---use with printh() in console
-function get_level(x,y)
-  local reserve=""
-  local offset=4096+(y<2 and 4096 or 0)
-  y=y%2
-  for y_=1,32,2 do
-    for x_=1,32,2 do
-      reserve=reserve..num2hex(peek(offset+x*16+y*2048+(y_-1)*64+x_/2))
-    end
-  end
-  return reserve
-end
-
-function replace_level(x,y,level,reserve)
-  reserve=reserve or false
-  if reserve then
-    reservelvl=""
-  end
-  for y_=1,32,2 do
-    for x_=1,32,2 do
-      local offset=4096+(y<2 and 4096 or -4096)
-      local hex=sub(level, x_+(y_-1)/2*32, x_+(y_-1)/2*32+1)
-      if reserve then
-        reservelvl=reservelvl..num2hex(peek(offset+x*16+y*2048+(y_-1)*64+x_/2))
-      end
-      poke(offset+x*16+y*2048+(y_-1)*64+x_/2, "0x"..hex)
-    end
-  end
-  if reserve then
-    add(reserve_levels,reservelvl)
-  end
-end
-
---convert mapdata to memory data
-
-function num2hex(number)
- local resultstr=""
- while number>0 do
-  local remainder=1+number%16
-  number\=16
-  resultstr=sub("0123456789abcdef",remainder,remainder)..resultstr
- end
- return #resultstr==0 and "00" or #resultstr==1 and "0"..resultstr or resultstr
-end
+--<transition>--
 
 -- transition globals
 tstate=-1
 tpos=-20
 
---<transition>--
 -- triangle functions
 function po1tri(x0,y0,x1,y1,x2,y2)
   local c=x0+(x2-x0)/(y2-y0)*(y1-y0)
@@ -1931,198 +1466,300 @@ function p01traph(l,r,lt,rt,y0,y1)
     r+=rt
   end
 end
---</transition>--
+
+-->8
+--scrolling level stuff
+
+--level table
+--strings follow this format:
+--"x,y,w,h,wind speed"
+levels={
+	"0,0,1,1",
+  "1,0,3,1"
+}
+
+--mapdata table
+--rooms separated by commas
+mapdata={
+}
+
+function get_lvl()
+	return split(levels[lvl_id])
+end
+
+function get_data()
+	return split(mapdata[lvl_id],",",false)
+end
+
+--not using tables to conserve tokens
+cam_x=0
+cam_y=0
+cam_spdx=0
+cam_spdy=0
+cam_gain=0.25
+
+function move_camera(obj)
+  --set camera speed
+  cam_spdx=cam_gain*(4+obj.x+0*obj.spd.x-cam_x)
+  cam_spdy=cam_gain*(4+obj.y+0*obj.spd.y-cam_y)
+
+  cam_x+=cam_spdx
+  cam_y+=cam_spdy
+
+  if cam_x<64 or cam_x>lvl_pw-64 then
+    cam_spdx=0
+    cam_x=clamp(cam_x,64,lvl_pw-64)
+  end
+  if cam_y<64 or cam_y>lvl_ph-64 then
+    cam_spdy=0
+    cam_y=clamp(cam_y,64,lvl_ph-64)
+  end
+end
+
+--replace mapdata with hex
+function replace_room(x,y,room)
+ for y_=0,511,32 do
+  for x_=1,32,2 do
+   local idx=x_+y_
+   local hex=sub(room,idx,idx+1)
+   poke((y<2 and 8192 or 0)+x*16+y*2048+y_*4+x_/2, "0x"..hex)
+  end
+ end
+end
+
+--[[
+
+short on tokens?
+everything below this comment
+is just for grabbing data
+rather than loading it
+and can be safely removed!
+
+--]]
+
+--returns mapdata string of level
+--printh(get_room(),"@clip")
+function get_room(x,y)
+  local reserve=""
+  local offset=4096+(y<2 and 4096 or 0)
+  y=y%2
+  for y_=1,32,2 do
+    for x_=1,32,2 do
+      reserve=reserve..num2hex(peek(offset+x*16+y*2048+(y_-1)*64+x_/2))
+    end
+  end
+  return reserve
+end
+
+--convert mapdata to memory data
+function num2hex(number)
+ local resultstr=""
+ while number>0 do
+  local remainder=1+number%16
+  number\=16
+  resultstr=sub("0123456789abcdef",remainder,remainder)..resultstr
+ end
+ return #resultstr==0 and "00" or #resultstr==1 and "0"..resultstr or resultstr
+end
 __gfx__
-0000000000000000000000000888888000000000000000000000000000000000000000000000000000000000000000000300b0b00300b0b00a0aa0a000077000
-000000000888888008888880888888880888888008888800000000000888888000004000400000000000000000000000003b3300003b33000aa88aa0007bb700
-000000008888888888888888888ffff888888888888888800888888088f1ff180505900090000000000000000000000002888820028888200299992007bbb370
-00000000888ffff8888ffff888f1ff18888ffff88ffff8808888888888fffff850509000900000000499994000000000089888807898888709a999907bbb3bb7
-0000000088f1ff1888f1ff1808fffff088f1ff1881ff1f80888ffff888fffff850509000900000000050050000000000088889807888898709999a9073b33bb7
-0000000008fffff008fffff00033330008fffff00fffff8088fffff808333380050590009000000000055000000000000889888008898880099a999007333370
-00000000003333000033330007000070073333000033337008f1ff10003333000000400040000000005005000000000002888820028888200299992000733700
-00000000007007000070007000000000000007000000700007733370007007000000000000000000000550000499994000288200002882000029920000077000
-00000000000000000000000055000000666566650000066600000000d666666dd666666dd666066d4fff4fff4fff4fff4fff4fff000000000000000070000000
-000777770000000000000000667000006765676500077776000000006dddddd56ddd5dd56dd50dd5444444444444444444444444007700000770070007000007
-00776670000000000000000067777000677067700000076600000000666ddd55666d6d5556500555000450000000000000054000007770700777000000000000
-0767770000000000000000006660000007000700000000550070007066ddd5d5656505d500000055004500000000000000005400077777700770000000000000
-077660000777770000000000550000000700070000000666007000706ddd5dd56dd5065565000000045000000000000000000540077777700000700000000000
-077770000777767007700000667000000000000000077776067706776ddd6d656ddd7d656d500565450000000000000000000054077777700000077000000000
-0000000000000077007777706777700000000000000007665676567605ddd65005d5d65005505650500000000000000000000005070777000007077007000070
-00000000000000000007777766600000000000000000005556665666000000000000000000000000000000000000000000000000000000007000000000000000
-5777777557777777777777777777777577cccccccccccccccccccc77577777755555555555555555555555555555555577577775777cccccccccc77700000000
-77777777777777777777777777777777777cccccccccccccccccc77777777777555555555555555005555555555555557777777777cccccccccccc7700000000
-777c77777777ccccc777777ccccc7777777cccccccccccccccccc777777777775555555555555500005555555500005577cc777777cccc7ccccccc7700000000
-77cccc77777cccccccc77cccccccc7777777cccccccccccccccc7777777cc77755555555555550000005555555000055ccccc777577cccccccccc77500000000
-77cccc7777cccccccccccccccccccc777777cccccccccccccccc777777cccc7755555555555500000000555555000055cccccc77577cccccc77cc77500000000
-777cc77777cc77ccccccccccccc7cc77777cccccccccccccccccc77777cccc7755555555555000000000055555000055ccc7cc7577ccccccc77ccc7700000000
-7777777777cc77cccccccccccccccc77777cccccccccccccccccc77777c7cc7755555555550000000000005555555555ccccc77577cc7ccccccccc7700000000
-5777777577cccccccccccccccccccc7777cccccccccccccccccccc7777cccc7755555555500000000000000555555555ccccc777777cccccccccc77700000000
-77cccc7777cccccccccccccccccccc77577777777777777777777775777ccc77cccccccc500000000000000555555555ccccc777004bbb00004b000000400bbb
-777ccc7777cccccccccccccccccccc77777777777777777777777777777cc777c77ccccc550000000000005550555555ccccc777004bbbbb004bb000004bbbbb
-777ccc7777cc7cccccccccccc77ccc777777ccc7777777777ccc7777777cc777c77cc7cc555000000000055555550055c77ccc7504200bbb042bbbbb042bbb00
-77ccc77777ccccccccccccccc77ccc77777ccccc7c7777ccccccc77777ccc777cccccccc555500000000555555550055c77ccc75040000000400bbb004000000
-77ccc777777cccccccc77cccccccc777777ccccccc7777c7ccccc77777cccc77cccccccc555550000005555555555555ccccc777040000000400000004000000
-777cc7777777ccccc777777ccccc77777777ccc7777777777ccc777777cccc77cc7ccccc55555500005555555505555577cc7777420000004200000042000000
-777cc777777777777777777777777777777777777777777777777777777cc777ccccc7cc55555550055555555555555577777777400000004000000040000000
-77cccc7757777777777777777777777557777777777777777777777557777775cccccccc55555555555555555555555577557775400000004000000040000000
-000770777007770000666600007777001dddddddddddddd157777775066666600000000000000000000000000000000000000000000000000000000000000000
-07777776777777700637776007777770111111111111111177777777600000000000000000000000000000000000000000000000000000000000000000000000
-776666666776777763777336777777771d111111d11111d1777e7777606666660000000000000000000000000000000000000000000000000000000000000000
-76777666766666776333bb36777777771d111111dd1111d177eeee77606000060000000000000000000000000000000000000000000000000000000000000000
-066666666666666063333bb6777777771d111dddddd111d177eeee77606066060000000000000000000000000000000000000000000000000000000000000000
-000000000000000063bb3336777777761d111111dd1111d1777ee777606666060000000000000000000000000000000000000000000000000000000000000000
-0000000000000000063b3360077777601ddd1111d111ddd177777777600000060000000000000000000000000000000000000000000000000000000000000000
-00000000000000000066660000666600111111111111111157777775066666600000000000000000000000000000000000000000000000000000000000000000
+000000000000000000000000088888800000000000000000000000000000000000000000000000000300b0b00a0aa0a000000000000000000000000000077000
+00000000088888800888888088888888088888800888880000000000088888800004000000000000003b33000aa88aa0000777770000000000000000007bb700
+000000008888888888888888888ffff888888888888888800888888088f1ff180009505000000000028888200299992000776670000000000000000007bbb370
+00000000888ffff8888ffff888f1ff18888ffff88ffff8808888888888fffff800090505049999400898888009a999900767770000000000000000007bbb3bb7
+0000000088f1ff1888f1ff1808fffff088f1ff1881ff1f80888ffff888fffff800090505005005000888898009999a9007766000077777000000000073b33bb7
+0000000008fffff008fffff00033330008fffff00fffff8088fffff808333380000950500005500008898880099a999007777000077776700770000007333370
+00000000003333000033330007000070073333000033337008f1ff10003333000004000000500500028888200299992007000000070000770777777000733700
+00000000007007000070007000000000000007000000700007733370007007000000000000055000002882000029920000000000000000000007777700077000
+000000006665666555000000000006664fff4fff4fff4fff4fff4fffd666666dd666666dd666066d000000000000000070000000000000000000000000000000
+000000006765676566700000000777764444444444444444444444446dddddd56ddd5dd56dd50dd5007700000770070007000007000000000000000000000000
+00000000677067706777700000000766000450000000000000054000666ddd55666d6d5556500555007770700777000000000000000000000000000000000000
+0070007007000700666000000000005500450000000000000000540066ddd5d5656505d500000055077777700770000000000000000000000000000000000000
+007000700700070055000000000006660450000000000000000005406ddd5dd56dd5065565000000077777700000700000000000000000000000000000000000
+067706770000000066700000000777764500000000000000000000546ddd6d656ddd7d656d500565077777700000077000000000000000000000000000000000
+5676567600000000677770000000076650000000000000000000000505ddd65005d5d65005505650070777000007077007000070000000000000000000000000
+56665666000000006660000000000055000000000000000000000000000000000000000000000000000000007000000000000000000000000000000000000000
+5777777557777777777777777777777577cccccccccccccccccccc77577777755555555555555555555555555555555500000000000000000000000000000000
+77777777777777777777777777777777777cccccccccccccccccc777777777775555555555555550055555555555555500000000000000000000000000000000
+777c77777777ccccc777777ccccc7777777cccccccccccccccccc777777777775555555555555500005555555500005500000000000000000000000000000000
+77cccc77777cccccccc77cccccccc7777777cccccccccccccccc7777777cc7775555555555555000000555555500005500000000000000000000000000000000
+77cccc7777cccccccccccccccccccc777777cccccccccccccccc777777cccc775555555555550000000055555500005555555555000000000000000000000000
+777cc77777cc77ccccccccccccc7cc77777cccccccccccccccccc77777cccc775555555555500000000005555500005555555555000000000000000000000000
+7777777777cc77cccccccccccccccc77777cccccccccccccccccc77777c7cc775555555555000000000000555555555555555555000000000000000000000000
+5777777577cccccccccccccccccccc7777cccccccccccccccccccc7777cccc775555555550000000000000055555555555555555000000000000000000000000
+77cccc7777cccccccccccccccccccc77577777777777777777777775777ccc77cccccccc50000000000000055555555500000005000000000000000000000000
+777ccc7777cccccccccccccccccccc77777777777777777777777777777cc777c77ccccc55000000000000555055555500000055000000000000000000000000
+777ccc7777cc7cccccccccccc77ccc777777ccc7777777777ccc7777777cc777c77cc7cc55500000000005555555005500000555000000000000000000000000
+77ccc77777ccccccccccccccc77ccc77777ccccc7c7777ccccccc77777ccc777cccccccc55550000000055555555005500005555000000000000000000000000
+77ccc777777cccccccc77cccccccc777777ccccccc7777c7ccccc77777cccc77cccccccc55555000000555555555555555555555000000000000000000000000
+777cc7777777ccccc777777ccccc77777777ccc7777777777ccc777777cccc77cc7ccccc55555500005555555505555555555555000000000000000000000000
+777cc777777777777777777777777777777777777777777777777777777cc777ccccc7cc55555550055555555555555555555555000000000000000000000000
+77cccc7757777777777777777777777557777777777777777777777557777775cccccccc55555555555555555555555555555555000000000000000000000000
+00077077700777005777755777577775007777000077770000bbbb00111111111111111111111111000000000000000000000000000000000000000000000000
+0777777677777770777777777777777707767770077767700b3333b0111111111d1111d1111dddd1000000000000000000000000000000000000000000000000
+77666666677677777777cc7777cc77777777777767777777b333773b1111d11111d11d111111ddd1000000000000000000000000000000000000000000000000
+7677766676666677777cccccccccc7777677777767767767b333773b1111dd11111dd1111111ddd1000000000000000000000000000000000000000000000000
+066666666666666077cccccccccccc777776777667777777b333333b1dddddd1111dd111111d11d1000000000000000000000000000000000000000000000000
+000000000000000057cc77ccccc7cc757777776666777777b333333b1111dd1111d11d1111d11111000000000000000000000000000000000000000000000000
+0000000000000000577c77ccccccc77507777660066777700b3333b01111d1111d1111d111111111000000000000000000000000000000000000000000000000
+0000000000000000777cccccccccc777006666000066770000bbbb00111111111111111100000000000000000000000000000000000000000000000000000000
+0000000000000000777cccccccccc777000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000000000000077cccccccccccc77000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000000000000077cccc7ccccccc77000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000577cccccccccc775000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000577cccccc77cc775000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000000000000077ccccccc77ccc77000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000000000000077cc7ccccccccc77000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000777cccccccccc777000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __label__
-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc775555555555555555555555555555555577cccccccccccccccccccccccccccccc
-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc775555555550555555555555555555555577cccccccccccccccccccccccccccccc
-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccc77ccc775555555555550055555555555555555577cc7ccccccccccccccccccccccccccc
-ccccccccccccccccccccccccccccccccccccccccccccccccccccccccc77ccc775555555555550055555555555555555577cccccccccccccccccccccccccccccc
-ccccccccccccccccccccccccccccccccccc77cccccc77cccccc77cccccccc77755555555555555555555555555555555777ccccccccccccccccccccccccccccc
-ccccccccccccccccccccccccccccccccc777777cc777777cc777777ccccc7777555555555505555555555555555555557777cccccccccccccccccccccccccccc
-cccccccccccccccccccccccccccccccc777777777777777777777777777777775555555555555555555555555555555577777777cccccccccccccccccccccccc
-cccccccccccccccccccccccccccccccc777777777777777777777777777777755555555555555555555555555555555557777777ccc7cccccccccccccccccccc
-cccccccccccccccccccccccccccccc7700000000000000000000000055555555555555555555555555555555555555555555555577cccccccccccccccccccccc
-ccccccccc77cccccccccccccccccc777000000000000000000000000055555555555555555555555555555505555555555555555777cccccc77ccccc7ccccccc
-ccccccccc77cc7ccccccccccccccc777000000000000000000000000005555555555555555555555555555005555555555000055777cccccc77cc7cccccccccc
-cccccccccccccccccccccccccccc77770000000000000000000000000005555555555555575555555555500055555555550000557777cccccccccccccccccccc
-cccccccccccccccccccccccccccc77770000000000000000000000000000555555555555555555555555000055555555550000557777cccccccccccccccccccc
-cccccccccc7cccccccccccccccccc777000000000000000000000000000005555555555555555555555000005555555555000055777ccccccc7ccccccccccccc
-ccccccccccccc7ccccccccccccccc777000000000000000000000000000000555555555555555555550000005555555555555555777cccccccccc7cccccccccc
-cccccccccccccccccccccccccccccc7700000000000000000000000000000005555555555555555550000000555555555555555577cccccccccccccccccccccc
-cccccccccccccccccccccccccccccc7700000000000000000000000000000000555555550000000000000000555555550000000077cccccccccccccccccccccc
-cccccccccccccccccccccccccccccc7700000000000000000000000000000000555555500000000000000000055555550000000077cccccccccccccccccccccc
-ccccccccccccccccccccccccc77ccc7700000000000000000000000000000000555555000000000000000000005555550000000077cc7ccccccccccccccccccc
-ccccccccccccccccccccccccc77ccc7700000000000000000000000000000000555550000000000000000000000555550000000077cccccccccccccccccccccc
-ccc77cccccc77cccccc77cccccccc777000000000000000000000000000000005555000000000000000000000000555500000000777ccccccccccccccccccccc
-c777777cc777777cc777777ccccc77770000000000000000000000000000000055500000000000000000000000000555000000007777cccccccccccccccccccc
-7777777777777777777777777777777700000000000000000000000000000000550000000000000000000000000000550000000077777777cccccccccccccccc
-7777777777777777777777777777777500000000000000000000000000000000500000000000000000000000000000050000000057777777cccccccccccccccc
-000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000077cccccccccccccc
-000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000077cccccccccccccc
-000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000077cc7ccccccccccc
-000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000077cccccccccccccc
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000777ccccccccccccc
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007777cccccccccccc
-000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000077777777cccccccc
-000000000000000000000000000000000000000000000000000000000000000000000000000770777007770000000000000000000000000057777777cccccccc
-00000000000000000000000000000000000000000000000000000000000000000000000007777776777777700000000000000000000000000000000077cccccc
-00000000000000000000000000000000000007000000000007700000000000000000000077666666677677770000000000000000000000000000000077cccccc
-00000000000000000000000000000000000000000000000007700000000000000000000076777666766666770000000000000000000000000000000077cc7ccc
-00000000000000000000000000000000000000000000000000000000000000000000000006666666666666600000000000000000000000000000000077cccccc
-000000000000008888880000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000777ccccc
-0000000000000888888880000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007777cccc
-0000000000008888ffff800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000077777777
-000000000000888f1ff1800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000057777777
-000000000000888fffff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000008833330000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000700007000000000000000000000000000000000000000000000000000000000000000001111111111111111111111111111111110000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000001111111111111111111111111111111110000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000001111111111111111111111111111111110000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000001111111111111111111111111111111110000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000001111111111111111111111111111111110000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000001111111111111111111111111111111110000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000001111111111111111111111111111111111111111111
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000001111111111111111111111111111111111111111111
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000001111111111111111111111111111111111111111111
-00000000000000000000000000000000000000000000000000000000007000700070007000700070007001711111111111111111111111111111111111111111
-00000000000000000000000000000000000000000000000000000000007000700070007000700070007001711111111111111111111111111111111111111111
-00000000000000000000000000000000000000000000000000000000067706770677067706770677067706771111111111111111111111111111111111111111
-00000000000000000000000000000000000000000000000000000000567656765676567656765676567656761111111111111111111111111111111111111111
-00000000000000000000000000000000000000000000000000000000566656665666566656665666566656661111111111111111111111111111111111111111
-00000000000000000000000000000005500000000000000000000000577777777777777777777777777777751111111111111111111111111111111111111111
-00000000000000000000000000000055550000000000000000000000777777777777777777777777777777770000000000000000000000000000000000000000
-000000000000000000000000000005555550000000000000000000007777ccc777777777777777777ccc77770000000000000000000000000000000000000000
-00000000000000000000000000005555555500000000000000000000777ccccc7c7777cc7c7777ccccccc7777000000000000000000000000000000000000000
-00000000000000000000000000055555555550000000000000000000777ccccccc7777c7cc7777c7ccccc7777000000000000000000000000000000000000000
-000000000000000000000000005555555555550000000000000000006777ccc777777777777777777ccc77770000000000000000000000000000000000000000
-00000000000000000000000005555555555555500000000000000000777777777777777777777777777777770000000000000000000000000000000000000000
-00000000000001111111111155555555555555551111111000000000577777777777777777777777777777750000000000000000000000000000000000000000
-00000000000001111111111155555555555555555555555555555555555555555777777557777775555555555555555555555555500000005777777777777777
-00000000000001111111111155555555555555555555555555555555555555557777777777777777555555555555555555555555550000007777777777777777
-0000000000000111111111115555555555555555555555555555555555555555777c7777777c7777555555555555555555555555555000007777ccccc777777c
-000000000000011111111111555555555555555555555555555555555555555577cccc7777cccc7755555555555555555555555555550000777cccccccc77ccc
-000000000000011111111111555555555555555555555555555555555555555577cccc7777cccc775555555555555555555555555555500077cccccccccccccc
-0000000000000111111111115555555555555555555555555555555555555555777cc777777cc7775555555555555555555555555555550077cc77cccccccccc
-000000000000011111111111555555555555555555555555555555555555555577777777777777775555555555555555555555555555555077cc77cccccccccc
-000000000000011111111111555555555555555555555555555555555555555557777775577777755555555555555555555555555555555577cccccccccccccc
-000000000000071111111115555555555555555555555555555555555555555500000000000000005555555555555555555555555555555577cccccccccccccc
-0000000000000111111111555555555555555555555555555055555555555550000000000000000005555555555555555555555555555555777ccccccccccccc
-0000000000000000000005555557755555000055555555555555005555555500000000000000000000555555555555555500005555555555777ccccccccccccc
-00000000000000000000555555577555550000555555555555550055555550000000000000000000000555555555555555000055555555557777cccccccccccc
-00000000000000000005555555555555550000555555555555555555555506000000000000000000000055555555555555000055555555557777cccccccccccc
-1111111111111111115555555555555555000055555555555505555555500000000000000000000000000555555555555500005555555555777ccccccccccccc
-1111111111111111155555555555555555555555555555555555555555000000000000000000000000000055555555555555555555555555777ccccccccccccc
-111111111117717775577755555556555555555555555555555555555000000000000000000000000000000555555555555555555555555577cccccccccccccc
-111111111777777677777771555555555555555555555555555555550000000000000000000000000000000055555555555555555555555577cccccccccccc7c
-1111111177666666677677771555555555555555555555555555555500000000000000000000000000000000555555555055555555555555777ccccccccccccc
-1111111176777666766666770055555555555555555555555555555500000000000000000000000000000000555555555555005555555555777ccccccccccccc
-11111111166666666666666700055555555555555555555555555555000000000000000000000000000000005555555555550055555555557777cccccccccccc
-11111111111000000000000000005555555555555555555555555555000000000000000000000000000000005555555555555555555555557777cccccccccccc
-1111111111100000000000000000055555555555555555555555555500000000000000000000000000000000555555555505555555555555777ccccccccccccc
-0000000000000000770000000000005555555555555555555555555500000000000000000000000000000000555555555555555555555555777ccccccccccccc
-000000000000000077000000000000055555555555555555555555550000000000000000000000000000000055555555555555555555555577cccccccccccccc
-000000000000000000000000000000000000000055555555555555550000000000000000000000000000000055555555555555555555555577cccccccccccccc
-0000000000000000000000000000000000000000055555555555555500000000000000000000000000000000555555555555555555555555777cccccc77ccccc
-0000000000000000000000000000000000000000005555555555555500000000000000000000000000000000555555555555555555555555777cccccc77cc7cc
-00000000000000000000000000000000000000000005555555555555007000700070007000700070007000705555555555555555555555557777cccccccccccc
-00000000000000000000000000000000000000000000555555555555007000700070007000700070007000705555555555555555555555557777cccccccccccc
-0000000000000000000000000000000000000000000005555555555506770677067706770677067706770677555555555555555555555555777ccccccc7ccccc
-0000000000000000000000000000000000000000000000555555555556765676567656765676567656765676555555555555555555555555777cccccccccc7cc
-000000000000000000000000000000000000000000000006555555555666566656665666566656665666566655555555555555555555555577cccccccccccccc
-000000000000000000000000000000000000000000000000555555555777777777777777777777777777777555555555555555550000011177cccccccccccccc
-0000000000000000011111111111111111111111111111115555555577777777777777777777777777777777555555500555555500000111777ccccccccccccc
-000070000000000001111111111111111111111111111111555555557777ccc7c777777cc777777c7ccc7777555555000055555511111111777ccccccccccccc
-00000000000000000111111111111111111111111111111155555555777cccccccc77cccccc77cccccccc7775555500000155555111111117777cccccccccccc
-00000000000000000111111111111111111111111111111155555555777cccccccccccccccccccccccccc7775555006600115555111111117777cccccccccccc
-000000000000000001111111111111111111111111111111555555557777ccc7cccccccccccccccc7ccc7777555111661111155511111111777ccccccccccccc
-0000000000000000011166111111111111111111111111115555555577777777cccccccccccccccc77777777551111111111115511111111777ccccccccccccc
-0000000000000000011166111111111111111111111111115555555557777777cccccccccccccccc7777777551111111111111151111111177cccccccccccccc
-111111111111111111111111111100000000000000000000555555555555555577cccccccccccc775555555511111111111111111111111177cccccccccccccc
-1111111111111111111111111111000000000000000000000555555555555555777cccccccccc77755555551111111111111111111111111777ccccccccccccc
-1111111111111111111111111111000000000000000000000055555555555555777cccccccccc77755555500000000000011111111111111777ccccccccccccc
-11111111111111111111111111110000000000000000000000055555555555557777cccccccc7777555550000000000000000000000000007777cc7ccccccccc
-11111111111111111111111111110000000000000000000000005555555555557777cccccccc7777555500000000000000000000000000007777cccccccccccc
-1111111111111111111111111111000000000000000000000000055555555555777cccccccccc77755500006000000000000000000000000777ccccccccccccc
-1111111111111111111111111111000000000000000000000000005555555555777cccccccccc77755000000000000000000000000000000777ccccccccccccc
-111111111111111111111111111100000007707770077700000000055555555577cccccccccccc775000000000000000000000000000000077cccccccccccccc
-777777777777777777777775111100000777777677777770000000005555555577cccccccccccc770000000000000000000000000000000077cccccccccccccc
-7777777777777777777777770000000077666666677677770000000005555555777cccccccccc77700000000000000000000000000000000777ccccccccccccc
-c777777cc777777ccccc77770000000076777666766666770000000000555555777cccccccccc77700000000000000000000000000000000777ccccccccc6ccc
-ccc77cccccc77cccccccc77700000000066666666666666000000000000555557777c6cccccc7777000000000000000000000000000000007777cccccccccccc
-cccccccccccccccccccccc7711111111111111111111111111111111111155557777cccccccc7777000000000000000000000000000000007777cccccccccccc
-ccccccccccccccccccc7cc771111111111111111111111111111111111111555777cccccccccc77700000000000000000000000000000000777ccccccccccccc
-cccccccccccccccccccccc771111111111111111111111111111111111111155777cccccccccc77700000000000000000000000000000000777ccccccccccccc
-cccccccccccccccccccccc77111111111111111111111111111111111111111577cccccccccccc770000000000000000000000000000000077cccccccccccccc
-cccccccccccccccccccccc77111111111111111111111111111111111111111077cccccccccccc7700000000000000000000000057777777cccccccccccccccc
-ccccccccc77cccccccccc7771111111111111111111111111111111111111110777cccccccccc77700000000000000000000000077777777cccccc7ccccccccc
-ccccccccc77cc7ccccccc7771111111111111111111111111111111111111110777cccccccccc7770000000000000000000000007777cccccccccccccccccccc
-cccccccccccccccccccc777711111111111111111111111111111111111111107777cccccccc7777000000000000000000000000777ccccccccccccccccccccc
-cccccccccccccccccccc777700000000000000000000000000000000000000007777cccccccc777700000000000000000000000077ccccccccc77ccccccccccc
-cccccccccc7cccccccccc7770000000000000000000000000000000000000000777cccccccccc77700000000000000000000000077cc77ccccc77ccccccccccc
-ccccccccccccc7ccccccc7770000000000000000000000000000000000000000777cccccccccc77700000000000000000000000077cc77cccccccccccccccccc
-cccccccccccccccccccccc77000000000000000000000000000000000000000077cccccccccccc7700000000000000000000000077cccccccccccccccccccccc
+cccccccccccccccccccccccccccccccccccccc775500000000000000000000000000000000070000000000000000000000000000000000000000000000000000
+cccccccccccccccccccccccccccccccccccccc776670000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+ccccccccccccccccccccccccccccccccc77ccc776777700000000000000000000000000000000000000000000000000000000000000000000000000000000000
+ccccccccccccccccccccccccccccccccc77ccc776660000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+cccccccccccccccccccc7cccccc6ccccccccc7775500000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+cccccccccccccccccccccccccccccccccccc77776670000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+cccccccccccccccccccccccccccccccc777777776777700000000000000000000000000000000000000000000011111111111111111111111111111111111111
+cccccccccccccccccccccccccccccccc777777756661111111111111111111111111111111111100000000000011111111111111111111111111111111111111
+cccccccccccccccccccccccccccccc77011111111111111111111111111111111111111111111100000000000011111111111111111111111111111111111111
+ccccccccccccccccccccccccccccc777011111111111111111111111111111111111111111111100000000000011111111111111111111111111111111111111
+ccccccccccccccccccccccccccccc777011111111111111111111111111111111111111111111100000000000011111111111111111111111111111111111111
+cccccccccccccccccccccccccccc7777011111111111111111111111111111111111111111111100000000000011111111111111111111111111111111111111
+cccccccccccccccccccccccccccc7777011111111111111111111111111111111111111111111100000000000011111111111111111111111111111111111111
+ccccccccccccccccccccccccccccc777011111111111111111111111111111111111111111111100000000000011111111111111111111111111111111111111
+ccccccccccccccccccccccccccccc777011111111311b1b111111111111111111111111111111100000000000011111111111111111111111111111111111111
+cccccccccccccccccccccccccccccc7700000000003b330000000000000000000000000000000000000000000011111111111111111111111111111111111111
+cccccccccccccccccccccccccccccc77000000000288882000000000000000000000000000000000000070000000000000000000000000000000000000000000
+cccccccc66cccccccccccccccccccc77000000000898888000000000000000000000000000000000000000000000000000000000000000000000000000000000
+cccccccc66ccccccccccccccc77ccc77000000000888898000000000000000000000000000000000000000000000000000000000000000000000000000000000
+ccccccccccccccccccccccccc77ccc77000000000889888000000000000000000000000000000000000000000000000000000000000000000000000000000000
+ccccccccccccccccccc77cccccccc777000000000288882000000000000000000000000000000000000000000000000000000000000000000000006600000000
+ccccccccccccccccc777777ccccc7777000000000028820000000000000000000000000000000000000000000000000000000000000000000000006600000000
+cccccccccccccccc7777777777777777000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+6ccccccccccccccc7777777777777775111111111111111111111000000000000000000000000000000000000000000000000001111111111111111111111111
+cccccccccccccc776665666566656665111111111111111111111000000000000000000000000000000000000000000000000001111111111111111111111111
+ccccccccccccc7776765676567656765111111111111111111111000000000000000000000000000000000000000000000000001111111111111111111111111
+ccccccccccccc7776771677167716771111111111111111111111111111111111111111111111111111111110000000000000001111111111111111111111111
+cccccccccccc77771711171117111711111111111111111111111111111111111111111111111111111111110000000000000001111111111111111111111111
+cccccccccccc77771711171117111711111111111111111111111111111111111111111111111111111111110000000000000001111111111111111111111111
+ccccccccccccc7770000000000000011111111111111111111111111111111171111111111111111111111110000000000000001161111111111111111111111
+ccccccccccccc7770000000000000011111111111111111111111111111111111111111111111111111111110000000000000001111111111111111111111111
+cccccccccccccc770000000000000011111111111111111111111111111111111111111111111111111111110000000000000000000000000000000000000000
+cccccccccccccc770000000000000011111111111111111111111111111111111111111111111111111111110000000000000000000000000000000000000000
+ccccccccccccc7770000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+ccccccccccccc7770000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+cccccccccccc77770000000000000000000000000111111111111111111111111111111111111111111111100000000000000000000000000000000000000000
+cccccccccccc77770000000000000000000000000111111111111111111111111111111111111111111111100000000000000000000000000000000000000000
+ccccccccccccc7770000000000000000000000000111111111111111111111111111111111111111111111100000000000000000000000000000000000000000
+ccccccccccccc7770000000000000000000000000111111111111111111111111111111111111111111111100060000000000000000000000000000000000000
+cccccccccccccc770000000000000000000000000111111111111111111111111111111111111111111111100000000000000000000000000000000000000000
+cccccccccccccc770000000000000000000000000111111111111111111111111111111111111111111111100000000000000000000000000000000000000000
+cccccccccccccc770000000000000000000000000111111111111111111111111111111111111111111111100000000000000000000000000000000000000000
+ccccccccc77ccc770000000000000000000000000111111111111111111111111111111111111111111111100000000000000000000000000000000000000000
+ccccccccc77ccc770000000000000000000000000000000000000700000000000000000000000000000000000000000000000000000000000000000000000000
+ccccccccccccc7770000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+cccccccccccc77770000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+cccccccc777777770000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+cccccccc777777750000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+cccccc77550000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+cccccc77667000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+c77ccc77677770000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011
+c77ccc77666000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000770000000000011
+ccccc777550000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000770000000000011
+cccc7777667000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011
+77777777677770000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011
+77777775666000000000000000000000000000000000000000000000000000000000000000000000000070000000000000000000000000000000000000000011
+55555555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000077777700000000000000000
+55555555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000777777770000000000000000
+55555555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000777777770000000000000000
+55555555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000777733770000000000000000
+55555555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000777733770000000000000000
+55555555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000737733370000001111111111
+555555550000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007333bb370000001111111111
+555555550000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000333bb300000001111111111
+55555555500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000033333300000001111111111
+50555555550000000000000000000000000000000000000000000000000000000000000000000000000000000000000000ee0ee003b333300000001111111111
+55550055555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeee0033333300000001111111111
+555500555555000000000000000000000000000000000000000000000000000000111111111111111111111111111111111e8e111333b3300000001111111111
+55555555555550000000000000000000000000000000000000000000000000000011111111111111111111111111b11111eeeee1113333000000001111111111
+5505555555555500000000000000000000000000000000000000000000000000001111111111111111111111111b111111ee3ee1110440000000001111111111
+5555555555555550000000000000000000000000000000000000000000000000001111111117111111111111131b11311111b111110440000000000000000111
+5555555555555555000000000000000000000000000000000000000000000000001111111111111111111111131331311111b111119999000000000000000111
+55555555555555550000000000000000077777700000000000000000000000000011111111111111511111115777777777777777777777755000000000000005
+55555555555555500000000000000000777777770000000000000000000000000011111111111111551111117777777777777777777777775500000000000055
+55555555555555000000000000000000777777770000000000000000000000000011111111111111555111117777ccccc777777ccccc77775550000000000555
+5555555555555000000000000000000077773377111111111111111111111111111111111111111155551111777cccccccc77cccccccc7775555000000005555
+555555555555000000000000000000007777337711111111111111111111111111111111111111115555511177cccccccccccccccccccc775555500000055555
+555555555550000000000000000000007377333711111111111111111111111111111111111110005555550077cc77ccccccccccccc7cc775555550000555555
+555555555500000000000000000000007333bb3711111111111111111111111111111111111110005555555077cc77cccccccccccccccc775555555005555555
+555555555000000000000000000000000333bb3111111111111111111111111111111111111110005555555577cccccccccccccccccc66775555555555555555
+555555555555555555555555000000000333333111111111111111111111111111111111111110055555555577ccccccccccccccc6cc66775555555555555555
+5555555555555555555555500000000003b3333111111111111111111111111111111111111110555055555577cccccccccccccccccccc775555555550555555
+555555555555555555555500000000300333333111111111111111111111111111111111111115555555005577cc7cccccccccccc77ccc775555555555550055
+555555555555555555555000000000b00333b33111111111111111111111111111111111111155555555005577ccccccccccccccc77ccc775555555555550055
+55555555555555555555000000000b3000333311111111111111111111111111111111111115555555555555777cccccccc77cccccccc7775555555555555555
+55555555555555555550000003000b00000440000000000000000000000000000000000000555555550555557777ccccc777777ccccc77775555555555055555
+55555555555555555500000000b0b300000440000000000000000000000000000000000005555555555555557777777777777777777777775555555555555555
+55555555555555555000000000303300009999000000000000000000000000000000000055555555555555555777777777777777777777755555555555555555
+55555555555555555777777777777777777777750000000000000000000000000000000555555555555555555555555500000000555555555555555555555555
+55555555505555557777777777777777777777770000000088888880000000000000005550555555555555555555555000000000055555550555555555555555
+55555555555500557777ccccc777777ccccc77770000000888888888000000300000055555550055555555555555550000000000005555550055555555555555
+5555555555550055777cccccccc77cccccccc77700000008888ffff8000000b00000555555550055555555555555500000000000000555550005555555555555
+555555555555555577cccccccccccccccccccc770000b00888f1ff1800000b300005555555555555555555555555000000000000000055550000555555555555
+555555555505555577cc77ccccccccccccc7cc77000b000088fffff003000b000055555555055555555555555550000000000000000005550000055555555555
+555555555555555577cc77cccccccccccccccc77131b11311833331000b0b3000555555555555555555555555500000000888800000000550000005555555555
+555555555555575577cccccccccccccccccccc771313313111711710703033005555555555555555555555555000000008888880000000050000000555555555
+7777777777777777cccccccccccccccccccccccc7777777777777777777777755555555555555555555555550000000008788880000000000000000055555555
+7777777777777777cccccccccccccccccccccccc7777777777777777777777775555555555555555555555550000000008888880000000000000000055555550
+c777777cc777777cccccccccccccccccccccccccc777777cc777777ccccc77775555555555555555555555550000000008888880000000000000000055555500
+ccc77cccccc77cccccccccccccccccccccccccccccc77cccccc77cccccccc7775555555555555555555555550000000008888880000000000000000055555000
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc775555555555555555555555550000000000888800000000000000000055550000
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc7cc775555555555555555555555550000000000006000000000000000000055500000
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc775555555555555555555555550000000000060000000000000000000055000000
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc775555555555555555555555550000000000060001111111111111111151111111
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc775555555555555555555555550000000000060001111111111111111111111111
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc775555555555555550555555500000000000060001111111111111111111111111
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccc77ccc775500005555555500555555600000000000006001111111111111111111111111
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccc77ccc775500005555555000555550000000000000006001111111111111111111111111
+ccccccccccccccccccccccccccccccccccccccccccccccccccc77cccccccc7775500005555550000555500000000000000000001111111111111111111111111
+cccccccccccccc7cccccccccccccccccccccccccccccccccc777777ccccc77775500005555500000555000000000000000000000000000000000000000000000
+cccccccccccccccccccccccccccccccccccccccccccccccc77777777777777775555555555000000550000000000000000000000000000000000000000000000
+cccccccccccccccccccccccccccccccccccccccccccccccc77777777777777755555555550000000500000000000000000000000007700000000000000000000
+ccccccccccccccccccccccccccccccccccccccccc77ccc7700000000555555555555555500000000000000000000000000000000007700000000000000000000
+ccccccccccccccccccccccccccccccccccccccccc77cc77700000000055555555555555000000000000000000000000000000000000000000000000000000000
+ccccccccccccccccccccccccccccccccccccccccccccc77700000000005555555555550000000000000000000000000000000000000000000000000000000000
+cccccccccccccccccccccccccccccccccccccccccccc777770000000000555555555500000000000000000000000000000000000000000000000000000000000
+cccccccccccccccccccccccccccccccccccccccccccc777700000000000055555555000000000000000000000000000000000000000000000111111111111111
+ccccccccccccccccccccccccccccccccccccccccccccc77700000000000005555550000000000000000000000000000000000000000000000111111111111111
+ccccccccccccccccccccccccccccccccccccccccccccc77700000000000000555500000000000000000000000000000000000000000000000111111111111111
+cccccccccccccccccccccccccccccccccccccccccccccc7700000000000000055000000000000000000000000000000000000000000000000111111111111111
+cccccccccccccccccccccccccccccccccccccccccccccc7700000000000000000000000000000000000000000000000000000000000000000111111111111111
+ccccccccccccccccccccccccccccccccccccccccccccc77700000000000000000000000000000000000000000000000000000000000000000111111111111111
+ccccccccccccccccccccccccccccccccccccccccccccc77700000000000000000000000000000000000000000000000000006000000000000111111111111111
+cccccccccccccccccccccccccccccccccccccccccccc777700000000000000000000000000000000000000000000000000000000000007000111111111111111
+cccccccccccccccccccccccccccccccccccccccccccc777700000000000000000000000000000000000000000000000000000000000000000000000000000000
+ccccccccccccccccccccccccccccccccccccccccccccc77700000000000000000000000000000000000000000000000000000000000000000000000000000000
+ccccccccccccccccccccccccccccccccccccccccccccc77700000000000000000000000000000000000000000000000000000000000000000000000000000000
+cccccccccccccccccccccccccccccccccccccccccccccc7700000000000000000000000000000000000000000000000000000000000000000000000000000000
 
 __gff__
-0000000000000000000000000000000000000002020202000000080808000000030303030303030304040404000000000303030303030303030404040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000002020202080808000000000000000000030303030303030304040404040000000303030303030303030404040400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __map__
 2b3b29000000000000000000002a3b2b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 3b290000000000000000000000002a3b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-29000000000000013d0000000000002a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000001521222223130000000000000000002c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000015313232331300000000000000002c002c00000040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-1600000000001414141400000000001600002c0000002c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-2008000000000000000000000000092000003c0000003c161616160000000c2c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-17080000000000000e000000000009170000003c393c0034353536004600003c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000283c2828282020282828392122000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000c0000000000000d0000000000003a452b283b2900002a282b282425000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000000000000000000000040002a28282842000000283b282425000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000171717000000001a1b1c00000000000000002a28161616164428282438000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000f0000000000000000000000000c2c0000000000002834222236292a002425000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000a0a0000000000003c0001000000002a282426290000002425000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-22222222222223201721222222222222222223004000002a2426000000122425000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-3825252525382600002438252525253825382600000000002426000000212525000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+2900000000000001000000000000002a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000132122222312000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000133132323312000000000000000000202020202020202020202020200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1000000000001111111100000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+2708000000000000000000000000082700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+3708000000004300000000460000083700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000474949000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000a0000000000490000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000004000005300000000004100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000f0000000000000000000000000a4300484949000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000009090000000000005301000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+2222222223171720201717212222222223000000000000000000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+3825252526000000000000242525253826202020202020202020200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
 000400000f0701e070120702207017070260701b0602c060210503105027040360402b0303a030300203e02035010000000000000000000000000000000000000000000000000000000000000000000000000000
 000300000977009770097600975008740077300672005715357003470034700347003470034700347003570035700357003570035700347003470034700337003370033700337000070000700007000070000700
@@ -2139,9 +1776,9 @@ __sfx__
 00020000101101211014110161101a120201202613032140321403410000100001000010000100001000010000100001000010000100001000010000100001000010000100001000010000100001000010000100
 00030000096450e655066550a6550d6550565511655076550c655046550965511645086350d615006050060500605006050060500605006050060500605006050060500605006050060500605006050060500605
 00030000070700a0700e0701007016070220702f0702f0602c0602c0502f0502f0402c0402c0302f0202f0102c000000000000000000000000000000000000000000000000000000000000000000000000000000
-000b00002935500300293453037030360303551330524300243050030013305243002430500300003002430024305003000030000300003000030000300003000030000300003000030000300003000030000300
-000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0001000029305000000a0051c00000000050051330524300243050030013305243002430500300003002430024305003000030000300003000030000300003000030000300003000030000300003000030000300
+000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
