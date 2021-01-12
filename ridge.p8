@@ -886,10 +886,15 @@ arrow_platform={
     this.dir=this.spr==71 and -1 or 1
     this.solid_obj=true
     this.solids=true
-    --hardcoded for now
-    this.w=3
-    this.h=2
 
+    this.w,this.h=1,1
+    local mx,my=this.x/8,this.y/8
+    while mx+this.w<lvl_w and tile_at(mx+this.w,my)==73 do 
+      this.w+=1
+    end 
+    while my+this.h<lvl_h and tile_at(mx,my+this.h)==73 do 
+      this.h+=1
+    end 
     this.hitbox.w=this.w*8
     this.hitbox.h=this.h*8
     this.break_timer,this.death_timer=0,0
