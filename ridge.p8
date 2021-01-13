@@ -115,19 +115,17 @@ player={
     end
 
     for f in all(fruitrain) do
-      if f.type==fruit and not f.golden then
-        if this.berry_timer>5 and f then
-          -- to be implemented:
-          -- save berry
-          -- save golden
-          this.berry_timer=-5
-          this.berry_count+=1
-          got_fruit[f.level]=true
-          init_object(lifeup, f.x, f.y,this.berry_count)
-          del(fruitrain, f)
-          destroy_object(f)
-          if (fruitrain[1]) fruitrain[1].target=this
-        end 
+      if f.type==fruit and not f.golden and this.berry_timer>5 and f then
+        -- to be implemented:
+        -- save berry
+        -- save golden
+        this.berry_timer=-5
+        this.berry_count+=1
+        got_fruit[f.level]=true
+        init_object(lifeup, f.x, f.y,this.berry_count)
+        del(fruitrain, f)
+        destroy_object(f)
+        if (fruitrain[1]) fruitrain[1].target=this
       end
     end
     -- </fruitrain> --
@@ -166,7 +164,10 @@ player={
     if this.dash_time>0 then
       this.init_smoke()
       this.dash_time-=1
-      this.spd=vector(appr(this.spd.x,this.dash_target_x,this.dash_accel_x),appr(this.spd.y,this.dash_target_y,this.dash_accel_y))
+      this.spd=vector(
+        appr(this.spd.x,this.dash_target_x,this.dash_accel_x),
+        appr(this.spd.y,this.dash_target_y,this.dash_accel_y)
+      )
     else
       -- x movement
       local maxrun=1
@@ -180,7 +181,7 @@ player={
       
       -- facing direction
       if this.spd.x~=0 then
-        this.flip.x=(this.spd.x<0)
+        this.flip.x=this.spd.x<0
       end
 
       -- y movement
@@ -226,8 +227,7 @@ player={
           if wall_dir~=0 then
             psfx(4)
             this.jbuffer=0
-            this.spd.y=-2
-            this.spd.x=-wall_dir*(maxrun+1)
+            this.spd=vector(wall_dir*(-1-maxrun),-2)
             -- wall jump smoke
             this.init_smoke(wall_dir*6)
           end
@@ -292,10 +292,10 @@ player={
   
   draw=function(this)
     -- clamp in screen
-  		if this.x<-1 or this.x>lvl_pw-7 then
+  	if this.x<-1 or this.x>lvl_pw-7 then
    		this.x=clamp(this.x,-1,lvl_pw-7)
    		this.spd.x=0
-  		end
+  	end
     -- draw player hair and sprite
     set_hair_color(this.djump)
     draw_hair(this,this.flip.x and -1 or 1)
@@ -514,11 +514,7 @@ fall_floor={
   end,
   draw=function(this)
     if this.state~=2 then
-      if this.state~=1 then
-        spr(23,this.x,this.y)
-      else
-        spr(26-this.delay/5,this.x,this.y)
-      end
+      spr(this.state==1 and 26-this.delay/5 or 23,this.x,this.y)
     end
   end
 }
@@ -620,7 +616,7 @@ fly_fruit={
   draw=function(this)
     spr(10,this.x,this.y)
     for ox=-6,6,12 do
-      spr((has_dashed or sin(this.step)>=0) and 12 or (this.y>this.start and 14 or 13),this.x+ox,this.y-2,1,1,ox==-6)
+      spr((has_dashed or sin(this.step)>=0) and 12 or this.y>this.start and 14 or 13,this.x+ox,this.y-2,1,1,ox==-6)
     end
   end
 }
@@ -1186,9 +1182,9 @@ function load_level(lvl)
   --chcek for hex mapdata
   if diff_room and get_data() then
   	--replace old rooms with data
-  	for i=0,get_lvl()[3]-1 do
-      for j=0,get_lvl()[4]-1 do
-        replace_room(lvl_x+i,lvl_y+j,get_data()[i*get_lvl()[4]+j+1])
+  	for i=0,tbl[3]-1 do
+      for j=0,tbl[4]-1 do
+        replace_room(lvl_x+i,lvl_y+j,get_data()[i*tbl[4]+j+1])
       end
   	end
   end
@@ -1196,7 +1192,7 @@ function load_level(lvl)
   -- entities
   for tx=0,lvl_w-1 do
     for ty=0,lvl_h-1 do
-      local tile=mget(lvl_x*16+tx,lvl_y*16+ty)
+      local tile=tile_at(tx,ty)
       if tiles[tile] then
         init_object(tiles[tile],tx*8,ty*8,tile)
       end
@@ -1234,7 +1230,7 @@ function _update()
   
   -- restart (soon)
   if delay_restart>0 then
-  		cam_spdx,cam_spdy=0,0
+  	cam_spdx,cam_spdy=0,0
     delay_restart-=1
     if delay_restart==0 then
     -- <fruitrain> --
@@ -1305,6 +1301,7 @@ function _draw()
   -- particles
   foreach(particles, function(p)
     p.y+=sin(p.off)-cam_spdy
+    p.y%=128
     p.off+=min(0.05,p.spd/32)
     -- <wind> --
       p.wspd=appr(p.wspd,wind_spd*12,0.5)
@@ -1313,7 +1310,7 @@ function _draw()
         line(p.x+camx,p.y+camy,p.x+p.wspd*-1.5+camx,p.y+camy,7)  
       else 
         p.x+=p.spd+p.wspd-cam_spdx
-        rectfill(p.x+camx,p.y%128+camy,p.x+p.s+camx+p.wspd*-1.5,p.y%128+p.s+camy,p.c)
+        rectfill(p.x+camx,p.y+camy,p.x+p.s+camx+p.wspd*-1.5,p.y+p.s+camy,p.c)
       end
     -- </wind> --
     if p.x>132 then 
