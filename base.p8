@@ -95,8 +95,8 @@ player={
     local h_input=btn(➡️) and 1 or btn(⬅️) and -1 or 0
     
     -- spike collision / bottom death
-    if spikes_at(this.x+this.hitbox.x,this.y+this.hitbox.y,this.hitbox.w,this.hitbox.h,this.spd.x,this.spd.y)
-	   or	this.y>lvl_ph then
+    if spikes_at(this.left(),this.top(),this.right(),this.bottom(),this.spd.x,this.spd.y) or 
+	    this.y>lvl_ph then
 	    kill_player(this)
     end
 
@@ -670,6 +670,10 @@ function init_object(type,x,y,tile)
     spd=vector(0,0),
     rem=vector(0,0),
   }
+  function obj.left() return obj.x+obj.hitbox.x end
+  function obj.right() return obj.left()+obj.hitbox.w-1 end
+  function obj.top() return obj.y+obj.hitbox.y end
+  function obj.bottom() return obj.top()+obj.hitbox.h-1 end
 
   function obj.is_solid(ox,oy)
     return (oy>0 and not obj.is_flag(ox,0,3) and obj.is_flag(ox,oy,3)) or  -- one way platform or
@@ -678,16 +682,22 @@ function init_object(type,x,y,tile)
   end
   
   function obj.is_flag(ox,oy,flag)
-    return tile_flag_at(obj.x+obj.hitbox.x+ox,obj.y+obj.hitbox.y+oy,obj.hitbox.w,obj.hitbox.h,flag)
+    for i=max(0,(obj.left()+ox)\8),min(15,(obj.right()+ox)/8) do
+      for j=max(0,(obj.top()+oy)\8),min(15,(obj.bottom()+oy)/8) do
+        if fget(tile_at(i,j),flag) then
+          return true
+        end
+      end
+    end
   end
-
+  
   function obj.check(type,ox,oy)
     for other in all(objects) do
       if other and other.type==type and other~=obj and other.collideable and
-        other.x+other.hitbox.x+other.hitbox.w>obj.x+obj.hitbox.x+ox and 
-        other.y+other.hitbox.y+other.hitbox.h>obj.y+obj.hitbox.y+oy and
-        other.x+other.hitbox.x<obj.x+obj.hitbox.x+obj.hitbox.w+ox and 
-        other.y+other.hitbox.y<obj.y+obj.hitbox.y+obj.hitbox.h+oy then
+        other.right()>=obj.left()+ox and 
+        other.bottom()>=obj.top()+oy and
+        other.left()<=obj.right()+ox and 
+        other.top()<=obj.bottom()+oy then
         return other
       end
     end
@@ -1016,28 +1026,18 @@ function maybe()
   return rnd(1)<0.5
 end
 
-function tile_flag_at(x,y,w,h,flag)
-  for i=max(0,x\8),min(lvl_w-1,(x+w-1)/8) do
-    for j=max(0,y\8),min(lvl_h-1,(y+h-1)/8) do
-      if fget(tile_at(i,j),flag) then
-        return true
-      end
-    end
-  end
-end
 
 function tile_at(x,y)
   return mget(lvl_x*16+x,lvl_y*16+y)
 end
 
-function spikes_at(x,y,w,h,xspd,yspd)
-  local xw,yh=x+w-1,y+h-1
-  for i=max(0,x\8),min(lvl_w-1,xw/8) do
-    for j=max(0,y\8),min(lvl_h-1,yh/8) do
-      if({yh%8>=6 and yspd>=0,
-          y%8<=2 and yspd<=0,
-          x%8<=2 and xspd<=0,
-          xw%8>=6  and xspd>=0})[tile_at(i,j)-15] then
+function spikes_at(x1,y1,x2,y2,xspd,yspd)
+  for i=max(0,x1\8),min(15,x2/8) do
+    for j=max(0,y1\8),min(15,y2/8) do
+      if({y2%8>=6 and yspd>=0,
+          y1%8<=2 and yspd<=0,
+          x1%8<=2 and xspd<=0,
+          x2%8>=6 and xspd>=0})[tile_at(i,j)-15] then
             return true 
       end 
     end
