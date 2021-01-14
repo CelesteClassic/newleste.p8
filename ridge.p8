@@ -1343,13 +1343,23 @@ function _draw()
   local xtiles=lvl_x*16
   local ytiles=lvl_y*16
   
+
+  --swap 0x3c for 0x3n where n is the color that will be swapped for the gradient
+  poke(0x5f5f,0x30)
+  for i=0,15 do
+    --put the gradient colors in the table below:
+    poke(0x5f60+i,({[0]=141,141,141,141,141,142,143,143,143,143,9,10,10,10,135,135,135})[i])
+  end
+  for i=0,14 do
+    poke(0x5f70+i,0xaa)
+  end
   -- draw bg color
   cls(flash_bg and frames/5 or new_bg and 2 or 0)
 
   -- bg clouds effect
   foreach(clouds, function(c)
     c.x+=c.spd-cam_spdx
-    rectfill(c.x+camx,c.y+camy,c.x+c.w+camx,c.y+16-c.w*0.1875+camy,new_bg and 14 or 1)
+    rectfill(c.x+camx,c.y+camy,c.x+c.w+camx,c.y+16-c.w*0.1875+camy,new_bg and 14 or 7)
     if c.x>128 then
       c.x=-c.w
       c.y=rnd(120)
