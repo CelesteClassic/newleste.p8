@@ -1310,12 +1310,12 @@ function _draw()
   local ytiles=lvl_y*16
   
   -- draw bg color
-  cls(flash_bg and frames/5 or new_bg and 2 or 0)
+  cls()
 
   -- bg clouds effect
   foreach(clouds, function(c)
     c.x+=c.spd-cam_spdx
-    rectfill(c.x+camx,c.y+camy,c.x+c.w+camx,c.y+16-c.w*0.1875+camy,new_bg and 14 or 1)
+    rectfill(c.x+camx,c.y+camy,c.x+c.w+camx,c.y+16-c.w*0.1875+camy,1)
     if c.x>128 then
       c.x=-c.w
       c.y=rnd(120)
