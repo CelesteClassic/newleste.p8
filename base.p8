@@ -678,8 +678,8 @@ function init_object(type,x,y,tile)
   end
   
   function obj.is_flag(ox,oy,flag)
-    for i=max(0,(obj.left()+ox)\8),min(15,(obj.right()+ox)/8) do
-      for j=max(0,(obj.top()+oy)\8),min(15,(obj.bottom()+oy)/8) do
+    for i=max(0,(obj.left()+ox)\8),min(lvl_w-1,(obj.right()+ox)/8) do
+      for j=max(0,(obj.top()+oy)\8),min(lvl_h-1,(obj.bottom()+oy)/8) do
         if fget(tile_at(i,j),flag) then
           return true
         end
@@ -1029,8 +1029,8 @@ function tile_at(x,y)
 end
 
 function spikes_at(x1,y1,x2,y2,xspd,yspd)
-  for i=max(0,x1\8),min(15,x2/8) do
-    for j=max(0,y1\8),min(15,y2/8) do
+  for i=max(0,x1\8),min(lvl_w-1,x2/8) do
+    for j=max(0,y1\8),min(lvl_h-1,y2/8) do
       if({y2%8>=6 and yspd>=0,
           y1%8<=2 and yspd<=0,
           x1%8<=2 and xspd<=0,
