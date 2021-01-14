@@ -872,7 +872,7 @@ green_bubble={
         this.movetimer=6
         this.timer=0
       end
-    elseif this.movetimer>0 then
+    elseif hit and this.movetimer>0 then
         this.x=hit.x
         this.y=hit.y
       this.movetimer-=1
@@ -888,6 +888,10 @@ green_bubble={
         this.x=this.start.x
         this.y=this.start.y
       end
+    elseif this.movetimer>0 then
+      this.invisible=true
+      this.x=this.start.x
+      this.y=this.start.y
     elseif this.invisible then
       this.dead_timer+=1
       if this.dead_timer==60 then
