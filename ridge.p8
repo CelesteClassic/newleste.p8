@@ -288,6 +288,8 @@ player={
     
     -- was on the ground
     this.was_on_ground=on_ground
+
+    update_hair(this,this.flip.x and -1 or 1) --<green_bubble>
   end,
   
   draw=function(this)
@@ -315,15 +317,23 @@ function set_hair_color(djump)
   pal(8,djump==1 and 8 or 12)
 end
 
+--<green_bubble>
 function draw_hair(obj,facing)
+  local last=vector(obj.x+4-facing*2,obj.y+(btn(⬇️) and 4 or 3))
+  for i,h in pairs(obj.hair) do
+    circfill(h.x,h.y,clamp(4-i,1,2),8)
+  end
+end
+
+function update_hair(obj,facing)
   local last=vector(obj.x+4-facing*2,obj.y+(btn(⬇️) and 4 or 3))
   for i,h in pairs(obj.hair) do
     h.x+=(last.x-h.x)/1.5
     h.y+=(last.y+0.5-h.y)/1.5
-    circfill(h.x,h.y,clamp(4-i,1,2),8)
     last=h
   end
 end
+--</green_bubble>
 
 function unset_hair_color()
   pal(8,8)
@@ -392,6 +402,7 @@ player_spawn={
       end
     end
     move_camera(this)
+    update_hair(this,1) --<green_bubble>
   end,
   draw=function(this)
     set_hair_color(max_djump)
@@ -817,11 +828,13 @@ green_bubble={
     this.timer=0
     this.shake=0
     this.dead_timer=0
+    this.movetimer=0
     this.hitbox=rectangle(0,0,12,12)
+    this.start=vector(this.x,this.y)
   end,
   update=function(this)
     local hit=this.player_here()
-    if hit and not this.invisible then
+    if hit and this.movetimer==0 and not this.invisible then
       hit.invisible=true
       hit.spd=vector(0,0)
       hit.rem=vector(0,0)
@@ -833,11 +846,26 @@ green_bubble={
       hit.x,hit.y=this.x+1,this.y+1
       this.timer+=1
       if this.timer>10 or btnp(❎) then
-        hit.invisible=false
         hit.djump=max_djump+1
-        hit.do_dash=true        
-        this.invisible=true
+        hit.do_dash=true     
+        this.movetimer=6
         this.timer=0
+      end
+    elseif this.movetimer>0 then
+        this.x=hit.x
+        this.y=hit.y
+      this.movetimer-=1
+      if this.movetimer==0 then
+        for i=-4,4,8 do
+          for j=-4,4,8 do
+            this.init_smoke(i, -j)
+          end
+        end
+
+        hit.invisible=false
+        this.invisible=true
+        this.x=this.start.x
+        this.y=this.start.y
       end
     elseif this.invisible then
       this.dead_timer+=1
@@ -860,6 +888,12 @@ green_bubble={
     local sy=sin(t)<-0.5 and 1 or 0
     for f in all({ovalfill,oval}) do
       f(x-2-sx,y-2-sy,x+9+sx,y+9+sy,f==oval and 11 or 3)
+    end
+    if this.timer>0 or this.movetimer>0 then
+      pal(8,1)
+      pal(15,1)
+      spr(1,x,y)
+      pal()
     end
   	for dx=2,5 do
       local _t=(5*t+3*dx)%8
