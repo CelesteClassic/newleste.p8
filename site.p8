@@ -628,6 +628,79 @@ lifeup={
   end
 }
 
+badeline={
+  init=function(this) 
+    for o in all(objects) do 
+      if (o.type==player_spawn or o.type==badeline) and not o.tracked then 
+        bade_track(this,o)
+        break
+      end 
+    end 
+    this.states={}
+    this.timer=0
+    
+  end,
+  update=function(this) 
+    local tr,states=this.tracking,this.states
+    if tr.type==player_spawn and tr.state==2 and tr.delay<0 then 
+      for o in all(objects) do 
+        if o.type==player then 
+          bade_track(this,o)
+          tr=o
+          break
+        end
+      end  
+    elseif tr.type==badeline and tr.timer<30 then 
+      return 
+    end 
+    if this.timer<70 then 
+      this.timer+=1
+    end 
+    local sm={}
+    for s in all(this.smokes) do 
+      add(sm,s)
+    end 
+    this.smokes={}
+    add(states,{tr.x,tr.y,tr.flip.x,tr.spr or 1,sm})
+    if #states>=30 then 
+      this.x,this.y,this.flip.x,this.spr,sm=unpack(states[1])
+      del(states,states[1])
+      for s in all(sm) do 
+        this.init_smoke(unpack(s))
+      end
+    end 
+    if this.timer==30 then 
+      create_hair(this)
+    end
+    local hit=this.check(player,0,0)
+    if hit and this.timer>=70 then 
+      kill_player(hit)
+    end 
+  end,
+  draw=function(this)
+    if this.timer>=30 then 
+      pal(8,2)
+      pal(15,6)
+      pal(3,1)
+      pal(1,8)
+      pal(7,5)
+      draw_hair(this,this.flip.x and -1 or 1)
+      draw_obj_sprite(this)
+      pal()
+    end 
+	end
+}
+function bade_track(this,o)
+  o.tracked=true 
+  this.tracking=o 
+  this.hitbox=o.hitbox
+  local f=o.init_smoke
+  o.init_smoke=function(...)
+    add(this.smokes,{...})
+    f(...)
+  end 
+end 
+
 
 psfx=function(num)
   if sfx_timer<=0 then
@@ -794,7 +867,9 @@ function load_level(lvl)
   
   --set level globals
   local tbl=get_lvl()
-  lvl_x,lvl_y,lvl_w,lvl_h=tbl[1],tbl[2],tbl[3]*16,tbl[4]*16
+  --<badeline>--
+  lvl_x,lvl_y,lvl_w,lvl_h,bad_num=tbl[1],tbl[2],tbl[3]*16,tbl[4]*16,tbl[5]
+  --</badeline>--
   lvl_pw=lvl_w*8
   lvl_ph=lvl_h*8
   
@@ -823,6 +898,11 @@ function load_level(lvl)
       end
     end
   end
+  --<badeline>--
+  for i=1,bad_num do 
+    init_object(badeline,0,0)
+  end
+  --</badeline>--
 end
 
 -- [main update loop]
@@ -1068,9 +1148,9 @@ end
 
 --level table
 --strings follow this format:
---"x,y,w,h"
+--"x,y,w,h,badeline num"
 levels={
-	"0,0,1,1",
+	"0,0,1,1,2",
   "1,0,3,1"
 }
 
