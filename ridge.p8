@@ -1090,7 +1090,9 @@ function init_object(type,x,y,tile)
       if obj.solids then
         local step=sign(amt)
         local d=axis=="x" and step or 0
+        -- <solids> --
         local p=obj[axis]
+        -- </solids> --
         for i=start,abs(amt) do
           if not obj.is_solid(d,step-d) then
             obj[axis]+=step
@@ -1099,7 +1101,9 @@ function init_object(type,x,y,tile)
             break
           end
         end
+        -- <solids> --
         amt=obj[axis]-p --save how many px moved to use later for solids
+        -- </solids> --
       else
         obj[axis]+=amt
       end
