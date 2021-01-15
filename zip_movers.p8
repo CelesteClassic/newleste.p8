@@ -635,7 +635,6 @@ zip_mover={
     this.accel=0.5
     this.max_spd=6
     this.solid_obj=true
-    this.solids=true
     this.startup=0
     
     while this.right()<lvl_pw-1 and tile_at(this.right()/8+1,this.y/8)==65 do 
@@ -651,8 +650,8 @@ zip_mover={
     if this.startup>0 then
     	this.startup-=1
     elseif this.active then
-    	this.spd.x=appr(this.spd.x,this.max_spd*this.dir.x,this.accel)
-    	this.spd.y=appr(this.spd.y,this.max_spd*this.dir.y,this.accel)
+    	this.spd.x=appr(this.spd.x,this.max_spd*this.dir.x,abs(this.accel*this.dir.x))
+    	this.spd.y=appr(this.spd.y,this.max_spd*this.dir.y,abs(this.accel*this.dir.y))
     end
     
     local hit=this.check(player,0,-1)
@@ -667,23 +666,30 @@ zip_mover={
       x+=rnd(2)-1
       y+=rnd(2)-1
     end
+    local r,b=x+this.hitbox.w-1,y+this.hitbox.h-1
+    
     if this.active then
     	pal(2,3)
     	pal(8,11)
     end
-    local r,b=x+this.hitbox.w-1,y+this.hitbox.h-1
+    
+    --chasis
     line(x,y,r,y,7)
     rectfill(x,y+1,r,b,1)
     rect(x+1,y+2,r-1,b-1,5)
     spr(64,x+this.hitbox.w/2-4,y)
     rect(x,y+1,r,b,6)
     
+    --top corner sprites
     if this.hitbox.w>8 then
     	spr(80,x,y)
     	spr(80,r-7,y,1,1,true)
     end
+    
+    --bottom corner sprites
     spr(80,x,b-7,1,1,false,true)
     spr(80,r-7,b-7,1,1,true,true)
+    
     pal()
   end
 }
