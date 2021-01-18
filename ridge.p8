@@ -654,11 +654,9 @@ bouncy_cloud = {
 		this.state=0
 		this.start=this.y
     this.hitbox=rectangle(0,0,16,0)
-		this.solids=true
+		this.semisolid_obj=true
 	end,
 	update=function(this)
-		
-		
 		--fragile cloud override
 		if this.break_timer==0 then
 			this.collideable=true
@@ -678,17 +676,10 @@ bouncy_cloud = {
 		
 		if this.state==1 then
 			--in animation
-			local amt=-sin(this.time)
-      local ry=this.rem.y
-			this.move(0,amt,0)
-			if hit then
-        hit.rem.y=ry
-				hit.move(0,amt,0)
-        --smol bounce if player didn't jump
-        if this.time>=0.85 then 
-				  hit.spd.y=min(hit.spd.y,-1.5)
-				  hit.grace=0
-        end 
+			this.spd.y=-2*sin(this.time)
+			if hit and this.time>=0.85 then 
+        hit.spd.y=min(hit.spd.y,-1.5)
+        hit.grace=0
 			end
       
 			
@@ -706,12 +697,14 @@ bouncy_cloud = {
 				this.init_smoke()
 				this.init_smoke(8)
 			end
-			this.rem=vector(0,0)
-			this.y=appr(this.y,this.start,1)
+			
+      this.spd.y=sign(this.start-this.y)
 			if this.y==this.start then
 				this.time=0.25
 				this.state=0
-			end
+        this.rem=vector(0,0)
+      end
+        
 		end
 	end,
 	draw=function(this)
@@ -729,6 +722,7 @@ bouncy_cloud = {
 
 fake_wall={
   init=function(this)
+    this.solid_obj=true
     local match 
     for i=this.y,lvl_ph,8 do 
       if tile_at(this.x/8,i/8)==83 then 
@@ -1042,7 +1036,7 @@ function init_object(type,x,y,tile)
     -- <solids> --
   function obj.is_solid(ox,oy)
     for o in all(objects) do 
-      if (o.solid_obj or o.semisolid_obj) and obj.objcollide(o,ox,oy) and not (o.semisolid_obj and obj.objcollide(o,ox,0)) then 
+      if (o.solid_obj or o.semisolid_obj and not obj.objcollide(o,ox,0) and oy>0) and obj.objcollide(o,ox,oy)  then 
         return true 
       end 
     end 
