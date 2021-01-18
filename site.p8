@@ -748,9 +748,9 @@ function init_object(type,x,y,tile)
     -- <solids> --
   function obj.is_solid(ox,oy)
     for o in all(objects) do 
-      if (o.solid_obj or o.semisolid_obj) and obj.objcollide(o,ox,oy) and not (o.semisolid_obj and obj.objcollide(o,ox,0)) then 
+      if (o.solid_obj or o.semisolid_obj and not obj.objcollide(o,ox,0) and oy>0) and obj.objcollide(o,ox,oy)  then 
         return true 
-      end 
+      end  
     end 
     return (oy>0 and not obj.is_flag(ox,0,3) and obj.is_flag(ox,oy,3)) or  -- one way platform or
             obj.is_flag(ox,oy,0) -- solid terrain
