@@ -483,6 +483,7 @@ refill={
 
 fall_floor={
   init=function(this)
+    this.solid_obj=true
     this.state=0
   end,
   update=function(this)
@@ -1038,18 +1039,17 @@ function init_object(type,x,y,tile)
   function obj.top() return obj.y+obj.hitbox.y end
   function obj.bottom() return obj.top()+obj.hitbox.h-1 end
 
+    -- <solids> --
   function obj.is_solid(ox,oy)
+    for o in all(objects) do 
+      if (o.solid_obj or o.semisolid_obj) and obj.objcollide(o,ox,oy) and not (o.semisolid_obj and obj.objcollide(o,ox,0)) then 
+        return true 
+      end 
+    end 
     return (oy>0 and not obj.is_flag(ox,0,3) and obj.is_flag(ox,oy,3)) or  -- one way platform or
-           -- <cloud> --
-           oy>0 and not obj.check(bouncy_cloud,ox,0) and obj.check(bouncy_cloud,ox,oy) or
-           -- </cloud> --
-           -- <arrow_platform> --
-           obj.check(arrow_platform,ox,oy) or
-           -- </arrow_platform> --
-           obj.is_flag(ox,oy,0) or 
-           obj.check(fall_floor,ox,oy) or
-           obj.check(fake_wall,ox,oy)
+            obj.is_flag(ox,oy,0) -- solid terrain
   end
+  -- </solids> --
   
   function obj.is_flag(ox,oy,flag)
     for i=max(0,(obj.left()+ox)\8),min(lvl_w-1,(obj.right()+ox)/8) do
@@ -1060,14 +1060,18 @@ function init_object(type,x,y,tile)
       end
     end
   end
-  
+  -- <solids> --
+  function obj.objcollide(other,ox,oy) 
+    return other.collideable and
+    other.right()>=obj.left()+ox and 
+    other.bottom()>=obj.top()+oy and
+    other.left()<=obj.right()+ox and 
+    other.top()<=obj.bottom()+oy
+  end
+  -- </solids> --
   function obj.check(type,ox,oy)
     for other in all(objects) do
-      if other and other.type==type and other~=obj and other.collideable and
-        other.right()>=obj.left()+ox and 
-        other.bottom()>=obj.top()+oy and
-        other.left()<=obj.right()+ox and 
-        other.top()<=obj.bottom()+oy then
+      if other and other.type==type and other~=obj and obj.objcollide(other,ox,oy) then
         return other
       end
     end
@@ -1077,22 +1081,21 @@ function init_object(type,x,y,tile)
     return obj.check(player,0,0)
   end
   
+  --<solids>--
   function obj.move(ox,oy,start)
     for axis in all({"x","y"}) do
       -- <wind> --
       obj.rem[axis]+=axis=="x" and ox+(obj.type==player and obj.dash_time<=0 and wind_spd or 0) or oy
       -- </wind> --
-      local amt=flr(obj.rem[axis]+0.5)
+      local amt=round(obj.rem[axis])
       obj.rem[axis]-=amt
-      -- <solids> --
-      local riding=obj.check(player,0,-1)
-      -- </solids> --
+      local upmoving=axis=="y" and amt<0
+      local riding=not obj.player_here() and obj.check(player,0,upmoving and amt or -1)
+      local movamt
       if obj.solids then
         local step=sign(amt)
         local d=axis=="x" and step or 0
-        -- <solids> --
         local p=obj[axis]
-        -- </solids> --
         for i=start,abs(amt) do
           if not obj.is_solid(d,step-d) then
             obj[axis]+=step
@@ -1101,17 +1104,25 @@ function init_object(type,x,y,tile)
             break
           end
         end
-        -- <solids> --
-        amt=obj[axis]-p --save how many px moved to use later for solids
-        -- </solids> --
+        movamt=obj[axis]-p --save how many px moved to use later for solids
       else
+        movamt=amt 
+        if upmoving and riding then 
+          movamt+=obj.top()-riding.bottom()-1
+          local hamt=round(riding.spd.y+riding.rem.y)
+          hamt+=sign(hamt)
+          if movamt<hamt then 
+            riding.spd.y=0
+          else 
+            movamt=0
+          end
+        end
         obj[axis]+=amt
       end
-      -- <solids> --
-      if obj.solid_obj and obj.collideable then
+      if (obj.solid_obj or obj.semisolid_obj) and obj.collideable then
         obj.collideable=false 
         local hit=obj.player_here()
-        if hit then 
+        if hit and obj.solid_obj then 
           hit.move(axis=="x" and (amt>0 and obj.right()+1-hit.left() or amt<0 and obj.left()-hit.right()-1) or 0, 
                   axis=="y" and (amt>0 and obj.bottom()+1-hit.top() or amt<0 and obj.top()-hit.bottom()-1) or 0,
                   1)
@@ -1119,13 +1130,13 @@ function init_object(type,x,y,tile)
             kill_player(hit)
           end 
         elseif riding then 
-          riding.move(axis=="x" and amt or 0, axis=="y" and amt or 0,1)
+          riding.move(axis=="x" and movamt or 0, axis=="y" and movamt or 0,1)
         end
         obj.collideable=true 
       end
-      -- </solids> --
     end
   end
+  --</solids>--
 
   function obj.init_smoke(ox,oy) 
     init_object(smoke,obj.x+(ox or 0),obj.y+(oy or 0),26)
