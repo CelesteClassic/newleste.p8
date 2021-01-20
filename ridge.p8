@@ -1036,7 +1036,7 @@ function init_object(type,x,y,tile)
     -- <solids> --
   function obj.is_solid(ox,oy)
     for o in all(objects) do 
-      if (o.solid_obj or o.semisolid_obj and not obj.objcollide(o,ox,0) and oy>0) and obj.objcollide(o,ox,oy)  then 
+      if (o!=obj and o.solid_obj or o.semisolid_obj and not obj.objcollide(o,ox,0) and oy>0) and obj.objcollide(o,ox,oy)  then 
         return true 
       end 
     end 
