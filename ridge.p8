@@ -1243,6 +1243,9 @@ function load_level(lvl)
       end
     end
   end
+  foreach(objects,function(o)
+    (o.type.end_init or stat)(o)
+  end)
 end
 
 -- [main update loop]
