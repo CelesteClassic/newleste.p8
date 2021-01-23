@@ -1036,7 +1036,7 @@ function init_object(type,x,y,tile)
     -- <solids> --
   function obj.is_solid(ox,oy)
     for o in all(objects) do 
-      if (o!=obj and o.solid_obj or o.semisolid_obj and not obj.objcollide(o,ox,0) and oy>0) and obj.objcollide(o,ox,oy)  then 
+      if o!=obj and (o.solid_obj or o.semisolid_obj and not obj.objcollide(o,ox,0) and oy>0) and obj.objcollide(o,ox,oy)  then 
         return true 
       end 
     end 
@@ -1101,12 +1101,12 @@ function init_object(type,x,y,tile)
         movamt=obj[axis]-p --save how many px moved to use later for solids
       else
         movamt=amt 
-        if upmoving and riding then 
+        if (obj.solid_obj or obj.semisolid_obj) and upmoving and riding then 
           movamt+=obj.top()-riding.bottom()-1
           local hamt=round(riding.spd.y+riding.rem.y)
           hamt+=sign(hamt)
           if movamt<hamt then 
-            riding.spd.y=0
+            riding.spd.y=max(riding.spd.y,0)
           else 
             movamt=0
           end
