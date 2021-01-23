@@ -764,7 +764,7 @@ fall_plat={
   end
 
 }
-
+-- <touch_switch> --
 touch_switch={
   init=function(this)
     this.off=2
@@ -897,7 +897,7 @@ switch_block={
     spr(88,x+this.hitbox.w/2-4,y+this.hitbox.h/2-4)
   end 
 }
-
+-- <touch_switch> --
 psfx=function(num)
   if sfx_timer<=0 then
    sfx(num)
@@ -917,7 +917,9 @@ tiles={
   [66]=fall_plat,
   [68]=touch_switch,
   [71]=switch_block,
+  -- <touch_switch> --
   [88]={}
+  -- <touch_switch> --
 }
 
 -- [object functions]
