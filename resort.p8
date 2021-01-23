@@ -466,6 +466,7 @@ refill={
 
 fall_floor={
   init=function(this)
+    this.solid_obj=true
     this.state=0
   end,
   update=function(this)
@@ -671,11 +672,17 @@ function init_object(type,x,y,tile)
   function obj.top() return obj.y+obj.hitbox.y end
   function obj.bottom() return obj.top()+obj.hitbox.h-1 end
 
+    -- <solids> --
   function obj.is_solid(ox,oy)
+    for o in all(objects) do 
+      if o!=obj and (o.solid_obj or o.semisolid_obj and not obj.objcollide(o,ox,0) and oy>0) and obj.objcollide(o,ox,oy)  then 
+        return true 
+      end 
+    end 
     return (oy>0 and not obj.is_flag(ox,0,3) and obj.is_flag(ox,oy,3)) or  -- one way platform or
-           obj.is_flag(ox,oy,0) or 
-           obj.check(fall_floor,ox,oy)
+            obj.is_flag(ox,oy,0) -- solid terrain
   end
+  -- </solids> --
   
   function obj.is_flag(ox,oy,flag)
     for i=max(0,(obj.left()+ox)\8),min(lvl_w-1,(obj.right()+ox)/8) do
@@ -686,14 +693,18 @@ function init_object(type,x,y,tile)
       end
     end
   end
-  
+  -- <solids> --
+  function obj.objcollide(other,ox,oy) 
+    return other.collideable and
+    other.right()>=obj.left()+ox and 
+    other.bottom()>=obj.top()+oy and
+    other.left()<=obj.right()+ox and 
+    other.top()<=obj.bottom()+oy
+  end
+  -- </solids> --
   function obj.check(type,ox,oy)
     for other in all(objects) do
-      if other and other.type==type and other~=obj and other.collideable and
-        other.right()>=obj.left()+ox and 
-        other.bottom()>=obj.top()+oy and
-        other.left()<=obj.right()+ox and 
-        other.top()<=obj.bottom()+oy then
+      if other and other.type==type and other~=obj and obj.objcollide(other,ox,oy) then
         return other
       end
     end
@@ -703,14 +714,19 @@ function init_object(type,x,y,tile)
     return obj.check(player,0,0)
   end
   
+  --<solids>--
   function obj.move(ox,oy,start)
     for axis in all({"x","y"}) do
       obj.rem[axis]+=axis=="x" and ox or oy
-      local amt=flr(obj.rem[axis]+0.5)
+      local amt=round(obj.rem[axis])
       obj.rem[axis]-=amt
+      local upmoving=axis=="y" and amt<0
+      local riding=not obj.player_here() and obj.check(player,0,upmoving and amt or -1)
+      local movamt
       if obj.solids then
         local step=sign(amt)
         local d=axis=="x" and step or 0
+        local p=obj[axis]
         for i=start,abs(amt) do
           if not obj.is_solid(d,step-d) then
             obj[axis]+=step
@@ -719,11 +735,39 @@ function init_object(type,x,y,tile)
             break
           end
         end
+        movamt=obj[axis]-p --save how many px moved to use later for solids
       else
+        movamt=amt 
+        if (obj.solid_obj or obj.semisolid_obj) and upmoving and riding then 
+          movamt+=obj.top()-riding.bottom()-1
+          local hamt=round(riding.spd.y+riding.rem.y)
+          hamt+=sign(hamt)
+          if movamt<hamt then 
+            riding.spd.y=max(riding.spd.y,0)
+          else 
+            movamt=0
+          end
+        end
         obj[axis]+=amt
+      end
+      if (obj.solid_obj or obj.semisolid_obj) and obj.collideable then
+        obj.collideable=false 
+        local hit=obj.player_here()
+        if hit and obj.solid_obj then 
+          hit.move(axis=="x" and (amt>0 and obj.right()+1-hit.left() or amt<0 and obj.left()-hit.right()-1) or 0, 
+                  axis=="y" and (amt>0 and obj.bottom()+1-hit.top() or amt<0 and obj.top()-hit.bottom()-1) or 0,
+                  1)
+          if(obj.player_here()) then 
+            kill_player(hit)
+          end 
+        elseif riding then 
+          riding.move(axis=="x" and movamt or 0, axis=="y" and movamt or 0,1)
+        end
+        obj.collideable=true 
       end
     end
   end
+  --</solids>--
 
   function obj.init_smoke(ox,oy) 
     init_object(smoke,obj.x+(ox or 0),obj.y+(oy or 0),26)
@@ -823,6 +867,9 @@ function load_level(lvl)
       end
     end
   end
+  foreach(objects,function(o)
+    (o.type.end_init or stat)(o)
+  end)
 end
 
 -- [main update loop]
@@ -1326,7 +1373,7 @@ __gff__
 __map__
 2b3b29000000000000000000002a3b2b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 3b290000000000000000000000002a3b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-29000000000000013d0000000000002a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+2900000000000001000000000000002a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000132122222312000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000133132323312000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 1000000000001111111100000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
