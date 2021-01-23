@@ -882,7 +882,7 @@ switch_block={
     end 
     for i=x+8,r-8,8 do 
       spr(72,i,y)
-      spr(72,i,d,1.0,1.0,true)
+      spr(72,i,d,1.0,1.0,false,true)
     end
     for i=y+8,d-8,8 do 
       spr(87,x,i)
@@ -892,7 +892,7 @@ switch_block={
       for j=y+8,d-8,8 do 
         rectfill(i,j,i+8,j+8,1)
       end 
-    end 
+    end
 
     spr(88,x+this.hitbox.w/2-4,y+this.hitbox.h/2-4)
   end 
