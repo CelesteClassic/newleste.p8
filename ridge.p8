@@ -1461,7 +1461,7 @@ function _draw()
 
   -- <transition>
   camera()
-  color(0)
+  color(1)
   if tstate>=0 then
     local t20=tpos+20
     if tstate==0 then
@@ -1480,7 +1480,11 @@ function _draw()
       end
     end
     tpos+=14
+    if tstate==0 and tpos>0 or tstate==1 and tpos<108 then 
+      pal(1,0,1)
+    end 
   end
+  
   -- </transition>
 end
 
@@ -1563,7 +1567,7 @@ end
 function p01traph(l,r,lt,rt,y0,y1)
   lt,rt=(lt-l)/(y1-y0),(rt-r)/(y1-y0)
   for y0=y0,y1 do
-    rectfill(l,y0,r,y0,0)
+    rectfill(l,y0,r,y0)
     l+=lt
     r+=rt
   end
