@@ -407,27 +407,32 @@ spring={
 
 -- <sinking platform> --
 sinking_platform = {
-
 	init=function(this)
-		this.speed=0 --vertical movement speed, positive=sinking, negative=rising
-		this.maxspeed=1 --set the maximum movement speed
-		this.start=this.y --fix the height so it knows where to return to
-		this.hitbox=rectangle(0,0,16,0) --set the hitbox
-		this.semisolid_obj=true --register it as a semisolid object
+		this.start=this.y
+		this.hitbox=rectangle(0,0,16,0)
+		this.semisolid_obj=true
+    this.rise_timer = 0
 	end,
-	
 	update=function(this)
 		local hit=this.check(player,0,-1)
-		if hit then this.speed=appr(this.speed, btn(3) and 2 or 1, this.speed>=1 and 0.15 or 0.25) else this.speed=appr(this.speed, -1, 0.25) end
-		if this.y<=this.start and not hit then this.speed=0 end
-		this.y+=this.speed --move the platform based on its current speed
-		if this.y<=this.start then this.y=this.start end --clamp the height at the top
-		if hit then hit.y+=this.speed end --move the player by the same amount as the platform in order to avoid any weird behaviour
+    if hit then
+      this.rise_timer = 2
+      this.spd.y = appr(this.spd.y, btn(3) and 2 or 1, 0.5)
+    elseif this.rise_timer > 0 then
+      this.rise_timer -= 1
+      this.spd.y = appr(this.spd.y, 1.8, 0.8)
+    else
+      this.spd.y = appr(this.spd.y, -2, 0.2)
+    end
 
+		if this.y<=this.start and not hit then
+      this.spd.y=0
+      this.y = this.start
+    end
 	end,
 	
 	draw=function(this)
-		spr(29,this.x,this.y,2.0,1.0)
+		spr(29,this.x,this.y,2,1)
 		--add a line or two here to draw the tracks going down
 	end
 
