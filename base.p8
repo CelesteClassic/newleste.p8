@@ -602,10 +602,8 @@ fly_fruit={
       this.init_smoke(-6)
       this.init_smoke(6)
 
-      --there's probably a less dumb way to do this. 
-      --don't want to encounter got_fruit check of a different fruit
-      local f=init_object(fruit, -2, -2,10) 
-      f.x,f.y=this.x,this.y
+      local f=init_object(fruit,this.x,this.y,10) --if this happens to be in the exact location of a different fruit that has already been collected, this'll cause a crash
+      --TODO: fix this if needed 
       f.fruit_id=this.fruit_id
       fruit.update(f)
       --- </fruitrain> ---
@@ -625,6 +623,7 @@ lifeup={
     this.spd.y=-0.25
     this.duration=30
     this.flash=0
+    this.outline=false
     sfx_timer=20
     sfx(9)
   end,
