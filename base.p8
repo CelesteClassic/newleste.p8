@@ -29,6 +29,8 @@ freeze,delay_restart,sfx_timer,music_timer,ui_timer=0,0,0,0,-99
 --camera values
 cam_x,cam_y,cam_spdx,cam_spdy,cam_gain=0,0,0,0,0.25
 
+_pal=pal --for outlining
+
 -- [entry point]
 
 function _init()
@@ -260,7 +262,7 @@ player={
       btn(⬇️) and 6 or -- crouch
       btn(⬆️) and 7 or -- look up
       this.spd.x~=0 and h_input~=0 and 1+this.spr_off%4 or 1 -- walk or stand
-    
+    update_hair(this)
     -- exit level off the top (except summit)
     if this.y<-4 and levels[lvl_id+1] then
       next_level()
@@ -296,13 +298,18 @@ function set_hair_color(djump)
   pal(8,djump==1 and 8 or 12)
 end
 
-function draw_hair(obj)
-  local last=vector(obj.x+(obj.flip.x and 6 or 2),obj.y+(btn(⬇️) and 4 or 3))
-  for i,h in pairs(obj.hair) do
+function update_hair(obj)
+  local last=vector(obj.x+4-(obj.flip.x and-2 or 3),obj.y+(btn(⬇️) and 4 or 2.9))
+  for h in all(obj.hair) do
     h.x+=(last.x-h.x)/1.5
     h.y+=(last.y+0.5-h.y)/1.5
-    circfill(h.x,h.y,mid(4-i,1,2),8)
     last=h
+  end
+end
+
+function draw_hair(obj)
+  for i,h in pairs(obj.hair) do
+    circfill(round(h.x),round(h.y),mid(4-i,1,2),8)
   end
 end
 
@@ -367,6 +374,7 @@ player_spawn={
         --- </fruitrain> ---
       end
     end
+    update_hair(this)
   end,
   draw=player.draw
   -- draw=function(this)
@@ -673,6 +681,7 @@ function init_object(type,x,y,tile)
     spd=vector(0,0),
     rem=vector(0,0),
     fruit_id=id,
+    outline=true
   }
   function obj.left() return obj.x+obj.hitbox.x end
   function obj.right() return obj.left()+obj.hitbox.w-1 end
@@ -969,6 +978,20 @@ function _draw()
 
 		-- draw bg terrain
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,4)
+
+  -- draw outlines
+  for i=0,15 do pal(i,1) end
+  pal=stat
+  foreach(objects,function(o)
+    if o.outline then
+      for dx=-1,1 do for dy=-1,1 do if dx==0 or dy==0 then
+        camera(draw_x+dx,draw_y+dy) draw_object(o)
+      end end end
+    end
+  end)
+  pal=_pal
+  camera(draw_x,draw_y)
+  pal()
 	
   --set draw layering
   --0: background layer
