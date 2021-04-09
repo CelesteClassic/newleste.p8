@@ -4,12 +4,11 @@ __lua__
 --newleste.p8 base cart
 
 --original game by:
---matt thorson + noel berry
+--maddy thorson + noel berry
 
---based on taco's evercore,
---meep's smalleste
---and akliant's hex loading
---with help from gonengazit
+-- based on evercore v2.0.2
+--with major project contributions by
+--taco360, meep, gonengazit, and akliant
 
 -- [data structures]
 
@@ -23,16 +22,19 @@ end
 
 -- [globals]
 
-objects,got_fruit,
-freeze,delay_restart,sfx_timer,music_timer,
-ui_timer=
-{},{},
-0,0,0,0,-99
+--tables
+objects,got_fruit={},{}
+--timers
+freeze,delay_restart,sfx_timer,music_timer,ui_timer=0,0,0,0,-99
+--camera values
+cam_x,cam_y,cam_spdx,cam_spdy,cam_gain=0,0,0,0,0.25
+
+_pal=pal --for outlining
 
 -- [entry point]
 
 function _init()
-  max_djump,deaths,frames,seconds,minutes,music_timer,time_ticking=1,0,0,0,0,0,true
+  max_djump,deaths,frames,seconds,minutes,music_timer,time_ticking,berry_count=1,0,0,0,0,0,true,0
   music(0,0,7)
   load_level(1)
 end
@@ -61,7 +63,7 @@ for i=0,24 do
     y=rnd128(),
     s=flr(rnd(1.25)),
     spd=0.25+rnd(5),
-    off=rnd(1),
+    off=rnd(),
     c=6+rnd(2),
   })
 end
@@ -71,6 +73,7 @@ dead_particles={}
 -- [player entity]
 
 player={
+  layer=2,
   init=function(this) 
     this.grace,this.jbuffer=0,0
     this.djump=max_djump
@@ -79,7 +82,7 @@ player={
     this.dash_accel_x,this.dash_accel_y=0,0
     this.hitbox=rectangle(1,3,6,5)
     this.spr_off=0
-    this.solids=true
+    this.collides=true
     create_hair(this)
     -- <fruitrain> --
     this.berry_timer=0
@@ -95,7 +98,7 @@ player={
     local h_input=btn(➡️) and 1 or btn(⬅️) and -1 or 0
     
     -- spike collision / bottom death
-    if spikes_at(this.left(),this.top(),this.right(),this.bottom(),this.spd.x,this.spd.y) or 
+    if this.is_flag(0,0,-1) or 
 	    this.y>lvl_ph then
 	    kill_player(this)
     end
@@ -118,7 +121,8 @@ player={
         -- save golden
         this.berry_timer=-5
         this.berry_count+=1
-        got_fruit[f.level]=true
+        berry_count+=1
+        got_fruit[f.fruit_id]=true
         init_object(lifeup, f.x, f.y,this.berry_count)
         del(fruitrain, f)
         destroy_object(f)
@@ -257,13 +261,8 @@ player={
     this.spr = not on_ground and (this.is_solid(h_input,0) and 5 or 3) or  -- wall slide or mid air
       btn(⬇️) and 6 or -- crouch
       btn(⬆️) and 7 or -- look up
-      1+(this.spd.x~=0 and h_input~=0 and this.spr_off%4 or 0) -- walk or stand
-    
-   	--move camera to player
-   	--this must be before next_level
-   	--to avoid loading jank
-    move_camera(this)
-    
+      this.spd.x~=0 and h_input~=0 and 1+this.spr_off%4 or 1 -- walk or stand
+    update_hair(this)
     -- exit level off the top (except summit)
     if this.y<-4 and levels[lvl_id+1] then
       next_level()
@@ -275,15 +274,16 @@ player={
   
   draw=function(this)
     -- clamp in screen
-  	if this.x<-1 or this.x>lvl_pw-7 then
-   		this.x=clamp(this.x,-1,lvl_pw-7)
-   		this.spd.x=0
-  	end
+    local clamped=mid(this.x,-1,lvl_pw-7)
+    if this.x~=clamped then
+      this.x=clamped
+      this.spd.x=0
+    end
     -- draw player hair and sprite
     set_hair_color(this.djump)
-    draw_hair(this,this.flip.x and -1 or 1)
+    draw_hair(this)
     draw_obj_sprite(this)
-    unset_hair_color()
+    pal()
   end
 }
 
@@ -298,52 +298,52 @@ function set_hair_color(djump)
   pal(8,djump==1 and 8 or 12)
 end
 
-function draw_hair(obj,facing)
-  local last=vector(obj.x+4-facing*2,obj.y+(btn(⬇️) and 4 or 3))
-  for i,h in pairs(obj.hair) do
+function update_hair(obj)
+  local last=vector(obj.x+4-(obj.flip.x and-2 or 3),obj.y+(btn(⬇️) and 4 or 2.9))
+  for h in all(obj.hair) do
     h.x+=(last.x-h.x)/1.5
     h.y+=(last.y+0.5-h.y)/1.5
-    circfill(h.x,h.y,clamp(4-i,1,2),8)
     last=h
   end
 end
 
-function unset_hair_color()
-  pal(8,8)
+function draw_hair(obj)
+  for i,h in pairs(obj.hair) do
+    circfill(round(h.x),round(h.y),mid(4-i,1,2),8)
+  end
 end
 
 -- [other entities]
 
 player_spawn={
+  layer=2,
   init=function(this)
     sfx(0)
     this.spr=3
     this.target=this.y
     this.y=min(this.y+48,lvl_ph)
-		cam_x=clamp(this.x,64,lvl_pw-64)
-		cam_y=clamp(this.y,64,lvl_ph-64)
+		cam_x,cam_y=mid(this.x,64,lvl_pw-64),mid(this.y,64,lvl_ph-64)
     this.spd.y=-4
     this.state=0
     this.delay=0
     create_hair(this)
+    this.djump=max_djump
     --- <fruitrain> ---
     for i=1,#fruitrain do
       local f=init_object(fruit,this.x,this.y,fruitrain[i].spr)
       f.follow=true
       f.target=i==1 and this or fruitrain[i-1]
       f.r=fruitrain[i].r
-      f.level=fruitrain[i].level
+      f.fruit_id=fruitrain[i].fruit_id
       fruitrain[i]=f
     end
     --- </fruitrain> ---
   end,
   update=function(this)
     -- jumping up
-    if this.state==0 then
-      if this.y<this.target+16 then
+    if this.state==0 and this.y<this.target+16 then
         this.state=1
         this.delay=3
-      end
     -- falling
     elseif this.state==1 then
       this.spd.y+=0.5
@@ -374,14 +374,15 @@ player_spawn={
         --- </fruitrain> ---
       end
     end
-    move_camera(this)
+    update_hair(this)
   end,
-  draw=function(this)
-    set_hair_color(max_djump)
-    draw_hair(this,1)
-    draw_obj_sprite(this)
-    unset_hair_color()
-  end
+  draw=player.draw
+  -- draw=function(this)
+  --   set_hair_color(max_djump)
+  --   draw_hair(this,1)
+  --   draw_obj_sprite(this)
+  --   unset_hair_color()
+  -- end
 }
 
 spring={
@@ -400,8 +401,7 @@ spring={
 	this.dy*=0.75
 	end,
 	draw=function(this)
-		local dy=flr(this.dy)
-		sspr(72,0,8,8-dy,this.x,this.y+dy)
+		sspr(72,0,8,8-flr(this.dy),this.x,this.y+this.dy)
 	end
 }
 
@@ -455,11 +455,20 @@ refill={
     if this.active then
       spr(15,x,y+sin(this.offset)+0.5)
     else  
-      color(7)
-      line(x,y+4,x+3,y+7)
-      line(x+4,y+7,x+7,y+4)
-      line(x+7,y+3,x+4,y)
-      line(x+3,y,x,y+3)
+      -- color(7)
+      -- line(x,y+4,x+3,y+7)
+      -- line(x+4,y+7,x+7,y+4)
+      -- line(x+7,y+3,x+4,y)
+      -- line(x+3,y,x,y+3)
+      foreach(split(
+      [[0,4,3,7
+      4,7,7,4
+      7,3,4,0
+      3,0,0,3]],"\n"),function(t)
+	        local o1,o2,o3,o4=unpack(split(t))
+	        line(x+o1,y+o2,x+o3,y+o4,7)
+	      end 
+      )
     end
   end
 }
@@ -472,10 +481,13 @@ fall_floor={
   update=function(this)
     -- idling
     if this.state==0 then
-      if this.check(player,0,-1) or this.check(player,-1,0) or this.check(player,1,0) then
-        psfx(13)
-        this.state,this.delay=1,15
-        this.init_smoke()
+      for i=0,2 do
+        if this.check(player,i-1,-(i%2)) then 
+          psfx(13)
+          this.state,this.delay=1,15
+          this.init_smoke()
+          break
+        end
       end
     -- shaking
     elseif this.state==1 then
@@ -497,13 +509,12 @@ fall_floor={
     end
   end,
   draw=function(this)
-    if this.state~=2 then
-      spr(this.state==1 and 26-this.delay/5 or 23,this.x,this.y)
-    end
+    spr(this.state==1 and 26-this.delay/5 or this.state==0 and 23,this.x,this.y) --add an if statement if you use sprite 0 
   end
 }
 
 smoke={
+  layer=3,
   init=function(this)
     this.spd=vector(0.3+rnd(0.2),-0.1)
     this.x+=-1+rnd(2)
@@ -521,16 +532,15 @@ smoke={
 --- <fruitrain> ---
 fruitrain={}
 fruit={
-  if_not_fruit=true,
+  check_fruit=true,
   init=function(this)
     this.y_=this.y
     this.off=0
     this.follow=false
     this.tx=this.x
     this.ty=this.y
-    this.level=lvl_id
     this.golden=this.spr==11
-    if(this.golden and deaths>0) then
+    if this.golden and deaths>0 then
       destroy_object(this)
     end
   end,
@@ -561,7 +571,7 @@ fruit={
 --- </fruitrain> ---
 
 fly_fruit={
-  if_not_fruit=true,
+  check_fruit=true,
   init=function(this) 
     this.start=this.y
     this.step=0.5
@@ -591,7 +601,10 @@ fly_fruit={
       --- <fruitrain> ---
       this.init_smoke(-6)
       this.init_smoke(6)
-      local f=init_object(fruit, this.x, this.y,10)
+
+      local f=init_object(fruit,this.x,this.y,10) --if this happens to be in the exact location of a different fruit that has already been collected, this'll cause a crash
+      --TODO: fix this if needed 
+      f.fruit_id=this.fruit_id
       fruit.update(f)
       --- </fruitrain> ---
       destroy_object(this)
@@ -609,9 +622,8 @@ lifeup={
   init=function(this)
     this.spd.y=-0.25
     this.duration=30
-    this.x-=2
-    this.y-=4
     this.flash=0
+    this.outline=false
     sfx_timer=20
     sfx(9)
   end,
@@ -624,7 +636,7 @@ lifeup={
   draw=function(this)
     this.flash+=0.5
     --<fruitrain>--
-    ?this.spr<=5 and this.spr.."000" or "1UP",this.x-2,this.y,7+this.flash%2
+    ?this.spr<=5 and this.spr.."000" or "1UP",this.x-4,this.y-4,7+this.flash%2
     --<fruitrain>--
   end
 }
@@ -710,7 +722,7 @@ fall_plat={
     while this.bottom()<lvl_ph-1 and tile_at(this.x/8,this.bottom()/8+1)==67 do 
       this.hitbox.h+=8
     end 
-    this.solids=true
+    this.collides=true
     this.solid_obj=true
     this.timer=0
   end,
@@ -775,10 +787,10 @@ touch_switch={
       this.controller.missing-=1
       this.init_smoke()
     end 
-  end,
-  draw=function(this)
     this.off+=this.collected and 0.5 or 0.2
     this.off%=4
+  end,
+  draw=function(this)
     palt(0,false)
     palt(8,true)
     if this.controller.active then 
@@ -925,14 +937,15 @@ tiles={
 -- [object functions]
 
 function init_object(type,x,y,tile)
-  if type.if_not_fruit and got_fruit[lvl_id] then
-    return
+  --generate and check berry id
+  local id=x..","..y..","..lvl_id
+  if type.check_fruit and got_fruit[id] then 
+    return 
   end
 
   local obj={
     type=type,
     collideable=true,
-    solids=false,
     spr=tile,
     flip=vector(),
     x=x,
@@ -940,13 +953,14 @@ function init_object(type,x,y,tile)
     hitbox=rectangle(0,0,8,8),
     spd=vector(0,0),
     rem=vector(0,0),
+    fruit_id=id,
+    outline=true
   }
   function obj.left() return obj.x+obj.hitbox.x end
   function obj.right() return obj.left()+obj.hitbox.w-1 end
   function obj.top() return obj.y+obj.hitbox.y end
   function obj.bottom() return obj.top()+obj.hitbox.h-1 end
 
-    -- <solids> --
   function obj.is_solid(ox,oy)
     for o in all(objects) do 
       if o!=obj and (o.solid_obj or o.semisolid_obj and not obj.objcollide(o,ox,0) and oy>0) and obj.objcollide(o,ox,oy)  then 
@@ -956,18 +970,28 @@ function init_object(type,x,y,tile)
     return (oy>0 and not obj.is_flag(ox,0,3) and obj.is_flag(ox,oy,3)) or  -- one way platform or
             obj.is_flag(ox,oy,0) -- solid terrain
   end
-  -- </solids> --
   
   function obj.is_flag(ox,oy,flag)
-    for i=max(0,(obj.left()+ox)\8),min(lvl_w-1,(obj.right()+ox)/8) do
-      for j=max(0,(obj.top()+oy)\8),min(lvl_h-1,(obj.bottom()+oy)/8) do
-        if fget(tile_at(i,j),flag) then
-          return true
+    local x1,x2,y1,y2=obj.left(),obj.right(),obj.top(),obj.bottom()
+    for i=mid(0,lvl_w-1,(x1+ox)\8),mid(0,lvl_w-1,(x2+ox)/8) do
+      for j=mid(0,lvl_h-1,(y1+oy)\8),mid(0,lvl_h-1,(y2+oy)/8) do
+        local tile=tile_at(i,j)
+        if flag>=0 then
+          if fget(tile,flag) and (flag~=3 or j*8>y2) then
+            return true
+          end
+        else
+          if ({obj.spd.y>=0 and y2%8>=6,
+            obj.spd.y<=0 and y1%8<=2,
+            obj.spd.x<=0 and x1%8<=2,
+            obj.spd.x>=0 and x2%8>=6})[tile-15] then
+            return true
+          end
         end
       end
     end
   end
-  -- <solids> --
+
   function obj.objcollide(other,ox,oy) 
     return other.collideable and
     other.right()>=obj.left()+ox and 
@@ -975,7 +999,6 @@ function init_object(type,x,y,tile)
     other.left()<=obj.right()+ox and 
     other.top()<=obj.bottom()+oy
   end
-  -- </solids> --
   function obj.check(type,ox,oy)
     for other in all(objects) do
       if other and other.type==type and other~=obj and obj.objcollide(other,ox,oy) then
@@ -988,16 +1011,15 @@ function init_object(type,x,y,tile)
     return obj.check(player,0,0)
   end
   
-  --<solids>--
   function obj.move(ox,oy,start)
-    for axis in all({"x","y"}) do
+    for axis in all{"x","y"} do
       obj.rem[axis]+=axis=="x" and ox or oy
       local amt=round(obj.rem[axis])
       obj.rem[axis]-=amt
       local upmoving=axis=="y" and amt<0
       local riding=not obj.player_here() and obj.check(player,0,upmoving and amt or -1)
       local movamt
-      if obj.solids then
+      if obj.collides then
         local step=sign(amt)
         local d=axis=="x" and step or 0
         local p=obj[axis]
@@ -1031,7 +1053,7 @@ function init_object(type,x,y,tile)
           hit.move(axis=="x" and (amt>0 and obj.right()+1-hit.left() or amt<0 and obj.left()-hit.right()-1) or 0, 
                   axis=="y" and (amt>0 and obj.bottom()+1-hit.top() or amt<0 and obj.top()-hit.bottom()-1) or 0,
                   1)
-          if(obj.player_here()) then 
+          if obj.player_here() then 
             kill_player(hit)
           end 
         elseif riding then 
@@ -1041,17 +1063,14 @@ function init_object(type,x,y,tile)
       end
     end
   end
-  --</solids>--
 
   function obj.init_smoke(ox,oy) 
     init_object(smoke,obj.x+(ox or 0),obj.y+(oy or 0),26)
   end
 
-  add(objects,obj)
+  add(objects,obj);
 
-  if obj.type.init then
-    obj.type.init(obj)
-  end
+  (obj.type.init or stat)(obj)
 
   return obj
 end
@@ -1065,7 +1084,7 @@ function kill_player(obj)
   sfx(2)
   deaths+=1
   destroy_object(obj)
-  dead_particles={}
+  --dead_particles={}
   for dir=0,0.875,0.125 do
     add(dead_particles,{
       x=obj.x+4,
@@ -1095,44 +1114,41 @@ function next_level()
   load_level(next_lvl)
 end
 
-function load_level(lvl)
+function load_level(id)
   has_dashed=false
   
   --remove existing objects
   foreach(objects,destroy_object)
   
   --reset camera speed
-  cam_spdx=0
-	cam_spdy=0
+  cam_spdx,cam_spdy=0,0
 		
-  local diff_room=lvl_id~=lvl
+  local diff_level=lvl_id~=id
   
 		--set level index
-  lvl_id=lvl
+  lvl_id=id
   
   --set level globals
-  local tbl=get_lvl()
+  local tbl=split(levels[lvl_id])
   --<badeline>--
-  lvl_x,lvl_y,lvl_w,lvl_h,bad_num=tbl[1],tbl[2],tbl[3]*16,tbl[4]*16,tbl[5] or 0
+  lvl_x,lvl_y,lvl_w,lvl_h,bad_num=tbl[1]*16,tbl[2]*16,tbl[3]*16,tbl[4]*16,tbl[5] or 0
   --</badeline>--
+  
   lvl_pw=lvl_w*8
   lvl_ph=lvl_h*8
   
   
-  --reload map
-  --time drawing setup
-  if diff_room then reload() end 
+  --drawing timer setup
   ui_timer=5
-  
-  --chcek for hex mapdata
-  if diff_room and get_data() then
-  	--replace old rooms with data
-  	for i=0,tbl[3]-1 do
-      for j=0,tbl[4]-1 do
-        replace_room(lvl_x+i,lvl_y+j,get_data()[i*tbl[4]+j+1])
-      end
-  	end
-  end
+
+  --reload map
+  if diff_level then 
+    reload()
+    --chcek for mapdata strings
+    if mapdata[lvl_id] then
+      replace_mapdata(lvl_x,lvl_y,lvl_w,lvl_h,mapdata[lvl_id])
+    end
+  end 
   
   -- entities
   for tx=0,lvl_w-1 do
@@ -1199,9 +1215,15 @@ function _update()
 
   -- update each object
   foreach(objects,function(obj)
-    obj.move(obj.spd.x,obj.spd.y,obj.type==player and 0 or 1)
-    if obj.type.update then
-      obj.type.update(obj)
+    obj.move(obj.spd.x,obj.spd.y,obj.type==player and 0 or 1);
+    (obj.type.update or stat)(obj)
+  end)
+
+  --move camera to player
+  foreach(objects,function(obj)
+    if obj.type==player or obj.type==player_spawn then
+      move_camera(obj)
+      return
     end
   end)
 
@@ -1218,21 +1240,17 @@ function _draw()
   pal()
   
 	--set cam draw position
-  local camx=round(cam_x)-64
-  local camy=round(cam_y)-64
-  camera(camx,camy)
+  draw_x=round(cam_x)-64
+  draw_y=round(cam_y)-64
+  camera(draw_x,draw_y)
 
-  --local token saving
-  local xtiles=lvl_x*16
-  local ytiles=lvl_y*16
-  
   -- draw bg color
   cls()
 
   -- bg clouds effect
-  foreach(clouds, function(c)
+  foreach(clouds,function(c)
     c.x+=c.spd-cam_spdx
-    rectfill(c.x+camx,c.y+camy,c.x+c.w+camx,c.y+16-c.w*0.1875+camy,1)
+    rectfill(c.x+draw_x,c.y+draw_y,c.x+c.w+draw_x,c.y+16-c.w*0.1875+draw_y,1)
     if c.x>128 then
       c.x=-c.w
       c.y=rnd(120)
@@ -1240,24 +1258,52 @@ function _draw()
   end)
 
 		-- draw bg terrain
-  map(xtiles,ytiles,0,0,lvl_w,lvl_h,4)
-		
+  map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,4)
+
+  -- draw outlines
+  for i=0,15 do pal(i,1) end
+  pal=stat
+  foreach(objects,function(o)
+    if o.outline then
+      for dx=-1,1 do for dy=-1,1 do if dx==0 or dy==0 then
+        camera(draw_x+dx,draw_y+dy) draw_object(o)
+      end end end
+    end
+  end)
+  pal=_pal
+  camera(draw_x,draw_y)
+  pal()
+	
+  --set draw layering
+  --0: background layer
+  --1: default layer
+  --2: player layer
+  --3: foreground layer
+  local layers={{},{},{}}
+  foreach(objects,function(o)
+    if o.type.layer==0 then
+      draw_object(o) --draw below terrain
+    else
+      add(layers[o.type.layer or 1],o) --add object to layer, default draw below player
+    end
+  end)
   -- draw terrain
-  map(xtiles,ytiles,0,0,lvl_w,lvl_h,2)
+  map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,2)
   
   -- draw objects
-  foreach(objects, draw_object)
+  foreach(layers,function(l)
+    foreach(l,draw_object)
+  end)
 
   -- draw platforms
-  map(xtiles,ytiles,0,0,lvl_w,lvl_h,8)
-  
+  map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,8)
   -- particles
-  foreach(particles, function(p)
+  foreach(particles,function(p)
     p.x+=p.spd-cam_spdx
     p.y+=sin(p.off)-cam_spdy
     p.y%=128
     p.off+=min(0.05,p.spd/32)
-    rectfill(p.x+camx,p.y+camy,p.x+p.s+camx,p.y+p.s+camy,p.c)
+    rectfill(p.x+draw_x,p.y+draw_y,p.x+p.s+draw_x,p.y+p.s+draw_y,p.c)
     if p.x>132 then 
       p.x=-4
       p.y=rnd128()
@@ -1268,7 +1314,7 @@ function _draw()
   end)
   
   -- dead particles
-  foreach(dead_particles, function(p)
+  foreach(dead_particles,function(p)
     p.x+=p.dx
     p.y+=p.dy
     p.t-=0.2
@@ -1281,7 +1327,7 @@ function _draw()
   -- draw time
   if ui_timer>=-30 then
   	if ui_timer<0 then
-  		draw_time(camx+4,camy+4)
+  		draw_time(draw_x+4,draw_y+4)
   	end
   	ui_timer-=1
   end
@@ -1335,10 +1381,6 @@ function round(x)
   return flr(x+0.5)
 end
 
-function clamp(val,a,b)
-  return max(a,min(b,val))
-end
-
 function appr(val,target,amount)
   return val>target and max(val-amount,target) or min(val+amount,target)
 end
@@ -1348,25 +1390,11 @@ function sign(v)
 end
 
 function maybe()
-  return rnd(1)<0.5
+  return rnd()<0.5
 end
-
 
 function tile_at(x,y)
-  return mget(lvl_x*16+x,lvl_y*16+y)
-end
-
-function spikes_at(x1,y1,x2,y2,xspd,yspd)
-  for i=max(0,x1\8),min(lvl_w-1,x2/8) do
-    for j=max(0,y1\8),min(lvl_h-1,y2/8) do
-      if({y2%8>=6 and yspd>=0,
-          y1%8<=2 and yspd<=0,
-          x1%8<=2 and xspd<=0,
-          x2%8>=6 and xspd>=0})[tile_at(i,j)-15] then
-            return true 
-      end 
-    end
-  end
+  return mget(lvl_x+x,lvl_y+y)
 end
 
 --<transition>--
@@ -1390,65 +1418,53 @@ function p01traph(l,r,lt,rt,y0,y1)
     r+=rt
   end
 end
-
+-- </transition> --
 -->8
---scrolling level stuff
+--[map metadata]
 
 --level table
---strings follow this format:
 --"x,y,w,h,badeline num"
 levels={
 	"0,0,1,1",
   "1,0,3,1"
 }
 
---mapdata table
---rooms separated by commas
+--mapdata string table
+--assigned levels will load from here instead of the map
 mapdata={
 }
 
-function get_lvl()
-	return split(levels[lvl_id])
-end
-
-function get_data()
-	return split(mapdata[lvl_id],",",false)
-end
-
---not using tables to conserve tokens
-cam_x=0
-cam_y=0
-cam_spdx=0
-cam_spdy=0
-cam_gain=0.25
 
 function move_camera(obj)
-  --set camera speed
-  cam_spdx=cam_gain*(4+obj.x+0*obj.spd.x-cam_x)
-  cam_spdy=cam_gain*(4+obj.y+0*obj.spd.y-cam_y)
+  cam_spdx=cam_gain*(4+obj.x-cam_x)
+  cam_spdy=cam_gain*(4+obj.y-cam_y)
 
   cam_x+=cam_spdx
   cam_y+=cam_spdy
 
-  if cam_x<64 or cam_x>lvl_pw-64 then
+  --clamp camera to level boundaries
+  local clamped=mid(cam_x,64,lvl_pw-64)
+  if cam_x~=clamped then
     cam_spdx=0
-    cam_x=clamp(cam_x,64,lvl_pw-64)
+    cam_x=clamped
   end
-  if cam_y<64 or cam_y>lvl_ph-64 then
+  clamped=mid(cam_y,64,lvl_ph-64)
+  if cam_y~=clamped then
     cam_spdy=0
-    cam_y=clamp(cam_y,64,lvl_ph-64)
+    cam_y=clamped
   end
 end
 
+
 --replace mapdata with hex
-function replace_room(x,y,room)
- for y_=0,511,32 do
-  for x_=1,32,2 do
-   local idx=x_+y_
-   local hex=sub(room,idx,idx+1)
-   poke((y<2 and 8192 or 0)+x*16+y*2048+y_*4+x_/2, "0x"..hex)
+function replace_mapdata(x,y,w,h,data)
+  for y_=0,h*2-1,2 do
+    local offset=y+y_\32<2 and 8192 or 0
+    for x_=1,w*2,2 do
+      local i=x_+y_*w
+      poke(offset+x+y*128+y_*64+x_/2,"0x"..sub(data,i,i+1))
+    end
   end
- end
 end
 
 --[[
@@ -1461,30 +1477,22 @@ and can be safely removed!
 
 --]]
 
---returns mapdata string of level
---printh(get_room(),"@clip")
-function get_room(x,y)
+--copy mapdata string to clipboard
+function get_mapdata(x,y,w,h)
   local reserve=""
-  local offset=4096+(y<2 and 4096 or 0)
-  y=y%2
-  for y_=1,32,2 do
-    for x_=1,32,2 do
-      reserve=reserve..num2hex(peek(offset+x*16+y*2048+(y_-1)*64+x_/2))
+  for y_=0,h*2-1,2 do
+    local offset=y+y_\32<2 and 8192 or 0
+    for x_=1,w*2,2 do
+      reserve=reserve..num2hex(peek(offset+x+y*128+y_*64+x_/2))
     end
   end
-  return reserve
+  printh(reserve,"@clip")
 end
 
 --convert mapdata to memory data
-function num2hex(number)
- local resultstr=""
- while number>0 do
-  local remainder=1+number%16
-  number\=16
-  resultstr=sub("0123456789abcdef",remainder,remainder)..resultstr
- end
- return #resultstr==0 and "00" or #resultstr==1 and "0"..resultstr or resultstr
-end
+function num2hex(v) 
+  return sub(tostr(v,true),5,6)
+end 
 __gfx__
 000000000000000000000000088888800000000000000000000000000000000000000000000000000300b0b00a0aa0a000000000000000000000000000077000
 00000000088888800888888088888888088888800888880000000000088888800004000000000000003b33000aa88aa0000777770000000000000000007bb700
