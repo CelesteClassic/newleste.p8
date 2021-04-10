@@ -642,9 +642,6 @@ lifeup={
 }
 zip_mover={
   init=function(this)
-    this.dir=vector(1,0)
-    this.accel=0.5
-    this.max_spd=6
     this.solid_obj=true
     this.delay=0
     this.state=0
@@ -680,39 +677,33 @@ zip_mover={
     -- 2 - returning back to original pos
     if this.delay>0 then 
       this.delay-=1
+      if this.delay==0 then 
+        this.state=(this.state+1)%3
+      end 
     elseif this.state==0 then 
       local hit=this.check(player,0,-1)
       if hit then 
         this.delay=4
         this.shake=4
-        this.state=1
       end
-    elseif this.state==1 then 
-      for axis in all{"x","y"} do 
-        this.spd[axis]=appr(this.spd[axis],this.max_spd*this.dir[axis],abs(this.accel*this.dir[axis]))
-        this.spd[axis]=mid(this.spd[axis],this[axis]-this.target[axis],this.target[axis]-this[axis])
-      end
-      if this.x==this.target.x and this.y==this.target.y then 
-        this.state=2
-        this.delay=15
-        this.shake=6 
+    else
+      local accel,maxspeed,shake,target
+      if this.state==1 then 
+        accel,maxspeed,shake,target=0.5,6,6,this.target
+      else 
+        accel,maxspeed,shake,target=0.2,-1,4,this.start
       end 
-    elseif this.state==2 then 
       for axis in all{"x","y"} do 
-        this.spd[axis]=appr(this.spd[axis],-1*this.dir[axis],abs(0.2*this.dir[axis]))
-        this.spd[axis]=mid(this.spd[axis],this[axis]-this.start[axis],this.start[axis]-this[axis])
+        this.spd[axis]=mid(appr(this.spd[axis],maxspeed*this.dir[axis],abs(accel*this.dir[axis])),this[axis]-target[axis],target[axis]-this[axis])
       end
-      if this.x==this.start.x and this.y==this.start.y then 
-        this.state=0
+      if this.x==target.x and this.y==target.y then 
         this.delay=15
-        this.shake=4 
+        this.shake=shake
       end 
     end
     if this.shake>0 then 
       this.shake-=1
     end 
-    
-    
   end,
   draw=function(this)
     local x,y=this.x,this.y
@@ -722,7 +713,7 @@ zip_mover={
     end
     local r,b=x+this.hitbox.w-1,y+this.hitbox.h-1
     
-    if this.state==1 and this.delay==0 or this.state==2 and this.delay>0 then
+    if this.state==1 then
     	pal(2,3)
     	pal(8,11)
     elseif this.state==2 and this.delay==0 then 
