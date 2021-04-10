@@ -444,7 +444,7 @@ sinking_platform = {
 
 -- <moving platform> --
 
---appears to be working fine, excluding the hitbox issue
+--player shifting bug to fix
 
 moving_platform = {
   init=function(this)
@@ -452,7 +452,7 @@ moving_platform = {
       this.x-=8
     end
     this.start_x,this.start_y=this.x,this.y
-    this.hitbox=rectangle(-1,0,17,0) --hitbox too wide, but left and right moving platforms go out of sync otherwise. I have no idea why
+    this.hitbox=rectangle(0,0,16,0) --hitbox too wide, but left and right moving platforms go out of sync otherwise. I have no idea why
     this.semisolid_obj=true
     this.direction = this.spr==45 and 1 or -1
     this.changing=false
@@ -463,7 +463,7 @@ moving_platform = {
 
     --horizontal movement
     
-    this.spd.x = appr(this.spd.x,this.direction,0.5)
+    this.spd.x = appr(this.spd.x,this.direction,0.6)
     local t_hit=this.check(platform_end,-1,0) or this.check(platform_end,1,0) --collision to check
     if this.first<=0 then
       if this.spr==45 then
