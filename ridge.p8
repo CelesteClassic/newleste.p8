@@ -1468,16 +1468,12 @@ function _draw()
 end
 
 function draw_object(obj)
-<<<<<<< ridge.p8
   -- <green_bubble> --
   if not obj.invisible then 
+    srand(obj.draw_seed);
     (obj.type.draw or draw_obj_sprite)(obj)
   end 
   -- </green_bubble> --
-=======
-  srand(obj.draw_seed);
-  (obj.type.draw or draw_obj_sprite)(obj)
->>>>>>> base.p8
 end
 
 function draw_obj_sprite(obj)
