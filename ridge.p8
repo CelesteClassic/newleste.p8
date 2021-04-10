@@ -1046,7 +1046,8 @@ function init_object(type,x,y,tile)
     spd=vector(0,0),
     rem=vector(0,0),
     fruit_id=id,
-    outline=true
+    outline=true,
+    draw_seed=rnd()
   }
   function obj.left() return obj.x+obj.hitbox.x end
   function obj.right() return obj.left()+obj.hitbox.w-1 end
@@ -1176,7 +1177,7 @@ function init_object(type,x,y,tile)
   -- </fake_wall> </arrow_platform>
   add(objects,obj);
 
-  (obj.type.init or stat)(obj)
+  (obj.type.init or time)(obj)
 
   return obj
 end
@@ -1265,7 +1266,7 @@ function load_level(id)
     end
   end
   foreach(objects,function(o)
-    (o.type.end_init or stat)(o)
+    (o.type.end_init or time)(o)
   end)
 end
 
@@ -1316,7 +1317,8 @@ function _update()
   -- update each object
   foreach(objects,function(obj)
     obj.move(obj.spd.x,obj.spd.y,obj.type==player and 0 or 1);
-    (obj.type.update or stat)(obj)
+    (obj.type.update or time)(obj)
+    obj.draw_seed=rnd()
   end)
 
   --move camera to player
@@ -1362,7 +1364,7 @@ function _draw()
 
   -- draw outlines
   for i=0,15 do pal(i,1) end
-  pal=stat
+  pal=time
   foreach(objects,function(o)
     if o.outline then
       for dx=-1,1 do for dy=-1,1 do if dx==0 or dy==0 then
@@ -1466,11 +1468,16 @@ function _draw()
 end
 
 function draw_object(obj)
+<<<<<<< ridge.p8
   -- <green_bubble> --
   if not obj.invisible then 
     (obj.type.draw or draw_obj_sprite)(obj)
   end 
   -- </green_bubble> --
+=======
+  srand(obj.draw_seed);
+  (obj.type.draw or draw_obj_sprite)(obj)
+>>>>>>> base.p8
 end
 
 function draw_obj_sprite(obj)
