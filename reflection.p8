@@ -654,6 +654,7 @@ kevin={
     this.hit_timer=0
     this.retrace_timer=0
     this.shake=0
+    this.dir=vector()
   end,
   update=function(this)
     if this.shake>0 then 
@@ -672,6 +673,7 @@ kevin={
             this.dir=vector(xdir,ydir)
             this.spd=vector(0,0)
             this.hit_timer=10
+            this.active=true 
             this.shake=4
           end 
         end 
@@ -681,7 +683,6 @@ kevin={
     if this.hit_timer>0 then 
       this.hit_timer-=1
       if this.hit_timer==0 then 
-        this.active=true 
         this.spd=vector(0.2*this.dir.x,0.2*this.dir.y)
       end 
     elseif this.active  then 
@@ -689,6 +690,15 @@ kevin={
         this.retrace_timer=10
         this.active=false 
         this.shake=5
+        if this.dir.x!=0 then 
+          for oy=0,this.hitbox.h-1,8 do
+            this.init_smoke(this.dir.x==-1 and -8 or this.hitbox.w,oy)
+          end 
+        else 
+          for ox=0,this.hitbox.w-1,8 do
+            this.init_smoke(ox,this.dir.y==-1 and -8 or this.hitbox.h)
+          end 
+        end 
       else 
         this.spd=vector(appr(this.spd.x,3*this.dir.x,0.2),appr(this.spd.y,3*this.dir.y,0.2))
       end 
@@ -724,20 +734,31 @@ kevin={
       y+=rnd(2)-1
     end 
     local r,b=x+this.hitbox.w,y+this.hitbox.h
+    local up,down,left,right=this.active and this.dir.y==-1,this.active and this.dir.y==1,this.active and this.dir.x==-1,this.active and this.dir.x==1
     for sx=x+8, r-16,8 do 
+      pal(12, up and 7 or 12)
       spr(65,sx,y)
+      pal(12, down and 7 or 12)
       spr(65,sx,b-8,1,1,false,true)
     end 
     for sy=y+8, b-16,8 do 
+      pal(12, left and 7 or 12)
       spr(80,x,sy)
+      pal(12, right and 7 or 12)
       spr(80,r-8,sy,1,1,true)
     end 
     rectfill(x+8,y+8,r-8,b-8,4)
-    spr(66,x+this.hitbox.w/2-4,y+this.hitbox.h/2-4)
-    spr(64,x,y)
-    spr(64,r-8,y,1,1,true)
-    spr(64,x,b-8,1,1,false,true)
-    spr(64,r-8,b-8,1,1,true,true)
+    -- face
+    spr(this.active and 67 or 66,x+this.hitbox.w/2-4,y+this.hitbox.h/2-4)
+    -- spr(64,x,y)
+    -- spr(64,r-8,y,1,1,true)
+    -- spr(64,x,b-8,1,1,false,true)
+    -- spr(64,r-8,b-8,1,1,true,true)
+    local lookup={down,left,up,right,down}
+    for i=0,3 do 
+      pal(12,(lookup[i+1] or lookup[i+2]) and 7 or 12)
+      spr(64,i<=1 and x or r-8, (i-1)\2==0 and y or b-8,1,1,i>=2,(i-1)\2!=0)
+    end 
   end 
     
 }
