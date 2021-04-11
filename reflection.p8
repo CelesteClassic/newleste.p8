@@ -653,8 +653,12 @@ kevin={
     this.retrace_list={}
     this.hit_timer=0
     this.retrace_timer=0
+    this.shake=0
   end,
   update=function(this)
+    if this.shake>0 then 
+      this.shake-=1
+    end
     for xdir=-1,1 do 
       for ydir=-1,1 do 
         if (xdir+ydir)%2==1 then 
@@ -668,6 +672,7 @@ kevin={
             this.dir=vector(xdir,ydir)
             this.spd=vector(0,0)
             this.hit_timer=10
+            this.shake=4
           end 
         end 
       end 
@@ -681,8 +686,9 @@ kevin={
       end 
     elseif this.active  then 
       if this.spd.x==0 and this.spd.y==0 then 
-        this.retrace_timer=5
+        this.retrace_timer=10
         this.active=false 
+        this.shake=5
       else 
         this.spd=vector(appr(this.spd.x,3*this.dir.x,0.2),appr(this.spd.y,3*this.dir.y,0.2))
       end 
@@ -699,6 +705,7 @@ kevin={
         if last.x==this.x and last.y==this.y then 
           del(this.retrace_list,last)
           this.retrace_timer=5 
+          this.shake=4
           this.spd=vector(0,0)
           this.rem=vector(0,0)
         else 
@@ -706,24 +713,31 @@ kevin={
         end 
       end 
     end 
+     
 
 
   end,
   draw=function(this)
-    for x=this.x+8, this.right()-8,8 do 
-      spr(65,x,this.y)
-      spr(65,x,this.bottom()-8,1,1,false,true)
+    local x,y=this.x,this.y 
+    if this.shake>0 then 
+      x+=rnd(2)-1
+      y+=rnd(2)-1
     end 
-    for y=this.y+8, this.bottom()-8,8 do 
-      spr(80,this.x,y)
-      spr(80,this.right()-8,y,1,1,true)
+    local r,b=x+this.hitbox.w,y+this.hitbox.h
+    for sx=x+8, r-16,8 do 
+      spr(65,sx,y)
+      spr(65,sx,b-8,1,1,false,true)
     end 
-    rectfill(this.x+8,this.y+8,this.right()-8,this.bottom()-8,4)
-    spr(66,this.x+this.hitbox.w/2-4,this.y+this.hitbox.h/2-4)
-    spr(64,this.x,this.y)
-    spr(64,this.right()-8,this.y,1,1,true)
-    spr(64,this.x,this.bottom()-8,1,1,false,true)
-    spr(64,this.right()-8,this.bottom()-8,1,1,true,true)
+    for sy=y+8, b-16,8 do 
+      spr(80,x,sy)
+      spr(80,r-8,sy,1,1,true)
+    end 
+    rectfill(x+8,y+8,r-8,b-8,4)
+    spr(66,x+this.hitbox.w/2-4,y+this.hitbox.h/2-4)
+    spr(64,x,y)
+    spr(64,r-8,y,1,1,true)
+    spr(64,x,b-8,1,1,false,true)
+    spr(64,r-8,b-8,1,1,true,true)
   end 
     
 }
