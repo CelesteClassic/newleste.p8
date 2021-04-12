@@ -87,6 +87,9 @@ player={
     -- <fruitrain> --
     this.berry_timer=0
     this.berry_count=0
+    -- <keydoor> --
+    this.key_count=0
+    -- </keydoor> --
     -- </fruitrain> --
   end,
   update=function(this)
@@ -639,6 +642,63 @@ lifeup={
     ?this.spr<=5 and this.spr.."000" or "1UP",this.x-4,this.y-4,7+this.flash%2
     --<fruitrain>--
   end
+}
+
+key={
+  init=function(this)
+    this.y_=this.y
+    this.off=0
+    this.follow=false
+    this.tx=this.x
+    this.ty=this.y
+    this.timer=0
+  end,
+  update=function(this)
+    if this.timer>0 then 
+      this.timer-=1
+      if this.timer==0 then 
+        this.target.open=true 
+        this.init_smoke()
+        destroy_object(this)
+        return
+      end 
+    end 
+    if not this.follow then
+      local hit=this.player_here()
+      if hit then
+        hit.berry_timer=0
+        this.follow=true
+        this.target=#fruitrain==0 and hit or fruitrain[#fruitrain]
+        this.r=#fruitrain==0 and 12 or 8
+        add(fruitrain,this)
+      end
+    elseif this.target then
+      this.tx+=0.2*(this.target.x+this.target.hitbox.w/2-this.tx)
+      this.ty+=0.2*(this.target.y+this.target.hitbox.h/2-this.ty) --target center, which matters (more) for doors
+      local a=atan2(this.x-this.tx,this.y_-this.ty)
+      local k=(this.x-this.tx)^2+(this.y_-this.ty)^2 > this.r^2 and 0.2 or 0.1
+      this.x+=k*(this.tx+this.r*cos(a)-this.x)
+      this.y_+=k*(this.ty+this.r*sin(a)-this.y_)
+      if target.type==door and (this.x-target.x-8)^2+(this.y-target.y-8)^2<2
+        this.x=this.target.x+8 
+        this.y=this.target.y+8
+        this.timer=30
+      end
+
+    end
+    this.off+=0.025
+    this.y=this.y_+sin(this.off)*2.5
+  end
+}
+door={
+  init=function(this)
+    this.hitbox=rectangle(0,0,16,16)
+  end,
+  update=function(this)
+    local hit=this.player_here()
+    if hit and hit.key_count>0 and (hit.x-this.x-8)^2+(hit.y-this.y-8)^2<324 then 
+      hit.key_count-=1
+      for f in all(fruitrain) do 
 }
 
 
