@@ -331,16 +331,21 @@ player_spawn={
     this.delay=0
     create_hair(this)
     this.djump=max_djump
+    --- <keydoor> ---
+    this.key_count=0
     --- <fruitrain> ---
     for i=1,#fruitrain do
-      local f=init_object(fruit,this.x,this.y,fruitrain[i].spr)
+      local f=init_object(fruitrain[i].type,this.x,this.y,fruitrain[i].spr)
+      if fruitrain[i].type==key then 
+        this.key_count+=1
+      end 
       f.follow=true
       f.target=i==1 and this or fruitrain[i-1]
       f.r=fruitrain[i].r
       f.fruit_id=fruitrain[i].fruit_id
       fruitrain[i]=f
     end
-    --- </fruitrain> ---
+    --- </fruitrain> </keydoor> ---
   end,
   update=function(this)
     -- jumping up
@@ -372,6 +377,9 @@ player_spawn={
       if this.delay<0 then
         destroy_object(this)
         local p=init_object(player,this.x,this.y)
+        -- <keydoor> --
+        p.key_count=this.key_count 
+        -- </keydoor> --
         --- <fruitrain> ---
         if (fruitrain[1]) fruitrain[1].target=p
         --- </fruitrain> ---
@@ -643,12 +651,14 @@ lifeup={
     --<fruitrain>--
   end
 }
-
+key_door_used={}
 key={
   init=function(this)
+    if key_door_used[this.fruit_id] then
+      destroy_object(this) 
+    end 
     this.y_=this.y
     this.off=0
-    this.follow=false
     this.tx=this.x
     this.ty=this.y
     this.timer=0
@@ -669,6 +679,7 @@ key={
         this.target=#fruitrain==0 and hit or fruitrain[#fruitrain]
         this.r=#fruitrain==0 and 12 or 8
         add(fruitrain,this)
+        key_door_used[this.fruit_id]=true 
       end
     elseif this.target then
       this.tx+=0.2*(this.target.x+this.target.hitbox.w/2-this.hitbox.w/2-this.tx)
@@ -707,6 +718,9 @@ key={
 }
 door={
   init=function(this)
+    if key_door_used[this.fruit_id] then 
+      destroy_object(this)
+    end 
     this.hitbox=rectangle(0,0,16,16)
     this.solid_obj=true
     this.timer=0
@@ -715,7 +729,7 @@ door={
     if this.timer>0 then 
       this.collideable=false
       this.timer+=1
-      if this.timer==9 then 
+      if this.timer==12 then 
         this.init_smoke(-8,0)
         this.init_smoke(-8,8)
         this.init_smoke(16,0)
@@ -732,7 +746,7 @@ door={
             local p=fruitrain[i+1] or {}
             p.target,p.r=this.target,this.r 
             del(fruitrain,f)
-
+            key_door_used[this.fruit_id]=true
             f.target,f.r=this,0 
             break
           end 
@@ -932,7 +946,11 @@ function kill_player(obj)
     -- <fruitrain> ---
   for f in all(fruitrain) do
     if (f.golden) full_restart=true
-    del(fruitrain,f)
+    -- <keydoor> --
+    if f.type==fruit then 
+      del(fruitrain,f)
+    end 
+    -- </keydoor> --
   end
   --- </fruitrain> ---
   delay_restart=15
