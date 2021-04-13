@@ -27,8 +27,9 @@ objects,got_fruit={},{}
 --timers
 freeze,delay_restart,sfx_timer,music_timer,ui_timer=0,0,0,0,-99
 --camera values
-cam_x,cam_y,cam_spdx,cam_spdy,cam_gain=0,0,0,0,0.25
-
+--<camtrigger>--
+cam_x,cam_y,cam_spdx,cam_spdy,cam_gain,cam_offx,cam_offy=0,0,0,0,0.25,0,0
+--</camtrigger>--
 _pal=pal --for outlining
 
 -- [entry point]
@@ -384,6 +385,25 @@ player_spawn={
   --   unset_hair_color()
   -- end
 }
+
+--<camtrigger>--
+camera_trigger={
+  update=function(this)
+    if this.timer and this.timer>0 then 
+      this.timer-=1
+      if this.timer==0 then 
+        cam_offx=this.offx
+        cam_offy=this.offy
+      else 
+        cam_offx+=cam_gain*(this.offx-cam_offx)
+        cam_offy+=cam_gain*(this.offy-cam_offy)
+      end 
+    elseif this.player_here() then
+      this.timer=5
+    end
+  end
+}
+--</camtrigger>--
 
 spring={
 	init=function(this)
@@ -1055,6 +1075,16 @@ function load_level(id)
   foreach(objects,function(o)
     (o.type.end_init or time)(o)
   end)
+
+  --<camtrigger>--
+  --generate camera triggers
+  cam_offx,cam_offy=0,0
+  for s in all(camera_offsets[lvl_id]) do
+    local tx,ty,tw,th,offx,offy=unpack(split(s))
+    local t=init_object(camera_trigger,tx*8,ty*8)
+    t.hitbox,t.offx,t.offy=rectangle(0,0,tw*8,th*8),offx,offy
+  end
+  --</camtrigger>--
 end
 
 -- [main update loop]
@@ -1319,6 +1349,13 @@ levels={
   "1,0,3,1"
 }
 
+--<camtrigger>--
+--camera trigger hitboxes
+--"x,y,w,h,off_x,off_y"
+camera_offsets={
+}
+--</camtrigger>--
+
 --mapdata string table
 --assigned levels will load from here instead of the map
 mapdata={
@@ -1326,8 +1363,10 @@ mapdata={
 
 
 function move_camera(obj)
-  cam_spdx=cam_gain*(4+obj.x-cam_x)
-  cam_spdy=cam_gain*(4+obj.y-cam_y)
+  --<camtrigger>--
+  cam_spdx=cam_gain*(4+obj.x-cam_x+cam_offx)
+  cam_spdy=cam_gain*(4+obj.y-cam_y+cam_offy)
+  --</camtrigger>--
 
   cam_x+=cam_spdx
   cam_y+=cam_spdy
@@ -1689,4 +1728,3 @@ __music__
 00 41424344
 00 40404040
 00 40404040
-
