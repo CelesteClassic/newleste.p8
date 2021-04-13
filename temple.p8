@@ -688,7 +688,7 @@ key={
       local k=(this.x-this.tx)^2+(this.y_-this.ty)^2 > this.r^2 and 0.2 or 0.1
       this.x+=k*(this.tx+this.r*cos(a)-this.x)
       this.y_+=k*(this.ty+this.r*sin(a)-this.y_)
-      if this.target.type==door and (this.x-this.target.x-4)^2+(this.y-this.target.y-4)^2<5 then
+      if this.target.type==keydoor and (this.x-this.target.x-4)^2+(this.y-this.target.y-4)^2<5 then
         this.x.this.y_,this.timer=this.target.x+4,this.target.y+4,this.timer=20
       end
 
@@ -714,7 +714,7 @@ key={
     end 
   end
 }
-door={
+keydoor={
   layer=0, --might cause visual problems? idk lol
   init=function(this)
     if key_door_used[this.fruit_id] then 
@@ -779,7 +779,7 @@ tiles={
   [15]=refill,
   [23]=fall_floor,
   [64]=key,
-  [80]=door
+  [80]=keydoor
 }
 
 -- [object functions]
