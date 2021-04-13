@@ -657,7 +657,7 @@ key={
     if this.timer>0 then 
       this.timer-=1
       if this.timer==0 then 
-        this.target.open=true 
+        this.target.timer=1
         this.init_smoke()
         destroy_object(this)
       end 
@@ -709,27 +709,41 @@ door={
   init=function(this)
     this.hitbox=rectangle(0,0,16,16)
     this.solid_obj=true
+    this.timer=0
   end,
   update=function(this)
-    this.hitbox=rectangle(-16,-16,48,48)
-    local hit=this.player_here()
-    if hit and hit.key_count>0 --[[and (hit.x-this.x-4)^2+(hit.y-this.y-4)^2<324]] then 
-      hit.key_count-=1
-      for i,f in ipairs(fruitrain) do 
-        if f.type==key then 
-          local p=fruitrain[i+1] or {}
-          p.target,p.r=this.target,this.r 
-          del(fruitrain,f)
+    if this.timer>0 then 
+      this.collideable=false
+      this.timer+=1
+      if this.timer==9 then 
+        this.init_smoke(-8,0)
+        this.init_smoke(-8,8)
+        this.init_smoke(16,0)
+        this.init_smoke(16,8)
+        destroy_object(this)
+      end 
+    else 
+      this.hitbox=rectangle(-16,-16,48,48)
+      local hit=this.player_here()
+      if hit and hit.key_count>0 then 
+        hit.key_count-=1
+        for i,f in ipairs(fruitrain) do 
+          if f.type==key then 
+            local p=fruitrain[i+1] or {}
+            p.target,p.r=this.target,this.r 
+            del(fruitrain,f)
 
-          f.target,f.r=this,0 
-          break
+            f.target,f.r=this,0 
+            break
+          end 
         end 
       end 
-    end 
-    this.hitbox=rectangle(0,0,16,16)
+      this.hitbox=rectangle(0,0,16,16)
+    end
   end,
   draw=function(this) 
-    spr(80,this.x,this.y,2,2)
+    spr(80,this.x-this.timer\3,this.y,1,2)
+    spr(81,this.x+8+this.timer\3,this.y,1,2)
   end 
 }
 
