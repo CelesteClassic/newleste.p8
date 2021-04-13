@@ -27,8 +27,9 @@ objects,got_fruit={},{}
 --timers
 freeze,delay_restart,sfx_timer,music_timer,ui_timer=0,0,0,0,-99
 --camera values
+--<camtrigger>--
 cam_x,cam_y,cam_spdx,cam_spdy,cam_gain,cam_offx,cam_offy=0,0,0,0,0.25,0,0
-
+--</camtrigger>--
 _pal=pal --for outlining
 
 -- [entry point]
@@ -385,6 +386,7 @@ player_spawn={
   -- end
 }
 
+--<camtrigger>--
 camera_trigger={
   update=function(this)
     local hit=this.player_here()
@@ -394,6 +396,7 @@ camera_trigger={
     end
   end
 }
+--</camtrigger>--
 
 spring={
 	init=function(this)
@@ -897,6 +900,7 @@ function load_level(id)
     (o.type.end_init or time)(o)
   end)
 
+  --<camtrigger>--
   --generate camera triggers
   cam_offx,cam_offy=0,0
   for s in all(camera_offsets[lvl_id]) do
@@ -904,6 +908,7 @@ function load_level(id)
     local t=init_object(camera_trigger,h[1]*8,h[2]*8)
     t.hitbox,t.offx,t.offy=rectangle(0,0,h[3]*8,h[4]*8),h[5],h[6]
   end
+  --</camtrigger>--
 end
 
 -- [main update loop]
@@ -1168,11 +1173,13 @@ levels={
   "1,0,3,1"
 }
 
+--<camtrigger>--
 --camera trigger hitboxes
 --"x,y,w,h,off_x,off_y"
 camera_offsets={
 	[2]={"6,8,2,2,0,0","16,0,1,16,32,0","32,0,1,16,-48,0"}
 }
+--</camtrigger>--
 
 --mapdata string table
 --assigned levels will load from here instead of the map
@@ -1181,9 +1188,11 @@ mapdata={
 
 
 function move_camera(obj)
+  --<camtrigger>--
   cam_spdx=cam_gain*(4+obj.x-cam_x+cam_offx)
   cam_spdy=cam_gain*(4+obj.y-cam_y+cam_offy)
-
+  --</camtrigger>--
+  
   cam_x+=cam_spdx
   cam_y+=cam_spdy
 
