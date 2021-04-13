@@ -671,17 +671,17 @@ key={
         this.init_smoke()
         destroy_object(this)
       end 
-    elseif not this.follow then
+    elseif not this.target then
       local hit=this.player_here()
       if hit then
         hit.key_count+=1
-        this.follow=true
+        --this.follow=true
         this.target=#fruitrain==0 and hit or fruitrain[#fruitrain]
         this.r=#fruitrain==0 and 12 or 8
         add(fruitrain,this)
         key_door_used[this.fruit_id]=true 
       end
-    elseif this.target then
+    else
       this.tx+=0.2*(this.target.x+this.target.hitbox.w/2-this.hitbox.w/2-this.tx)
       this.ty+=0.2*(this.target.y+this.target.hitbox.h/2-this.hitbox.h/2-this.ty) --target center, which matters (more) for doors
       local a=atan2(this.x-this.tx,this.y_-this.ty)
@@ -689,9 +689,7 @@ key={
       this.x+=k*(this.tx+this.r*cos(a)-this.x)
       this.y_+=k*(this.ty+this.r*sin(a)-this.y_)
       if this.target.type==door and (this.x-this.target.x-4)^2+(this.y-this.target.y-4)^2<5 then
-        this.x=this.target.x+4 
-        this.y_=this.target.y+4
-        this.timer=20
+        this.x.this.y_,this.timer=this.target.x+4,this.target.y+4,this.timer=20
       end
 
     end
