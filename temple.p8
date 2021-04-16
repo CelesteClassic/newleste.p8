@@ -784,7 +784,7 @@ keydoor={
 }
 
 
-spinner={
+sawblade={
   layer=0,
   init=function(this)
     this.hitbox=rectangle(2,2,12,12)
@@ -974,8 +974,8 @@ tiles={
   [23]=fall_floor,
   [64]=key,
   [80]=keydoor,
-  [112]=spinner,
-  [113]=spinner,
+  [112]=sawblade,
+  [113]=sawblade,
   [67]=red_bubble
   
 }
