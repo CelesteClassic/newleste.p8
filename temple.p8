@@ -844,6 +844,7 @@ red_bubble_particle={
 red_bubble={
   init=function(this)
     this.t=0
+    this.st=0
     this.timer=0
     this.shake=0
     this.dead_timer=0
@@ -928,6 +929,23 @@ red_bubble={
     local sy=sin(t)<-0.5 and 1 or 0
     for f in all({ovalfill,oval}) do
       f(x-2-sx,y-2-sy,x+9+sx,y+9+sy,f==oval and 7 or 8)
+    end
+    if this.active then
+      this.st+=1
+      this.st%=8
+      pal(8,2)
+      pal(15,2)
+      pal(1,2)
+      pal(3,2)
+      pal(7,8)
+      local c=flr(this.st)
+      if abs(this.spd.x)+abs(this.spd.y)==0 then  
+        spr(1,x-1,y-1)
+        this.st=-1
+      else 
+        spr(1,x+(split"-1,0,1,1,1,0,-1,-1")[this.st+1],y+(split"-1,-1,-1,0,1,1,1,0")[this.st+1]) --spinny stuff
+      end 
+      pal()
     end
   	for dx=2,5 do
       local _t=(5*t+3*dx)%8
