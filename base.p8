@@ -385,6 +385,25 @@ player_spawn={
   -- end
 }
 
+--<camtrigger>--
+camera_trigger={
+  update=function(this)
+    if this.timer and this.timer>0 then 
+      this.timer-=1
+      if this.timer==0 then 
+        cam_offx=this.offx
+        cam_offy=this.offy
+      else 
+        cam_offx+=cam_gain*(this.offx-cam_offx)
+        cam_offy+=cam_gain*(this.offy-cam_offy)
+      end 
+    elseif this.player_here() then
+      this.timer=5
+    end
+  end
+}
+--</camtrigger>--
+
 spring={
 	init=function(this)
 		this.dy,this.delay=0,0
