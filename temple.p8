@@ -818,6 +818,28 @@ spinner={
     end
   end 
 }
+--<red_bubble>--
+red_bubble_particle={
+  layer=0,
+  init=function(this)
+    this.outline=false
+    this.spd=vector(0.3-rnd(0.3),0.1)
+    this.x+=-1+rnd(2)
+    this.y+=-1+rnd(2)
+    this.flip=vector(maybe(),maybe())
+  end,
+  update=function(this)
+    this.spr+=rnd(0.2)
+    if this.spr>=29 then
+      destroy_object(this)
+    end
+  end,
+  draw=function(this)
+    pal(7,14)
+    draw_obj_sprite(this)
+    pal()
+  end 
+}
 
 red_bubble={
   init=function(this)
@@ -827,27 +849,62 @@ red_bubble={
     this.dead_timer=0
     this.hitbox=rectangle(0,0,12,12)
     this.outline=false --maybe add an extra black outline, or remove this?
+    this.startx,this.starty=this.x,this.y
+  end,
+  hide=function(this)
+    this.invisible=true
+    this.timer=0
+    this.x,this.y=this.startx,this.starty
+    this.spd=vector(0,0)
+    this.rem=vector(0,0)
+    this.active=false
+    this.init_smoke()
   end,
   update=function(this)
+    local maxspd=3.5
     local hit=this.player_here()
     if hit and not this.invisible then
-      hit.invisible=true
-      hit.spd=vector(0,0)
-      hit.rem=vector(0,0)
-      hit.dash_time=0
-      if this.timer==0 then
-        this.timer=1
-        this.shake=5
-      end
-      hit.x,hit.y=this.x+1,this.y+1
-      this.timer+=1
-      if btnp(❎) then
-        hit.invisible=false
-        hit.djump=max_djump+1
-        hit.do_dash=true        
-        this.invisible=true
-        this.timer=0
-      end
+      hit.move(-hit.x+this.x+1,-hit.y+this.y+1,1) 
+      if hit.x!=this.x+1 or hit.y!=this.y+1 then 
+        hit.invisible=false 
+        hit.init_smoke()
+        hit.spd.x=sign(this.spd.x)
+        hit.spd.y=sign(this.spd.y)
+        hit.djump=max_djump
+        red_bubble.hide(this)
+      else 
+        this.active=true
+        hit.invisible=true
+        hit.spd=vector(0,0)
+        hit.rem=vector(0,0)
+        hit.dash_time=0
+        hit.djump=0
+        if this.timer==0 then
+          this.timer=1
+          this.shake=5
+        elseif this.timer<15 then 
+          this.timer+=1
+          if this.timer==15 then 
+            this.init_smoke()
+            local diry=btn(⬆️) and -1 or btn(⬇️) and 1 or 0
+            local dirx=btn(➡️) and 1 or btn(⬅️) and -1 or diry==0 and (hit.flip.x and -1 or 1) or 0
+            local k=maxspd/sqrt(dirx^2+diry^2)
+            this.spd=vector(dirx*k,diry*k)
+          end
+        else 
+          init_object(red_bubble_particle,this.x,this.y,26)
+        end 
+        if btnp(❎) then
+          if this.timer<15 then 
+            this.timer=14 
+          else 
+            hit.invisible=false
+            hit.djump=max_djump+1
+            hit.do_dash=true
+            red_bubble.hide(this)
+          end
+        end 
+      end 
     elseif this.invisible then
       this.dead_timer+=1
       if this.dead_timer==60 then
@@ -855,6 +912,8 @@ red_bubble={
         this.invisible=false
         this.init_smoke()
       end
+    elseif this.active then
+      red_bubble.hide(this)
     end 
   end, 
   draw=function(this)
@@ -868,16 +927,17 @@ red_bubble={
     local sx=sin(t)>=0.5 and 1 or 0
     local sy=sin(t)<-0.5 and 1 or 0
     for f in all({ovalfill,oval}) do
-      f(x-2-sx,y-2-sy,x+9+sx,y+9+sy,f==oval and 14 or 8)
+      f(x-2-sx,y-2-sy,x+9+sx,y+9+sy,f==oval and 7 or 8)
     end
   	for dx=2,5 do
       local _t=(5*t+3*dx)%8
       local bx=sgn(dx-4)*round(sin(_t/16))
-      rectfill(x+dx-bx,y+8-_t,x+dx-bx,y+8-_t,6)
+      rectfill(x+dx-bx,y+8-_t,x+dx-bx,y+8-_t,9)
   	end
   	rectfill(x+5+sx,y+1-sy,x+6+sx,y+2-sy,7)
   end 
 }
+--</red_bubble>--
 psfx=function(num)
   if sfx_timer<=0 then
    sfx(num)
@@ -1689,8 +1749,8 @@ __map__
 0000000000133132323312000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 1000000000001111111100000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 2708000000000000000000202000082700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-3708000000000000000000710000083700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+3708000000002000000000710000083700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000043000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
