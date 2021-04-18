@@ -990,7 +990,13 @@ dash_switch={
     end 
   end,
   draw=function(this)
-    spr(68,this.x,this.y,2,1)
+    local l=min(30*(seconds%2)+frames,8)
+    sspr(32,32,10,l,this.x,this.y)
+    pal(6,11)
+    sspr(32,32+l,10,min(8-l,3),this.x,this.y+l)
+    pal()
+    sspr(32,32+l+3,10,5-l,this.x,this.y+l+3)
+    --spr(68,this.x,this.y,2,1)
   end
 }
 
