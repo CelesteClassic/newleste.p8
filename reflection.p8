@@ -1388,7 +1388,7 @@ end
 --replace mapdata with hex
 function replace_mapdata(x,y,w,h,data)
   for y_=0,h*2-1,2 do
-    local offset=y+y_\32<2 and 8192 or 0
+    local offset=y*2+y_<64 and 8192 or 0
     for x_=1,w*2,2 do
       local i=x_+y_*w
       poke(offset+x+y*128+y_*64+x_/2,"0x"..sub(data,i,i+1))
@@ -1410,7 +1410,7 @@ and can be safely removed!
 function get_mapdata(x,y,w,h)
   local reserve=""
   for y_=0,h*2-1,2 do
-    local offset=y+y_\32<2 and 8192 or 0
+    local offset=y*2+y_<64 and 8192 or 0
     for x_=1,w*2,2 do
       reserve=reserve..num2hex(peek(offset+x+y*128+y_*64+x_/2))
     end
