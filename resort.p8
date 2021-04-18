@@ -467,17 +467,21 @@ moving_platform = {
     this.r=(this.right_x-this.left_x)/2
     this.mid=this.left_x+this.r
     this.t=0
-    this.tlen=30
+    this.tlen=60
   end,
 
   update=function(this)
   
   --horizontal movement
     
-    local v = 2.718^(4*sin(this.t/this.tlen))
-    local newx=round(this.mid+this.r*((v - 1)/(v + 1))*this.direction)
+    local newx=round(this.mid+this.r*sin(this.t/this.tlen)*this.direction)
     this.spd.x=newx-this.x
-    this.t=(this.t+1)%this.tlen
+    if 4*flr(this.t)==this.tlen or 4*flr(this.t)==3*this.tlen then 
+      this.t+=0.2
+    else 
+      this.t+=1
+    end 
+    this.t%=this.tlen
 
     --interaction with player
     
