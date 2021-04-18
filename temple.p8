@@ -1014,8 +1014,16 @@ switch_door={
     end 
   end,
   draw=function(this)
-    spr(82,this.x,this.y)
-    spr(82,this.x,this.y+8,1,2)
+    
+    local x=this.x
+    if this.delay>=5 then 
+      pal(6,11) 
+    elseif this.delay>2 then 
+      x+=rnd(2)-1
+    end 
+    spr(82,x,this.y)
+    spr(82,x,this.y+8,1,2)
+    pal()
   end 
 }
 psfx=function(num)
