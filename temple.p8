@@ -900,7 +900,7 @@ red_bubble={
             this.timer=14 
           else 
             hit.invisible=false
-            hit.djump=max_djump+1
+            hit.djump=max_djump
             hit.do_dash=true
             red_bubble.hide(this)
           end
