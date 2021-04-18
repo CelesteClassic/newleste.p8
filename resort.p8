@@ -464,13 +464,15 @@ moving_platform = {
       this.end_x+=8
       this.left_x, this.right_x = this.end_x, this.start_x
     end
+    this.distance=this.right_x-this.left_x --used for cycle based movement only
   end,
 
   update=function(this)
   
   --horizontal movement
     
-    this.spd.x = appr(this.spd.x,this.direction,0.6)
+    --this.spd.x = appr(this.spd.x,this.direction,0.6)
+    this.spd.x = appr(this.spd.x,this.direction*this.distance/15,this.distance/100) --alternative cycle based movement option, values to tune
     this.spd.x=mid(this.spd.x, this.left_x-this.x, this.right_x-this.x) --clamps the speed to avoid overshooting the end of the tracks
     
     if (this.x >= this.right_x and this.direction==1) or (this.x <= this.left_x and this.direction==-1) then
