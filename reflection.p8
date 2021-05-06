@@ -97,180 +97,190 @@ player={
     
     -- horizontal input
     local h_input=btn(➡️) and 1 or btn(⬅️) and -1 or 0
-    
+
+    -- <feather> --
+    -- vertical input
+    local v_input=btn(⬆️) and -1 or btn(⬇️) and 1 or 0
+    -- </feather> --
+
     -- spike collision / bottom death
     if this.is_flag(0,0,-1) or 
 	    this.y>lvl_ph then
 	    kill_player(this)
     end
 
-    -- on ground checks
-    local on_ground=this.is_solid(0,1)
+    if this.feather then 
 
-        -- <fruitrain> --
-    if on_ground then
-      this.berry_timer+=1
-    else
-      this.berry_timer=0
-      this.berry_count=0
-    end
+    elseif this.feather_idle then
 
-    for f in all(fruitrain) do
-      if f.type==fruit and not f.golden and this.berry_timer>5 and f then
-        -- to be implemented:
-        -- save berry
-        -- save golden
-        this.berry_timer=-5
-        this.berry_count+=1
-        berry_count+=1
-        got_fruit[f.fruit_id]=true
-        init_object(lifeup, f.x, f.y,this.berry_count)
-        del(fruitrain, f)
-        destroy_object(f)
-        if (fruitrain[1]) fruitrain[1].target=this
-      end
-    end
-    -- </fruitrain> --
-    
-    -- landing smoke
-    if on_ground and not this.was_on_ground then
-      this.init_smoke(0,4)
-    end
+    else 
 
-    -- jump and dash input
-    local jump,dash=btn(🅾️) and not this.p_jump,btn(❎) and not this.p_dash
-    this.p_jump,this.p_dash=btn(🅾️),btn(❎)
+      -- on ground checks
+      local on_ground=this.is_solid(0,1)
 
-    -- jump buffer
-    if jump then
-      this.jbuffer=4
-    elseif this.jbuffer>0 then
-      this.jbuffer-=1
-    end
-    
-    -- grace frames and dash restoration
-    if on_ground then
-      this.grace=6
-      if this.djump<max_djump then
-        psfx(22)
-        this.djump=max_djump
-      end
-    elseif this.grace>0 then
-      this.grace-=1
-    end
-
-    -- dash effect timer (for dash-triggered events, e.g., berry blocks)
-    this.dash_effect_time-=1
-
-    -- dash startup period, accel toward dash target speed
-    if this.dash_time>0 then
-      this.init_smoke()
-      this.dash_time-=1
-      this.spd=vector(
-        appr(this.spd.x,this.dash_target_x,this.dash_accel_x),
-        appr(this.spd.y,this.dash_target_y,this.dash_accel_y)
-      )
-    else
-      -- x movement
-      local maxrun=1
-      local accel=on_ground and 0.6 or 0.4
-      local deccel=0.15
-    
-      -- set x speed
-      this.spd.x=abs(this.spd.x)<=1 and 
-        appr(this.spd.x,h_input*maxrun,accel) or 
-        appr(this.spd.x,sign(this.spd.x)*maxrun,deccel)
-      
-      -- facing direction
-      if this.spd.x~=0 then
-        this.flip.x=this.spd.x<0
+          -- <fruitrain> --
+      if on_ground then
+        this.berry_timer+=1
+      else
+        this.berry_timer=0
+        this.berry_count=0
       end
 
-      -- y movement
-      local maxfall=2
-    
-      -- wall slide
-      if h_input~=0 and this.is_solid(h_input,0) then
-        maxfall=0.4
-        -- wall slide smoke
-        if rnd(10)<2 then
-          this.init_smoke(h_input*6)
+      for f in all(fruitrain) do
+        if f.type==fruit and not f.golden and this.berry_timer>5 and f then
+          -- to be implemented:
+          -- save berry
+          -- save golden
+          this.berry_timer=-5
+          this.berry_count+=1
+          berry_count+=1
+          got_fruit[f.fruit_id]=true
+          init_object(lifeup, f.x, f.y,this.berry_count)
+          del(fruitrain, f)
+          destroy_object(f)
+          if (fruitrain[1]) fruitrain[1].target=this
         end
       end
-
-      -- apply gravity
-      if not on_ground then
-        this.spd.y=appr(this.spd.y,maxfall,abs(this.spd.y)>0.15 and 0.21 or 0.105)
+      -- </fruitrain> --
+      
+      -- landing smoke
+      if on_ground and not this.was_on_ground then
+        this.init_smoke(0,4)
       end
 
-      -- jump
-      if this.jbuffer>0 then
-        if this.grace>0 then
-          -- normal jump
-          psfx(18)
-          this.jbuffer=0
-          this.grace=0
-          this.spd.y=-2
-          this.init_smoke(0,4)
-        else
-          -- wall jump
-          local wall_dir=(this.is_solid(-3,0) and -1 or this.is_solid(3,0) and 1 or 0)
-          if wall_dir~=0 then
-            psfx(19)
-            this.jbuffer=0
-            this.spd=vector(wall_dir*(-1-maxrun),-2)
-            -- wall jump smoke
-            this.init_smoke(wall_dir*6)
+      -- jump and dash input
+      local jump,dash=btn(🅾️) and not this.p_jump,btn(❎) and not this.p_dash
+      this.p_jump,this.p_dash=btn(🅾️),btn(❎)
+
+      -- jump buffer
+      if jump then
+        this.jbuffer=4
+      elseif this.jbuffer>0 then
+        this.jbuffer-=1
+      end
+      
+      -- grace frames and dash restoration
+      if on_ground then
+        this.grace=6
+        if this.djump<max_djump then
+          psfx(22)
+          this.djump=max_djump
+        end
+      elseif this.grace>0 then
+        this.grace-=1
+      end
+
+      -- dash effect timer (for dash-triggered events, e.g., berry blocks)
+      this.dash_effect_time-=1
+
+      -- dash startup period, accel toward dash target speed
+      if this.dash_time>0 then
+        this.init_smoke()
+        this.dash_time-=1
+        this.spd=vector(
+          appr(this.spd.x,this.dash_target_x,this.dash_accel_x),
+          appr(this.spd.y,this.dash_target_y,this.dash_accel_y)
+        )
+      else
+        -- x movement
+        local maxrun=1
+        local accel=on_ground and 0.6 or 0.4
+        local deccel=0.15
+      
+        -- set x speed
+        this.spd.x=abs(this.spd.x)<=1 and 
+          appr(this.spd.x,h_input*maxrun,accel) or 
+          appr(this.spd.x,sign(this.spd.x)*maxrun,deccel)
+        
+        -- facing direction
+        if this.spd.x~=0 then
+          this.flip.x=this.spd.x<0
+        end
+
+        -- y movement
+        local maxfall=2
+      
+        -- wall slide
+        if h_input~=0 and this.is_solid(h_input,0) then
+          maxfall=0.4
+          -- wall slide smoke
+          if rnd(10)<2 then
+            this.init_smoke(h_input*6)
           end
         end
+
+        -- apply gravity
+        if not on_ground then
+          this.spd.y=appr(this.spd.y,maxfall,abs(this.spd.y)>0.15 and 0.21 or 0.105)
+        end
+
+        -- jump
+        if this.jbuffer>0 then
+          if this.grace>0 then
+            -- normal jump
+            psfx(18)
+            this.jbuffer=0
+            this.grace=0
+            this.spd.y=-2
+            this.init_smoke(0,4)
+          else
+            -- wall jump
+            local wall_dir=(this.is_solid(-3,0) and -1 or this.is_solid(3,0) and 1 or 0)
+            if wall_dir~=0 then
+              psfx(19)
+              this.jbuffer=0
+              this.spd=vector(wall_dir*(-1-maxrun),-2)
+              -- wall jump smoke
+              this.init_smoke(wall_dir*6)
+            end
+          end
+        end
+      
+        -- dash
+        local d_full=5
+        local d_half=3.5355339059 -- 5 * sqrt(2)
+      
+        if this.djump>0 and dash then
+          this.init_smoke()
+          this.djump-=1   
+          this.dash_time=4
+          has_dashed=true
+          this.dash_effect_time=10
+          -- calculate dash speeds
+          this.spd=vector(h_input~=0 and 
+          h_input*(v_input~=0 and d_half or d_full) or 
+          (v_input~=0 and 0 or this.flip.x and -1 or 1)
+          ,v_input~=0 and v_input*(h_input~=0 and d_half or d_full) or 0)
+          -- effects
+          psfx(20)
+          freeze=2
+          -- dash target speeds and accels
+          this.dash_target_x=2*sign(this.spd.x)
+          this.dash_target_y=(this.spd.y>=0 and 2 or 1.5)*sign(this.spd.y)
+          this.dash_accel_x=this.spd.y==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
+          this.dash_accel_y=this.spd.x==0 and 1.5 or 1.06066017177
+        elseif this.djump<=0 and dash then
+          -- failed dash smoke
+          psfx(21)
+          this.init_smoke()
+        end
       end
-    
-      -- dash
-      local d_full=5
-      local d_half=3.5355339059 -- 5 * sqrt(2)
-    
-      if this.djump>0 and dash then
-        this.init_smoke()
-        this.djump-=1   
-        this.dash_time=4
-        has_dashed=true
-        this.dash_effect_time=10
-        -- vertical input
-        local v_input=btn(⬆️) and -1 or btn(⬇️) and 1 or 0
-        -- calculate dash speeds
-        this.spd=vector(h_input~=0 and 
-        h_input*(v_input~=0 and d_half or d_full) or 
-        (v_input~=0 and 0 or this.flip.x and -1 or 1)
-        ,v_input~=0 and v_input*(h_input~=0 and d_half or d_full) or 0)
-        -- effects
-        psfx(20)
-        freeze=2
-        -- dash target speeds and accels
-        this.dash_target_x=2*sign(this.spd.x)
-        this.dash_target_y=(this.spd.y>=0 and 2 or 1.5)*sign(this.spd.y)
-        this.dash_accel_x=this.spd.y==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
-        this.dash_accel_y=this.spd.x==0 and 1.5 or 1.06066017177
-      elseif this.djump<=0 and dash then
-        -- failed dash smoke
-        psfx(21)
-        this.init_smoke()
+      
+      -- animation
+      this.spr_off+=0.25
+      this.spr = not on_ground and (this.is_solid(h_input,0) and 5 or 3) or  -- wall slide or mid air
+        btn(⬇️) and 6 or -- crouch
+        btn(⬆️) and 7 or -- look up
+        this.spd.x~=0 and h_input~=0 and 1+this.spr_off%4 or 1 -- walk or stand
+      update_hair(this)
+      -- exit level off the top (except summit)
+      if this.y<-4 and levels[lvl_id+1] then
+        next_level()
       end
-    end
-    
-    -- animation
-    this.spr_off+=0.25
-    this.spr = not on_ground and (this.is_solid(h_input,0) and 5 or 3) or  -- wall slide or mid air
-      btn(⬇️) and 6 or -- crouch
-      btn(⬆️) and 7 or -- look up
-      this.spd.x~=0 and h_input~=0 and 1+this.spr_off%4 or 1 -- walk or stand
-    update_hair(this)
-    -- exit level off the top (except summit)
-    if this.y<-4 and levels[lvl_id+1] then
-      next_level()
-    end
-    
-    -- was on the ground
-    this.was_on_ground=on_ground
+      
+      -- was on the ground
+      this.was_on_ground=on_ground
+    end 
   end,
   
   draw=function(this)
@@ -828,6 +838,44 @@ bumper={
   end 
 }
 
+feather={
+  init=function(this)
+    this.sprtimer=0
+    this.offset=0
+    this.starty=this.y
+    this.timer=0
+  end,
+  update=function(this)
+    if this.timer>0 then 
+      this.timer-=1 
+      if this.timer==0 then 
+        this.init_smoke()
+      end 
+    else 
+      this.sprtimer+=0.2
+      this.offset+=0.01
+      this.y=this.starty+0.5+2*sin(this.offset)
+      local hit=this.player_here() 
+      if hit then 
+        this.init_smoke() 
+        this.timer=60 
+        if hit.feather then 
+          hit.lifetime=60
+        else 
+          hit.feather_idle=true 
+          hit.spawn_timer=10
+        end 
+      end 
+    end 
+  end,
+  draw=function(this)
+    if this.timer==0 then
+      local d=flr(this.sprtimer%6)
+      spr(70+min(d,6-d),this.x,this.y, 1, 1,d>3)
+    end 
+  end 
+}
+
 psfx=function(num)
   if sfx_timer<=0 then
    sfx(num)
@@ -845,7 +893,8 @@ tiles={
   [15]=refill,
   [23]=fall_floor,
   [64]=kevin,
-  [68]=bumper
+  [68]=bumper,
+  [70]=feather
 }
 
 
@@ -1455,14 +1504,14 @@ __gfx__
 777cc7777777ccccc777777ccccc77777777ccc7777777777ccc777777cccc77cc7ccccc55555500005555555505555555555555000000000000000000000000
 777cc777777777777777777777777777777777777777777777777777777cc777ccccc7cc55555550055555555555555555555555000000000000000000000000
 77cccc7757777777777777777777777557777777777777777777777557777775cccccccc55555555555555555555555555555555000000000000000000000000
-0220cc5555cccc55ddd00dddddd00ddd000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-2125ccc55cccccc50000000000000000000001111110000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-222c5cc55cc11cc5011001100cc00cc0000015dccd51000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-05cc1cc111111111000000000cc00cc00001cddccddc100000000000000000000000000000000000000000000000000000000000000000000000000000000000
-cc511522222222220011110000111100001ccc1111ccc10000000000000000000000000000000000000000000000000000000000000000000000000000000000
-cccc5524444444440111111001d11d10015dc144441cd51000000000000000000000000000000000000000000000000000000000000000000000000000000000
-5ccc224444444444001dd10001d11d1001dd14c44c41dd1000000000000000000000000000000000000000000000000000000000000000000000000000000000
-5551244444444444000dd0000011110001cc14c44c41cc1000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0220cc5555cccc55ddd00dddddd00ddd000000000000000000aaa0000099aa0000999aa0000aaa00000000000000000000000000000000000000000000000000
+2125ccc55cccccc50000000000000000000001111110000009aaa900099aaaa0099aaaaa00aaaaa0000000000000000000000000000000000000000000000000
+222c5cc55cc11cc5011001100cc00cc0000015dccd51000001aaa1009911aaaa995aaa11009a5a90000000000000000000000000000000000000000000000000
+05cc1cc111111111000000000cc00cc00001cddccddc10000111110091110aa095aa0001009a5a90000000000000000000000000000000000000000000000000
+cc511522222222220011110000111100001ccc1111ccc100011111009110000095a0000000995990000000000000000000000000000000000000000000000000
+cccc5524444444440111111001d11d10015dc144441cd510011111001100000095a0000000995990000000000000000000000000000000000000000000000000
+5ccc224444444444001dd10001d11d1001dd14c44c41dd1000111000100000000950000000095900000000000000000000000000000000000000000000000000
+5551244444444444000dd0000011110001cc14c44c41cc1000001000100000000050000000050000000000000000000000000000000000000000000000000000
 5551244400000000000000000000000001cc14444441cc1000000000000000000000000000000000000000000000000000000000000000000000000000000000
 5cc1244400000000000000000000000001dd144cc441dd1000000000000000000000000000000000000000000000000000000000000000000000000000000000
 ccc12444000000000000000000000000015dc144441cd51000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1610,15 +1659,15 @@ __map__
 2900000000000001000000000000002a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000132122222312000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000133132323312000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-1000000000001111111100000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-2700000000000000000000000000002700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-3000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-3000004400000000000040414100003000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-3000000000000000000050000000003000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-30000000000000000000500000000030000000000a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-3000000000000000000050000000003000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-3000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-3000000000000000000000000000003001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000001111111100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000004600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 2522222222222222222222222222222523000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 3825252525252525252525252525253826000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
@@ -1750,3 +1799,4 @@ __music__
 00 41425253
 00 41425253
 00 41425253
+
