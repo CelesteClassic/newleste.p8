@@ -129,16 +129,33 @@ player={
 			end)
 
 
-      if this.lifetime>0 then 
-        this.lifetime-=1
-        if this.lifetime==0 then 
-          -- transform back to player
-          this.feather=false 
-          this.init_smoke()
-          player.init(this)
-          this.spd.x/=2
-	        this.spd.y=this.spd.y<0 and -1.5 or 0
-        end 
+      --bounce off objects
+    	if this.bouncetimer==0 then
+      	if this.is_solid(0, 2) or this.is_solid(0, -2) then
+        	this.movedir *=-1
+        	this.bouncetimer = 2
+        	this.init_smoke()
+				elseif this.is_solid(2, 0) or this.is_solid(-2, 0) then
+					this.movedir = round(this.movedir)+0.5-this.movedir
+					this.bouncetimer = 2
+					this.init_smoke()
+				end
+			end
+			--make sure we dont bounce too often
+    	if this.bouncetimer > 0 then
+      	this.bouncetimer-=1
+    	end
+
+
+      this.lifetime-=1
+      if this.lifetime==0 or btn(❎) then 
+        -- transform back to player
+        this.p_dash=false
+        this.feather=false 
+        this.init_smoke()
+        player.init(this)
+        this.spd.x/=2
+        this.spd.y=this.spd.y<0 and -1.5 or 0
       end 
     elseif this.feather_idle then
       this.spd.x*=0.8
@@ -153,12 +170,15 @@ player={
           this.movedir=atan2(h_input,v_input)
         end 
         this.lifetime=60
+        this.bouncetimer=0
         this.tail={}
         for i=0,15 do
           add(this.tail,{x=this.x+4,y=this.y+4,size=mid(1,2,9-i)})
         end
       end 
-    else 
+    end 
+    if not this.feather and not this.feather_idle then  
+      -- cursed save: use else and goto here
 
       -- on ground checks
       local on_ground=this.is_solid(0,1)
