@@ -101,6 +101,18 @@ player={
     -- <feather> --
     -- vertical input
     local v_input=btn(⬆️) and -1 or btn(⬇️) and 1 or 0
+
+    -- update feather particles (update remaining ones if not in feather state)
+    foreach(this.particles, function(p)
+      p.x+=p.xspd
+      p.y+=p.yspd
+      p.xspd=appr(p.xspd, 0, 0.03)
+      p.yspd=appr(p.yspd, 0, 0.03)
+      p.life-=1
+      if p.life==0 then
+        del(this.particles, p)
+      end
+    end)
     -- </feather> --
 
     -- spike collision / bottom death
@@ -147,6 +159,12 @@ player={
     	end
 
 
+      -- feather particles
+      local particle = {x=this.x+rnd(8)-4, y=this.y+rnd(8)-4, life=10+flr(rnd(5))}
+			particle.xspd = -this.spd.x/2-(this.x-particle.x)/4
+			particle.yspd = -this.spd.y/2-(this.y-particle.y)/4
+			add(this.particles, particle)
+
       this.lifetime-=1
       if this.lifetime==0 or btn(❎) then 
         -- transform back to player
@@ -172,13 +190,14 @@ player={
         this.lifetime=60
         this.bouncetimer=0
         this.tail={}
+        this.particles={}
         for i=0,15 do
           add(this.tail,{x=this.x+4,y=this.y+4,size=mid(1,2,9-i)})
         end
       end 
     end 
     if not this.feather and not this.feather_idle then  
-      -- cursed save: use else and goto here
+      -- cursed token save: use else and goto here
 
       -- on ground checks
       local on_ground=this.is_solid(0,1)
@@ -356,6 +375,12 @@ player={
       this.spd.x=0
     end
     --<feather> --
+
+    -- draw feather particles (if not in feather state draw remaining ones)
+    foreach(this.particles, function(p)
+			pset(p.x+4, p.y+4,10)
+    end)
+
     if this.feather then 
       if this.lifetime%5==1 then pal(10, 7) end
 
