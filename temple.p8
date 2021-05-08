@@ -1041,15 +1041,19 @@ switch_door={
 
 
 seeker={
-  init=function(this) end,
+  init=function(this)
+    this.hitbox=rectangle(3,3,13,13)
+  end,
   update=function(this) 
+    local hit=this.player_here()
+    if hit then kill_player(hit) end 
+
     local tx,ty
     for p in all(objects) do 
       if p.type==player then
         tx,ty=p.x+4,p.y+4 
       end 
     end 
-    this.target=false
     if tx then 
       local xmid,ymid=this.x+9,this.y+9
       local dx,dy=tx-xmid,ty-ymid
@@ -1061,16 +1065,29 @@ seeker={
       local k=4
       this.hitbox=rectangle(0,0,k,k)
       --this.line={}
-      this.target=true
+      
+      -- check if seeker can see player
+      local visual=true
       while max(abs(tx-cx),abs(ty-cy))>k do
         if this.is_solid(round(cx)-this.x,round(cy)-this.y) then 
-          this.target=false
+          visual=false
           break 
         end 
         
         --add(this.line,vector(cx,cy))
         cx+=k*dx 
         cy+=k*dy
+      end 
+
+      --restore hitbox
+      this.hitbox=rectangle(3,3,13,13)
+
+      if visual then 
+        this.dir=vector(dx,dy)
+      end 
+
+      if this.dir then 
+        this.spd=vector(appr(this.spd.x,4*this.dir.x,0.1),appr(this.spd.y,4*this.dir.y,0.1))
       end 
     end
 
@@ -1088,7 +1105,7 @@ seeker={
     --   pset(round(p.x),round(p.y),14)
     -- end 
 
-    if this.target then 
+    if this.dir then 
       pal(13,8)
       pal(1,2)
       pal(5,14)
