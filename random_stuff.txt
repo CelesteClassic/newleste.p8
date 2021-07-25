@@ -1,0 +1,21 @@
+all berry stuff:
+got_fruit
+check_fruit
+fruit_id (new)
+
+spikes_at rip
+solids->collides
+
+add layers
+
+outlines
+
+lvl_x and lvl_y*=16 compared to prev
+
+
+for cart in city core reflection resort ridge site summit temple; do git merge-file "${cart}.p8" base_old.p8 base.p8; echo ${cart} $?;  done;
+
+
+for cart in city core reflection resort ridge site summit temple; do kdiff3 base_old.p8 base.p8 "${cart}.p8" --auto --cs "ShowInfoDialogs=0" -o "${cart}.p8"; echo ${cart} $?;  done;
+
+export DISPLAY=$(awk '/nameserver / {print $2; exit}' /etc/resolv.conf 2>/dev/null):0

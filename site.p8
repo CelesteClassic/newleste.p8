@@ -95,6 +95,18 @@ player={
       return
     end
     
+    -- <dream_block> --
+    if this.dreaming and not this.check(dream_block,0,0) then 
+      this.dreaming=false 
+      this.spd=vector(mid(this.dash_target_x,-2,2),
+                      mid(this.dash_target_y,-2,2))
+      this.dash_time,this.dash_effect_time=0,0
+      if this.spd.x~=0 then 
+        this.grace=2
+      end 
+    end
+    -- </dream_block> --
+
     -- horizontal input
     local h_input=btn(➡️) and 1 or btn(⬅️) and -1 or 0
     
@@ -930,6 +942,141 @@ switch_block={
   end 
 }
 -- <touch_switch> --
+dream_block={
+  init=function(this)
+    while this.right()<lvl_pw-1 and tile_at(this.right()/8+1,this.y/8)==65 do 
+      this.hitbox.w+=8
+    end 
+    while this.bottom()<lvl_ph-1 and tile_at(this.x/8,this.bottom()/8+1)==65 do 
+      this.hitbox.h+=8
+    end 
+    this.kill_timer=0
+    this.particles={}
+    for i=1,this.hitbox.w*this.hitbox.h/32 do 
+      add(this.particles,
+      {x=rnd(this.hitbox.w-1)+this.x,
+      y=rnd(this.hitbox.h-1)+this.y,
+      z=rnd(1),
+      c=split"3, 8, 9, 10, 12, 14"[flr(rnd(7))]})
+    end
+    this.dtimer=1
+    this.disp_shapes={}
+    this.outline=false
+  end,
+  update=function(this)
+    --[[this.hitbox.w+=2
+    this.hitbox.h+=2]]
+    local hit=this.player_here()
+    if hit then 
+      hit.dash_effect_time=10
+      hit.dash_time=2
+      if hit.dash_target_y==-1.5 then 
+        hit.dash_target_y=-2
+      end
+      if hit.dash_target_x==0 then 
+        hit.dash_target_y=sign(hit.dash_target_y)*2.5
+      end 
+      if hit.dash_target_y==0 then
+        hit.dash_target_x=sign(hit.dash_target_x)*2.5
+      end 
+      if not hit.dreaming then 
+        hit.spd=vector(hit.dash_target_x*(hit.dash_target_y==0 and 2.5  or 1.7678),hit.dash_target_y*(hit.dash_target_x==0 and 2.5 or 1.7678))
+      end
+      if abs(hit.spd.x)<abs(hit.dash_target_x) or abs(hit.spd.y)<abs(hit.dash_target_y) then 
+        hit.move(hit.dash_target_x,hit.dash_target_y,0)
+        if hit.is_solid(hit.dash_target_x,hit.dash_target_y) then 
+          kill_player(hit)
+        end 
+      end
+      hit.dreaming=true 
+      hit.djump=max_djump
+      if this.dtimer>0 then
+        this.dtimer-=1
+        if this.dtimer==0 then
+          this.dtimer=4
+          create_disp_shape(this.disp_shapes, hit.x, hit.y)
+        end
+      end
+    else
+      this.dtimer=1
+    end
+    --[[this.hitbox.w-=2
+    this.hitbox.h-=2]]--
+    update_disp_shapes(this.disp_shapes)
+  end,
+  draw=function(this)
+    rectfill(this.x+1,this.y+1,this.right()-1,this.bottom()-1,0)
+    foreach(this.particles, function(p)
+      local px,py = (p.x+cam_x*p.z-65)%(this.hitbox.w-2)+1+this.x, (p.y+cam_y*p.z-65)%(this.hitbox.h-2)+1+this.y
+      if #this.disp_shapes==0 then
+        rectfill(px,py,px,py,p.c)
+      else
+        local d,dx,dy,ds=displace(this.disp_shapes, vector(px,py))
+        d=max((6-d), 0)
+        rectfill(px+dx*d*ds,py+dy*d*ds,px+dx*d*ds,py+dy*d*ds,p.c)
+      end
+    end)
+    color(7)
+    if #this.disp_shapes==0 then
+      --rect(this.x,this.y,this.right(),this.bottom(),7)
+      for i=this.y,this.bottom(),this.hitbox.h-1 do 
+        line(this.x+1, i, this.right()-1,i)        
+      end      
+      for i=this.x,this.right(),this.hitbox.w-1 do 
+        line(i, this.y+1, i,this.bottom()-1)      
+      end         
+    else
+      for x=this.x,this.right() do
+        for y=this.y,this.bottom(),(x==this.x or x==this.right()) and 1 or this.bottom()-this.y do
+          local d,dx,dy,ds=displace(this.disp_shapes,vector(x,y))
+          d=max((4-d), 0)
+          rectfill(x+dx*d*ds,y+dy*d*ds,x+dx*d*ds,y+dy*d*ds)
+        end
+      end
+    end
+    --[[pset(this.x, this.y, 0)
+    pset(this.x, this.bottom(), 0)
+    pset(this.right(), this.y, 0)
+    pset(this.right(), this.bottom(), 0)]]--
+  end 
+}
+
+
+function create_disp_shape(tbl,x,y)
+  add(tbl, {pos=vector(x,y),r=0})
+end
+
+function update_disp_shapes(tbl)
+  for i in all(tbl) do
+    i.r+=2
+    if i.r >= 15 then
+      del(tbl, i)
+    end
+  end
+end
+
+function displace(tbl, p)
+  local d,ds,po,s = 10000,0,vector(0,0),0
+  for i in all(tbl) do
+    local td,ts,tpo = sdf_circ(p, i.pos, i.r)
+    if td<d then
+      d,ds,po,s=td,ts,tpo,i.r
+    end
+  end
+  local gx, gy = sdg_circ(po, ds, s)
+  return d,gx,gy,(15-s)/15
+end
+
+function sdg_circ(po, d, r)
+  return sign(d-r)*(po.x/d), sign(d-r)*(po.y/d)
+end
+
+function sdf_circ(p, origin, r)
+  local po = vec_sub(p,origin)
+  local d = vec_len(po)
+  return abs(d-r), d, po
+end
+
 psfx=function(num)
   if sfx_timer<=0 then
    sfx(num)
@@ -950,8 +1097,9 @@ tiles={
   [68]=touch_switch,
   [71]=switch_block,
   -- <touch_switch> --
-  [88]={}
+  [88]={},
   -- <touch_switch> --
+  [64]=dream_block
 }
 
 -- [object functions]
@@ -990,6 +1138,11 @@ function init_object(type,x,y,tile)
     end 
     return (oy>0 and not obj.is_flag(ox,0,3) and obj.is_flag(ox,oy,3)) or  -- one way platform or
             obj.is_flag(ox,oy,0) -- solid terrain
+            -- <dream_block> --
+           or obj.check(dream_block,ox,oy) and (obj.dash_effect_time<=2 or  
+           not obj.check(dream_block,sign(obj.dash_target_x),sign(obj.dash_target_y)) 
+           and not obj.dreaming)
+           -- </dream_block> --
   end
   
   function obj.is_flag(ox,oy,flag)
@@ -1008,9 +1161,9 @@ function init_object(type,x,y,tile)
             obj.spd.x>=0 and x2%8>=6})[tile-15] then
             return true
           end
-        end
-      end
-    end
+        end 
+      end 
+    end 
   end
 
   function obj.objcollide(other,ox,oy) 
@@ -1426,8 +1579,36 @@ function maybe()
   return rnd()<0.5
 end
 
+--<dream_block>
+
+function vec_len_sqr(a)
+  return a.x^2 + a.y^2
+end
+
+function vec_len(a)
+  return sqrt(vec_len_sqr(a))
+end
+
+function vec_sub(a,b)
+  return vector(a.x-b.x, a.y-b.y)
+end
+--</dream_block>
+
 function tile_at(x,y)
   return mget(lvl_x+x,lvl_y+y)
+end 
+
+function spikes_at(x1,y1,x2,y2,xspd,yspd)
+  for i=max(0,x1\8),min(lvl_w-1,x2/8) do
+    for j=max(0,y1\8),min(lvl_h-1,y2/8) do
+      if({y2%8>=6 and yspd>=0,
+          y1%8<=2 and yspd<=0,
+          x1%8<=2 and xspd<=0,
+          x2%8>=6 and xspd>=0})[tile_at(i,j)-15] then
+            return true 
+      end 
+    end
+  end
 end
 
 --<transition>--
@@ -1569,12 +1750,12 @@ __gfx__
 777cc777777777777777777777777777777777777777777777777777777cc777ccccc7cc55555550055555555555555555555555000000000000000000000000
 77cccc7757777777777777777777777557777777777777777777777557777775cccccccc55555555555555555555555555555555000000000000000000000000
 0000000000000000577777777777777788cccc8888cccc8888cccc88566661d66666d16600000000000000000000000000000000000000000000000000000000
-000000000000000077777777777777778c0000c88c0000c88c0000c86dddd1dddd6dd1dd00000000000000000000000000000000000000000000000000000000
-00000000000000007777ccccccccccccc00cc00cc00c100cc00cc00c6dddd1ddddddd1dd00000000000000000000000000000000000000000000000000000000
+00008000000b000077777777777777778c0000c88c0000c88c0000c86dddd1dddd6dd1dd00000000000000000000000000000000000000000000000000000000
+00b00000000000007777ccccccccccccc00cc00cc00c100cc00cc00c6dddd1ddddddd1dd00000000000000000000000000000000000000000000000000000000
 0000000000000000777ccc7cccccccccc0c00c0cc010c10cc00cc00c6ddd11111111111100000000000000000000000000000000000000000000000000000000
-000000000000000077ccccccccccccccc0cccc0cc01cc10cc00cc00cddd111111111111100000000000000000000000000000000000000000000000000000000
-000000000000000077c7ccccccccccccc00cc00cc00c100cc00cc00cddd111111111111100000000000000000000000000000000000000000000000000000000
-000000000000000077cccc7ccccccccc8c0000c88c0000c88c0000c8111111111111111100000000000000000000000000000000000000000000000000000000
+0000b000080000b077ccccccccccccccc0cccc0cc01cc10cc00cc00cddd111111111111100000000000000000000000000000000000000000000000000000000
+0b0000000000000077c7ccccccccccccc00cc00cc00c100cc00cc00cddd111111111111100000000000000000000000000000000000000000000000000000000
+00000080000b000077cccc7ccccccccc8c0000c88c0000c88c0000c8111111111111111100000000000000000000000000000000000000000000000000000000
 000000000000000077cccccccccccccc88cccc8888cccc8888cccc886dd111111111111100000000000000000000000000000000000000000000000000000000
 000000000000000000000000000000000000000000000000000000006dd11111111cc11100000000000000000000000000000000000000000000000000000000
 000000000000000000000000000000000000000000000000000000006dd1111111cccc1100000000000000000000000000000000000000000000000000000000
@@ -1728,8 +1909,8 @@ __map__
 0047484800000000000000004243430000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0057000000000000000000004300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0057000000000000000000004300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0058000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000404141000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0058000000000041000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 2222222222222317172122222222222223000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
