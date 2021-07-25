@@ -717,6 +717,9 @@ badeline={
     if this.timer==30 then 
       create_hair(this)
     end
+    if this.timer>=30 then
+      update_hair(this)
+    end 
     local hit=this.check(player,0,0)
     if hit and this.timer>=70 then 
       kill_player(hit)
@@ -1640,7 +1643,7 @@ end
 --"x,y,w,h,badeline num"
 levels={
 	"0,0,1,1",
-  "1,0,2,2"
+  "1,0,2,2,1"
 }
 
 --<camtrigger>--
