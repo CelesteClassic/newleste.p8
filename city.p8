@@ -214,7 +214,7 @@ player={
             if hit and hit.state==1 then 
               if hit.delay>=12 then 
                 this.spd.x=hit.dir.x*4
-                this.spd.y=min(hit.dir.y*-3,-2)
+                this.spd.y=min(hit.dir.y*3,-2)
               else 
                 this.spd.x=(hit.spd.x-sign(hit.spd.x))*0.75
                 this.spd.y=mid(hit.spd.y-sign(hit.spd.y),-2,-3)
