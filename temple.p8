@@ -1066,12 +1066,24 @@ theo_crystal={
     this.delay=0
   end,
   update=function(this) 
+    if this.delay>0 then 
+      this.delay-=1
+      if this.delay==0 then 
+        pause_player=false 
+      end 
+      this.y=appr(this.y,this.player.y-6,2)
+    end 
+
     if not this.player then 
       local hit=this.player_here()
       if hit and hit.dash_effect_time>0 then 
         this.player=hit 
         hit.holding=this
+        
+        pause_player=true
+        this.delay=2
       end 
+      
 
 
       --physics
@@ -1202,6 +1214,11 @@ function init_object(type,x,y,tile)
   end
   
   function obj.move(ox,oy,start)
+    -- <theo_crystal> --
+    if pause_player and obj.type==player then 
+      return 
+    end 
+    -- </theo_crystal> --
     for axis in all{"x","y"} do
       obj.rem[axis]+=axis=="x" and ox or oy
       local amt=round(obj.rem[axis])
