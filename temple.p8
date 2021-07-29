@@ -231,13 +231,11 @@ player={
       -- dash
       local d_full=5
       local d_half=3.5355339059 -- 5 * sqrt(2)
-      -- <red_bubble> --
-      if this.djump>0 and dash or this.do_dash then
-        this.do_dash=false
-      -- </red_bubble> -- 
-        --<theo_crystal> --
-        -- throw
-        if this.holding then
+
+      --<theo_crystal> --
+      if this.holding then 
+        if dash then 
+          -- throw
           if this.holding.is_solid(0,0) then -- can't throw 
             psfx(21)
             this.init_smoke()
@@ -247,29 +245,32 @@ player={
             this.holding.player=nil
             this.holding=nil
           end 
-        --</theo_crytal> --
-        else 
-          this.init_smoke()
-          this.djump-=1   
-          this.dash_time=4
-          has_dashed=true
-          this.dash_effect_time=10
-          -- vertical input
-          local v_input=btn(⬆️) and -1 or btn(⬇️) and 1 or 0
-          -- calculate dash speeds
-          this.spd=vector(h_input~=0 and 
-          h_input*(v_input~=0 and d_half or d_full) or 
-          (v_input~=0 and 0 or this.flip.x and -1 or 1)
-          ,v_input~=0 and v_input*(h_input~=0 and d_half or d_full) or 0)
-          -- effects
-          psfx(20)
-          freeze=2
-          -- dash target speeds and accels
-          this.dash_target_x=2*sign(this.spd.x)
-          this.dash_target_y=(this.spd.y>=0 and 2 or 1.5)*sign(this.spd.y)
-          this.dash_accel_x=this.spd.y==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
-          this.dash_accel_y=this.spd.x==0 and 1.5 or 1.06066017177
         end 
+      -- <red_bubble> --
+      elseif this.djump>0 and dash or this.do_dash then
+      --</theo_crytal> --
+        this.do_dash=false
+      -- </red_bubble> -- 
+        this.init_smoke()
+        this.djump-=1   
+        this.dash_time=4
+        has_dashed=true
+        this.dash_effect_time=10
+        -- vertical input
+        local v_input=btn(⬆️) and -1 or btn(⬇️) and 1 or 0
+        -- calculate dash speeds
+        this.spd=vector(h_input~=0 and 
+        h_input*(v_input~=0 and d_half or d_full) or 
+        (v_input~=0 and 0 or this.flip.x and -1 or 1)
+        ,v_input~=0 and v_input*(h_input~=0 and d_half or d_full) or 0)
+        -- effects
+        psfx(20)
+        freeze=2
+        -- dash target speeds and accels
+        this.dash_target_x=2*sign(this.spd.x)
+        this.dash_target_y=(this.spd.y>=0 and 2 or 1.5)*sign(this.spd.y)
+        this.dash_accel_x=this.spd.y==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
+        this.dash_accel_y=this.spd.x==0 and 1.5 or 1.06066017177
       elseif this.djump<=0 and dash then
         -- failed dash smoke
         psfx(21)
@@ -1067,7 +1068,7 @@ theo_crystal={
     this.collides=true
     this.pspdy=0
     this.pspdx=0
-    this.on_ground=true
+    this.was_on_ground=true
 
     this.delay=0
     this.hitbox=rectangle(2,6,10,8)
@@ -1079,11 +1080,13 @@ theo_crystal={
       if this.delay==0 then 
         pause_player=false 
       end 
-      this.y=appr(this.y,this.player.y-8,2)
+      this.y=appr(this.y,this.player.y-12,4)
     end 
 
     if not this.player then 
+      this.hitbox=rectangle(0,0,16,16)
       local hit=this.player_here()
+      this.hitbox=rectangle(2,6,10,8)
       if hit and hit.dash_effect_time>0 then 
         this.player=hit 
         hit.holding=this
