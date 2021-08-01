@@ -1010,17 +1010,19 @@ badeline={
     this.outline=false
     this.off=0
     this.target_x,this.target_y=this.x,this.y
+    this.rx,this.ry=this.x,this.y
     --this.hitbox=rectangle(-4,-2,16,12)
     b=this
   end,
   update=function(this)
+    this.x,this.y=round(this.rx+4*sin(2*this.off)),round(this.ry+4*sin(this.off))
     if this.freeze>0 then 
       this.freeze-=1 
     else
-      if this.x!=this.target_x or this.y!=this.target_y then 
-        this.spd=vector((this.target_x-this.x)*0.2,(this.target_y-this.y)*0.2)
+      if round(this.rx)!=this.target_x or round(this.ry)!=this.target_y then 
+        this.rx+=0.2*(this.target_x-this.rx)
+        this.ry+=0.2*(this.target_y-this.ry)
       else  
-        this.spd=vector(0,0)
         local hit=this.player_here()
         if hit then 
           if this.next_node>#this.nodes then 
@@ -1072,21 +1074,21 @@ badeline={
         end 
       end 
     end)
-    this.draw_x,this.draw_y=this.x+4*sin(2*this.off)+0.5,this.y+4*sin(this.off)+0.5
+    --this.draw_x,this.draw_y=this.x+4*sin(2*this.off)+0.5,this.y+4*sin(this.off)+0.5
     badehair(this,1,-0.1)
     badehair(this,1,-0.4)
     badehair(this,2,0)
     badehair(this,2,0.5)
     badehair(this,1,0.125)
     badehair(this,1,0.375)
-    spr(74,this.draw_x,this.draw_y,1,1,this.flipx)
+    spr(74,this.x,this.y,1,1,this.flipx)
     pal()
   end 
 }
 
 function badehair(obj,c,a)
  for h=0,4 do
-  circfill(obj.draw_x+(obj.flipx and 2 or 6)+1.6*h*cos(a),obj.draw_y+3+1.6*h*sin(a)+(obj.freeze>0 and 0 or sin((frames+3*h+4*a)/15)),max(1,min(2,3-h)),c)
+  circfill(obj.x+(obj.flipx and 2 or 6)+1.6*h*cos(a),obj.y+3+1.6*h*sin(a)+(obj.freeze>0 and 0 or sin((frames+3*h+4*a)/15)),max(1,min(2,3-h)),c)
  end
 end
 
