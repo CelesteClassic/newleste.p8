@@ -1012,9 +1012,11 @@ badeline={
     this.target_x,this.target_y=this.x,this.y
     this.rx,this.ry=this.x,this.y
     --this.hitbox=rectangle(-4,-2,16,12)
+    this.attack=1 --hardcoded for now, will eventually be loaded from level table
     b=this
   end,
   update=function(this)
+    this.off+=0.005
     this.x,this.y=round(this.rx+4*sin(2*this.off)),round(this.ry+4*sin(this.off))
     if this.freeze>0 then 
       this.freeze-=1 
@@ -1056,10 +1058,19 @@ badeline={
         --     end  
         --   end 
           -- sucking in needs more work
+
+
+        --attacks
+        elseif this.attack==1 then --1 orb
           
+          if this.off%0.333<0.005 then 
+            --assert(false)
+            this.init_smoke()
+            init_object(orb,this.x,this.y)
+          end 
         end 
       end 
-      this.off+=0.005
+      
     end 
   end,
   draw=function(this)
@@ -1091,6 +1102,27 @@ function badehair(obj,c,a)
   circfill(obj.x+(obj.flipx and 2 or 6)+1.6*h*cos(a),obj.y+3+1.6*h*sin(a)+(obj.freeze>0 and 0 or sin((frames+3*h+4*a)/15)),max(1,min(2,3-h)),c)
  end
 end
+
+orb={
+  init=function(this)
+    this.hitbox=rectangle(-2,-2,4,4)
+    for o in all(objects) do 
+      if o.type==player then 
+        local k=sqrt((this.x-o.x)^2+(this.y-o.y)^2)
+        this.spd=vector((o.x-this.x)/(0.65*k),(o.y-this.y)/(0.65*k))
+      end 
+    end 
+  end,
+  update=function(this)
+    local hit=this.player_here()
+    if hit then 
+      kill_player(hit)
+    end 
+  end,
+  draw=function(this)
+    circfill(this.x,this.y,2,8)
+  end 
+}
 
 psfx=function(num)
   if sfx_timer<=0 then
