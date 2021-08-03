@@ -1061,7 +1061,7 @@ badeline={
 
 
         --attacks
-        elseif this.attack==1 then --1 orb
+        elseif this.attack==1 and this.node!=-1 then --1 orb
           
           if this.off%0.333<0.005 then 
             --assert(false)
