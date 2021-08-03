@@ -1012,7 +1012,7 @@ badeline={
     this.target_x,this.target_y=this.x,this.y
     this.rx,this.ry=this.x,this.y
     --this.hitbox=rectangle(-4,-2,16,12)
-    this.attack=1 --hardcoded for now, will eventually be loaded from level table
+    this.attack=2 --hardcoded for now, will eventually be loaded from level table
     b=this
   end,
   update=function(this)
@@ -1061,12 +1061,13 @@ badeline={
 
 
         --attacks
-        elseif this.attack==1 and this.node!=-1 then --1 orb
-          
-          if this.off%0.333<0.005 then 
+        elseif this.node!=-1 then 
+          if this.attack==1 and this.off%0.333<0.005 then --single orb
             --assert(false)
             this.init_smoke()
             init_object(orb,this.x,this.y)
+          elseif this.attack==2 and this.off%0.5<0.005 then --laser
+            init_object(laser,this.x,this.y).badeline=this
           end 
         end 
       end 
@@ -1121,6 +1122,57 @@ orb={
   end,
   draw=function(this)
     circfill(this.x,this.y,2,8)
+  end 
+}
+
+function find_player()
+  for o in all(objects) do  
+    if o.type==player or o.type==player_spawn then 
+      return o
+    end  
+  end
+end 
+
+function line_dist(x0,y0,x1,y1,x2,y2)
+  return abs((x2-x1)*(y1-y0)-(x1-x0)*(y2-y1))/sqrt((x2-x1)^2+(y2-y1)^2)
+end 
+laser={
+  layer=3,
+  init=function(this)
+    this.outline=false
+    this.timer=0
+  end,
+  update=function(this) 
+    this.timer+=1
+    if this.timer<60 then 
+      this.player=find_player()
+    elseif this.timer==60 then 
+      this.player=vector(this.player.x,this.player.y)
+    elseif this.timer==75 then 
+      local x1,y1,x2,y2=this.badeline.x+4,this.badeline.y-1,this.player.x+4,this.player.y+6
+      local p=find_player()
+      local d=line_dist(p.x+4,p.y+6,x1,y1,x2,y2)
+      gd=d
+      if d<6 then 
+        kill_player(p)
+      end 
+    elseif this.timer==80 then 
+      destroy_object(this)
+    end 
+  end,
+  draw=function(this) 
+    local x1,y1,x2,y2=this.badeline.x+4,this.badeline.y-1,this.player.x+4,this.player.y+6
+    local x3,y3=x1-128*(x1-x2),y1-128*(y1-y2)
+    circfill(x1,y1,2,8)
+    circfill(x1,y1,1,9)
+    if this.timer<75 then   
+      line(x1,y1,x3,y3,(this.timer<60 or this.timer%4<2) and 8 or 7)
+    else 
+      for oy=-4,4 do 
+        line(x1,y1+oy,x3,y3+oy,abs(oy)==4 and 8 or 7)
+      end 
+    end 
+    --y2-=m*x2=
   end 
 }
 
