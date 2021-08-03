@@ -1013,7 +1013,7 @@ badeline={
     this.rx,this.ry=this.x,this.y
     --this.hitbox=rectangle(-4,-2,16,12)
     this.attack=2 --hardcoded for now, will eventually be loaded from level table
-    b=this
+    --b=this
   end,
   update=function(this)
     this.off+=0.005
@@ -1136,6 +1136,36 @@ end
 function line_dist(x0,y0,x1,y1,x2,y2)
   return abs((x2-x1)*(y1-y0)-(x1-x0)*(y2-y1))/sqrt((x2-x1)^2+(y2-y1)^2)
 end 
+
+function rectfillr(x1,y1,x2,y2,a,xc,yc,c)
+		
+ 	local _x1,_y1,_x2,_y2=x1-xc,y1-yc,x2-xc,y2-yc
+  -- rotation (about xc, yc)
+  local function rotx(x,y) return xc+cos(a)*x-sin(a)*y end
+  local function roty(x,y) return yc+sin(a)*x+cos(a)*y end
+  
+  -- rect points + max/min
+  local x,y,top,bot=
+    {rotx(_x1,_y1),rotx(_x1,_y2),rotx(_x2,_y2),rotx(_x2,_y1)},
+    {roty(_x1,_y1),roty(_x1,_y2),roty(_x2,_y2),roty(_x2,_y1)},
+    0x7fff.ffff,
+    0x8000.0000
+  for i=1,4 do
+    top,bot=min(top,y[i]),max(bot,y[i])
+  end
+  -- draw that shit
+  for _y=ceil(top),bot do
+    local x1,x2=0x7fff.ffff,0x8000.0000
+    for i=1,4 do
+      if mid(_y,y[i],y[1+i%4])==_y then
+        local _x=x[i]+(_y-y[i])/(y[1+i%4]-y[i])*(x[1+i%4]-x[i])        
+        x1,x2=min(x1,_x),max(x2,_x)
+      end
+    end
+    rectfill(x1,_y,x2,_y,c)
+  end
+end
+
 laser={
   layer=3,
   init=function(this)
@@ -1168,9 +1198,9 @@ laser={
     if this.timer<75 then   
       line(x1,y1,x3,y3,(this.timer<60 or this.timer%4<2) and 8 or 7)
     else 
-      for oy=-4,4 do 
-        line(x1,y1+oy,x3,y3+oy,abs(oy)==4 and 8 or 7)
-      end 
+      rectfillr(x1+2,y1-4,x1+132,y1+4,atan2(x3-x1,y3-y1),x1,y1,7)
+      rectfillr(x1+2,y1-4,x1+132,y1-3,atan2(x3-x1,y3-y1),x1,y1,8)
+      rectfillr(x1+2,y1+3,x1+132,y1+4,atan2(x3-x1,y3-y1),x1,y1,8)
     end 
     --y2-=m*x2=
   end 
