@@ -667,7 +667,7 @@ smoke={
 
 --- <fruitrain> ---
 fruitrain={}
-fruit={
+--[[fruit={
   check_fruit=true,
   init=function(this)
     this.y_=this.y
@@ -775,7 +775,8 @@ lifeup={
     ?this.spr<=5 and this.spr.."000" or "1UP",this.x-4,this.y-4,7+this.flash%2
     --<fruitrain>--
   end
-}
+}]]
+--commented out berries- fix golden berry later
 kevin={
   init=function(this)
     while this.right()<lvl_pw-1 and tile_at(this.right()/8+1,this.y/8)==65 do 
@@ -1157,8 +1158,9 @@ function rectfillr(x1,y1,x2,y2,a,xc,yc,c)
   for _y=ceil(top),bot do
     local x1,x2=0x7fff.ffff,0x8000.0000
     for i=1,4 do
-      if mid(_y,y[i],y[1+i%4])==_y then
-        local _x=x[i]+(_y-y[i])/(y[1+i%4]-y[i])*(x[1+i%4]-x[i])        
+      local j=1+i%4
+      if mid(_y,y[i],y[j])==_y then
+        local _x=x[i]+(_y-y[i])/(y[j]-y[i])*(x[j]-x[i])        
         x1,x2=min(x1,_x),max(x2,_x)
       end
     end
@@ -1217,9 +1219,9 @@ tiles={
   [1]=player_spawn,
   [8]=side_spring,
   [9]=spring,
-  [10]=fruit,
-  [11]=fruit,
-  [12]=fly_fruit,
+  --[10]=fruit,
+  --[11]=fruit,
+  --[12]=fly_fruit,
   [15]=refill,
   [23]=fall_floor,
   [64]=kevin,
