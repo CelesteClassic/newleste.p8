@@ -1139,28 +1139,21 @@ function line_dist(x0,y0,x1,y1,x2,y2)
 end 
 
 function rectfillr(x1,y1,x2,y2,a,xc,yc,c)
-		
- 	local _x1,_y1,_x2,_y2=x1-xc,y1-yc,x2-xc,y2-yc
-  -- rotation (about xc, yc)
-  local function rotx(x,y) return xc+cos(a)*x-sin(a)*y end
-  local function roty(x,y) return yc+sin(a)*x+cos(a)*y end
-  
+  -- rotation about xc,yc
+  local function rc(x,y) return vector(xc+cos(a)*(x-xc)-sin(a)*(y-yc),yc+sin(a)*(x-xc)+cos(a)*(y-yc)) end
   -- rect points + max/min
-  local x,y,top,bot=
-    {rotx(_x1,_y1),rotx(_x1,_y2),rotx(_x2,_y2),rotx(_x2,_y1)},
-    {roty(_x1,_y1),roty(_x1,_y2),roty(_x2,_y2),roty(_x2,_y1)},
-    0x7fff.ffff,
-    0x8000.0000
-  for i=1,4 do
-    top,bot=min(top,y[i]),max(bot,y[i])
+  local pts,top,bot=
+    {rc(x1,y1),rc(x1,y2),rc(x2,y2),rc(x2,y1)},0x7fff.ffff,0x8000.0000
+  for pt in all(pts) do
+    top,bot=min(top,pt.y),max(bot,pt.y)
   end
   -- draw that shit
   for _y=ceil(top),bot do
     local x1,x2=0x7fff.ffff,0x8000.0000
     for i=1,4 do
-      local j=1+i%4
-      if mid(_y,y[i],y[j])==_y then
-        local _x=x[i]+(_y-y[i])/(y[j]-y[i])*(x[j]-x[i])        
+      local p1,p2=pts[i],pts[1+i%4]
+      if mid(_y,p1.y,p2.y)==_y then
+        local _x=p1.x+(_y-p1.y)/(p2.y-p1.y)*(p2.x-p1.x)
         x1,x2=min(x1,_x),max(x2,_x)
       end
     end
