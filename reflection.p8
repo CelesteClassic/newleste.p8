@@ -1016,6 +1016,7 @@ badeline={
     --this.hitbox=rectangle(-4,-2,16,12)
     this.attack=0 --hardcoded for now, will eventually be loaded from level table
     --b=this
+    laser.player=vector(this.x,this.y)
   end,
   update=function(this)
     this.off+=0.005
@@ -1109,6 +1110,15 @@ badeline={
     badehair(this,1,0.375)
     spr(74,this.x,this.y,1,1,this.flipx)
     pal()
+    for p in all(laser.particles) do
+      p.x+=p.dx
+      p.y+=p.dy
+      pset(p.x,p.y,p.d>5 and 8 or 2)
+      p.d-=1
+      if p.d<1 then
+        del(laser.particles,p)
+      end
+    end
   end 
 }
 
@@ -1176,39 +1186,72 @@ end
 
 laser={
   layer=3,
+  particles={},
   init=function(this)
     this.outline=false
     this.timer=0
   end,
   update=function(this) 
     this.timer+=1
-    if this.timer<60 then 
-      this.player=find_player()
-    elseif this.timer==60 then 
-      this.player=vector(this.player.x,this.player.y)
-    elseif this.timer==75 then 
-      local x1,y1,x2,y2=this.badeline.x+4,this.badeline.y-1,this.player.x+4,this.player.y+6
+    if this.timer<30 then 
+      laser.player=vector(appr(laser.player.x,find_player().x,10),appr(laser.player.y,find_player().y,10))
+    elseif this.timer==30 then 
+      laser.player=vector(laser.player.x,laser.player.y)
+    elseif this.timer==45 then 
+      local x1,y1,x2,y2=this.badeline.x+4,this.badeline.y-1,laser.player.x+4,laser.player.y+6
       local p=find_player()
       local d=line_dist(p.x+4,p.y+6,x1,y1,x2,y2)
       gd=d
       if d<6 then 
         kill_player(p)
       end 
-    elseif this.timer==80 then 
+    elseif this.timer==48 then 
       destroy_object(this)
     end 
   end,
   draw=function(this) 
-    local x1,y1,x2,y2=this.badeline.x+4,this.badeline.y-1,this.player.x+4,this.player.y+6
+    if this.timer>42 and this.timer<45 then return end
+
+    local x1,y1,x2,y2=this.badeline.x+4,this.badeline.y-1,laser.player.x+4,laser.player.y+6
     local x3,y3=x1-128*(x1-x2),y1-128*(y1-y2)
-    circfill(x1,y1,2,8)
-    circfill(x1,y1,1,9)
-    if this.timer<75 then   
-      line(x1,y1,x3,y3,(this.timer<60 or this.timer%4<2) and 8 or 7)
+
+    --draw ball electricity lines
+    for i=0,rnd(4) do
+      local a = rnd(1)
+      line(x1,y1,x1+cos(a)*rnd(7),y1+sin(a)*rnd(7),7)
+    end
+
+    --x,y,magnitude to player,scale with big laser,color flashing white
+    local _x,_y,d,s,c=x1,y1,sqrt((x2-x1)^2+(y2-y1)^2)*0.1,this.timer>45 and 2 or 1,(this.timer<30 or this.timer%4>=2) and 8 or 7
+    --draw laser electricity lines
+    line(x1,y1,x1,y1,8)
+    for i=0,10 do
+      _x+=(x2-x1)/d
+      _y+=(y2-y1)/d
+      line(_x+(rnd(10)-5)*s,_y+(rnd(10)-5)*s,rnd(2)<1 and c or 0)
+      if this.timer==47 then
+        for j=0,2 do
+          add(laser.particles,{
+            x=_x,
+            y=_y,
+            dx=(rnd(2)-1)/2,
+            dy=(rnd(2)-1)/2,
+            d=10
+          })
+        end
+      end
+    end
+
+    if this.timer<45 or this.timer==47 then
+      line(x1,y1,x3,y3,c)
+      local bscale = (this.timer>30 and this.timer%4<2) and 2 or 1
+      circfill(x1,y1,2*bscale,8)
+      circfill(x1,y1,1*bscale,9)
     else 
       rectfillr(x1+2,y1-4,x1+132,y1+4,atan2(x3-x1,y3-y1),x1,y1,7)
       rectfillr(x1+2,y1-4,x1+132,y1-3,atan2(x3-x1,y3-y1),x1,y1,8)
       rectfillr(x1+2,y1+3,x1+132,y1+4,atan2(x3-x1,y3-y1),x1,y1,8)
+      circfill(x1,y1,4,7)
     end 
     --y2-=m*x2=
   end 
