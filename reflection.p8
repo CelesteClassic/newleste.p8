@@ -1049,15 +1049,14 @@ badeline={
           this.off=0
 
           --activate falling blocks:
-          local act={}
           local off=20
-          for o in all(objects) do 
+          foreach(objects, function(o)  
             if o.type==fall_plat and o.x<=this.x then 
               o.timer=off
               o.state=0
               off+=15
             end 
-          end 
+          end)
         -- else 
         --   this.hitbox=rectangle(-4,-2,16,12) --try to suck player in
         --   local hit=this.player_here()
@@ -1094,25 +1093,29 @@ badeline={
     end 
   end,
   draw=function(this)
-    pal(1,this.freeze==0 and 1 or frames%2==0 and 14 or 7)
-    pal(2,this.freeze==0 and 2 or frames%2==0 and 14 or 7)
+    for i=1,2 do 
+      pal(i,this.freeze==0 and i or frames%2==0 and 14 or 7)
+    end 
     foreach(objects,function(o)
       if o.type == player and this.freeze==0 then
         if o.x>this.x+16 then 
-          this.flipx=true 
+          this.flip.x=true 
         elseif o.x<this.x-16 then 
-          this.flipx=false 
+          this.flip.x=false 
         end 
       end 
     end)
     --this.draw_x,this.draw_y=this.x+4*sin(2*this.off)+0.5,this.y+4*sin(this.off)+0.5
-    badehair(this,1,-0.1)
-    badehair(this,1,-0.4)
-    badehair(this,2,0)
-    badehair(this,2,0.5)
-    badehair(this,1,0.125)
-    badehair(this,1,0.375)
-    spr(74,this.x,this.y,1,1,this.flipx)
+    -- badehair(this,1,-0.1)
+    -- badehair(this,1,-0.4)
+    -- badehair(this,2,0)
+    -- badehair(this,2,0.5)
+    -- badehair(this,1,0.125)
+    -- badehair(this,1,0.375)
+    for p in all(split("1,-0.1 1,-0.4 2,0 2,0.5 1,0.125 1,0.375"," ")) do 
+	    badehair(this,unpack(split(p)))
+    end 
+    draw_obj_sprite(this)
     pal()
     
   end 
@@ -1120,7 +1123,7 @@ badeline={
 
 function badehair(obj,c,a)
  for h=0,4 do
-  circfill(obj.x+(obj.flipx and 2 or 6)+1.6*h*cos(a),obj.y+3+1.6*h*sin(a)+(obj.freeze>0 and 0 or sin((frames+3*h+4*a)/15)),max(1,min(2,3-h)),c)
+  circfill(obj.x+(obj.flip.x and 2 or 6)+1.6*h*cos(a),obj.y+3+1.6*h*sin(a)+(obj.freeze>0 and 0 or sin((frames+3*h+4*a)/15)),mid(1,2,3-h),c)
  end
 end
 
