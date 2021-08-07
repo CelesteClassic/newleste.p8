@@ -1014,9 +1014,8 @@ badeline={
     this.target_x,this.target_y=this.x,this.y
     this.rx,this.ry=this.x,this.y
     --this.hitbox=rectangle(-4,-2,16,12)
-    this.attack=0 --hardcoded for now, will eventually be loaded from level table
+    this.attack=2 --hardcoded for now, will eventually be loaded from level table
     --b=this
-    laser.player=vector(this.x,this.y)
   end,
   update=function(this)
     this.off+=0.005
@@ -1110,15 +1109,7 @@ badeline={
     badehair(this,1,0.375)
     spr(74,this.x,this.y,1,1,this.flipx)
     pal()
-    for p in all(laser.particles) do
-      p.x+=p.dx
-      p.y+=p.dy
-      pset(p.x,p.y,p.d>5 and 8 or 2)
-      p.d-=1
-      if p.d<1 then
-        del(laser.particles,p)
-      end
-    end
+    
   end 
 }
 
@@ -1162,8 +1153,8 @@ function line_dist(x0,y0,x1,y1,x2,y2)
 end 
 
 function rectfillr(x1,y1,x2,y2,a,xc,yc,c)
-  -- rotation about xc,yc
-  local function rc(x,y) return vector(xc+cos(a)*(x-xc)-sin(a)*(y-yc),yc+sin(a)*(x-xc)+cos(a)*(y-yc)) end
+    -- rotation about xc,yc
+  local function rc(x,y) x,y=x-xc,y-yc return vector(xc+cos(a)*x-sin(a)*y,yc+sin(a)*x+cos(a)*y) end
   -- rect points + max/min
   local pts,top,bot=
     {rc(x1,y1),rc(x1,y2),rc(x2,y2),rc(x2,y1)},0x7fff.ffff,0x8000.0000
@@ -1173,8 +1164,8 @@ function rectfillr(x1,y1,x2,y2,a,xc,yc,c)
   -- draw that shit
   for _y=ceil(top),bot do
     local x1,x2=0x7fff.ffff,0x8000.0000
-    for i=1,4 do
-      local p1,p2=pts[i],pts[1+i%4]
+    for i,p1 in pairs(pts) do
+      local p2=pts[1+i%4]
       if mid(_y,p1.y,p2.y)==_y then
         local _x=p1.x+(_y-p1.y)/(p2.y-p1.y)*(p2.x-p1.x)
         x1,x2=min(x1,_x),max(x2,_x)
@@ -1186,74 +1177,87 @@ end
 
 laser={
   layer=3,
-  particles={},
   init=function(this)
     this.outline=false
     this.timer=0
+    this.particles={}
   end,
   update=function(this) 
     this.timer+=1
     if this.timer<30 then 
-      laser.player=vector(appr(laser.player.x,find_player().x,10),appr(laser.player.y,find_player().y,10))
-    elseif this.timer==30 then 
-      laser.player=vector(laser.player.x,laser.player.y)
+      this.playerx,this.playery=appr(this.playerx or this.badeline.x ,find_player().x,10),appr(this.playery or this.badeline.y,find_player().y,10)
     elseif this.timer==45 then 
-      local x1,y1,x2,y2=this.badeline.x+4,this.badeline.y-1,laser.player.x+4,laser.player.y+6
+      local x1,y1,x2,y2=this.badeline.x+4,this.badeline.y-1,this.playerx+4,this.playery+6
       local p=find_player()
       local d=line_dist(p.x+4,p.y+6,x1,y1,x2,y2)
-      gd=d
       if d<6 then 
         kill_player(p)
       end 
-    elseif this.timer==48 then 
+    elseif this.timer>=48 and #this.particles==0 then 
       destroy_object(this)
     end 
-  end,
-  draw=function(this) 
-    if this.timer>42 and this.timer<45 then return end
-
-    local x1,y1,x2,y2=this.badeline.x+4,this.badeline.y-1,laser.player.x+4,laser.player.y+6
-    local x3,y3=x1-128*(x1-x2),y1-128*(y1-y2)
-
-    --draw ball electricity lines
-    for i=0,rnd(4) do
-      local a = rnd(1)
-      line(x1,y1,x1+cos(a)*rnd(7),y1+sin(a)*rnd(7),7)
-    end
-
-    --x,y,magnitude to player,scale with big laser,color flashing white
-    local _x,_y,d,s,c=x1,y1,sqrt((x2-x1)^2+(y2-y1)^2)*0.1,this.timer>45 and 2 or 1,(this.timer<30 or this.timer%4>=2) and 8 or 7
-    --draw laser electricity lines
-    line(x1,y1,x1,y1,8)
-    for i=0,10 do
-      _x+=(x2-x1)/d
-      _y+=(y2-y1)/d
-      line(_x+(rnd(10)-5)*s,_y+(rnd(10)-5)*s,rnd(2)<1 and c or 0)
-      if this.timer==47 then
-        for j=0,2 do
-          add(laser.particles,{
-            x=_x,
-            y=_y,
-            dx=(rnd(2)-1)/2,
-            dy=(rnd(2)-1)/2,
-            d=10
-          })
-        end
+    for p in all(this.particles) do
+      p.x+=p.dx
+      p.y+=p.dy
+      p.d-=1
+      if p.d<0 then
+        del(this.particles,p)
       end
     end
+  end,
+  draw=function(this) 
+    local timer=this.timer
+    if timer>42 and timer<45 then return end
+    if timer<48 then 
+      local x1,y1,x2,y2=this.badeline.x+4,this.badeline.y-1,this.playerx+4,this.playery+6
+      local x3,y3=x1-128*(x1-x2),y1-128*(y1-y2)
 
-    if this.timer<45 or this.timer==47 then
-      line(x1,y1,x3,y3,c)
-      local bscale = (this.timer>30 and this.timer%4<2) and 2 or 1
-      circfill(x1,y1,2*bscale,8)
-      circfill(x1,y1,1*bscale,9)
-    else 
-      rectfillr(x1+2,y1-4,x1+132,y1+4,atan2(x3-x1,y3-y1),x1,y1,7)
-      rectfillr(x1+2,y1-4,x1+132,y1-3,atan2(x3-x1,y3-y1),x1,y1,8)
-      rectfillr(x1+2,y1+3,x1+132,y1+4,atan2(x3-x1,y3-y1),x1,y1,8)
-      circfill(x1,y1,4,7)
+      --draw ball electricity lines
+      for i=0,rnd(4) do
+        local a = rnd()
+        line(x1,y1,x1+cos(a)*rnd(7),y1+sin(a)*rnd(7),7)
+      end
+
+      --x,y,magnitude to player,scale with big laser,color flashing white
+      local _x,_y,d,s,c=x1,y1,sqrt((x2-x1)^2+(y2-y1)^2)*0.1,timer>45 and 2 or 0.5,(timer<30 or timer%4>=2) and 8 or 7
+      --draw laser electricity lines
+      line(x1,y1,x1,y1,8) --set line cursor pos
+      for i=0,10 do
+        _x+=(x2-x1)/d
+        _y+=(y2-y1)/d
+        line(_x+(rnd(10)-5)*s,_y+(rnd(10)-5)*s,maybe() and (timer>45 and c or 2) or 0)
+        if timer==47 then
+          for j=0,2 do
+            add(this.particles,{
+              x=_x,
+              y=_y,
+              dx=rnd()-0.5,
+              dy=rnd()-0.5,
+              d=10
+            })
+          end
+        end
+      end
+
+      if timer<45 or timer==47 then
+        line(x1,y1,x3,y3,c)
+        local bscale = timer>30 and timer%4<2 and 2 or 1
+        for i=2,1,-1 do 
+          circfill(x1,y1,i*bscale,10-i)
+        end 
+      else 
+        -- rectfillr(x1+2,y1-4,x1+132,y1+4,atan2(x3-x1,y3-y1),x1,y1,7)
+        -- rectfillr(x1+2,y1-4,x1+132,y1-3,atan2(x3-x1,y3-y1),x1,y1,8)
+        -- rectfillr(x1+2,y1+3,x1+132,y1+4,atan2(x3-x1,y3-y1),x1,y1,8)
+        for i=1,3 do 
+          rectfillr(x1+2,y1+(i==3 and 3 or -4),x1+132,y1+(i==2 and -3 or 4),atan2(x3-x1,y3-y1),x1,y1,i==1 and 7 or 8)
+        end 
+        circfill(x1,y1,4,7)
+      end 
     end 
-    --y2-=m*x2=
+    for p in all(this.particles) do
+      pset(p.x,p.y,p.d>4 and 8 or 2)
+    end
   end 
 }
 

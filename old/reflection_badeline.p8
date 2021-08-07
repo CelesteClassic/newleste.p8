@@ -1451,74 +1451,74 @@ function _draw()
 
   -- badeline background
   
-  foreach(objects,function(o)
-   if o.type == badeline then
-    rectfill(0,0,128,128,0)
+  -- foreach(objects,function(o)
+  --  if o.type == badeline then
+  --   rectfill(0,0,128,128,0)
     
-    fillp(0b0101101001011010)
+  --   fillp(0b0101101001011010)
     
-    for i=0,127 do    
-     offset=sin((frames/15)+(i/150))*3
+  --   for i=0,127 do    
+  --    offset=sin((frames/15)+(i/150))*3
      
-     for j=-16,256,12 do
-      shrink = (150+(sin((j/4.5)+(frames/30))*30)-i) / 16
+  --    for j=-16,256,12 do
+  --     shrink = (150+(sin((j/4.5)+(frames/30))*30)-i) / 16
       
-      if shrink <= 7.5 then
-       line(j+offset+shrink+1,i+1,j+offset+16-shrink,i+1,1)
+  --     if shrink <= 7.5 then
+  --      line(j+offset+shrink+1,i+1,j+offset+16-shrink,i+1,1)
        
-       if i > 96 then
-        c=1
-       elseif i > 80 and i < 90 then
-        c=1
-       elseif i > 70 and i < 75 then
-        c=1
-       elseif i > 64 and i < 67 then
-        c=1
-       elseif i > 60 then
-        if i % 2 == 0 then
-         c=2
-        else
-         c=1
-        end
-       else
-        c=2
-       end
+  --      if i > 96 then
+  --       c=1
+  --      elseif i > 80 and i < 90 then
+  --       c=1
+  --      elseif i > 70 and i < 75 then
+  --       c=1
+  --      elseif i > 64 and i < 67 then
+  --       c=1
+  --      elseif i > 60 then
+  --       if i % 2 == 0 then
+  --        c=2
+  --       else
+  --        c=1
+  --       end
+  --      else
+  --       c=2
+  --      end
        
-       line(j+offset+shrink,i,j+offset+15-shrink,i,c)     
-      end
-     end
-    end
-   end
-  end)
+  --      line(j+offset+shrink,i,j+offset+15-shrink,i,c)     
+  --     end
+  --    end
+  --   end
+  --  end
+  -- end)
 
   fillp()
 
-  if anxiety then
-   for i=0,15 do
-    pal(i,12)
-   end
-   map(xtiles,ytiles,-anxiety,0,level_tlength(),level_theight(),4)
-   for i=0,15 do
-    pal(i,8)
-   end
-   map(xtiles,ytiles,anxiety,0,level_tlength(),level_theight(),4)
-  end
+  -- if anxiety then
+  --  for i=0,15 do
+  --   pal(i,12)
+  --  end
+  --  map(xtiles,ytiles,-anxiety,0,level_tlength(),level_theight(),4)
+  --  for i=0,15 do
+  --   pal(i,8)
+  --  end
+  --  map(xtiles,ytiles,anxiety,0,level_tlength(),level_theight(),4)
+  -- end
    
   pal()
 
   -- draw bg terrain
   map(xtiles,ytiles,0,0,level_tlength(),level_theight(),4)
 
-  if anxiety then
-   for i=0,15 do
-    pal(i,12)
-   end
-   map(xtiles,ytiles,-anxiety,0,level_tlength(),level_theight(),2)
-   for i=0,15 do
-    pal(i,8)
-   end
-   map(xtiles,ytiles,anxiety,0,level_tlength(),level_theight(),2)
-  end
+  -- if anxiety then
+  --  for i=0,15 do
+  --   pal(i,12)
+  --  end
+  --  map(xtiles,ytiles,-anxiety,0,level_tlength(),level_theight(),2)
+  --  for i=0,15 do
+  --   pal(i,8)
+  --  end
+  --  map(xtiles,ytiles,anxiety,0,level_tlength(),level_theight(),2)
+  -- end
    
   pal()
 
@@ -1534,20 +1534,20 @@ function _draw()
 
   -- draw objects
   foreach(objects,function(o)
-      anxiety_check=true
-      for i=0,15 do
-       pal(i,12)
-      end
-      camera(2,0)
-      draw_object(o)
-      for i=0,15 do
-       pal(i,8)
-      end
-      camera(-2,0)
-      draw_object(o)
-      anxiety_check=false
-      pal()
-      camera(0,0)
+      -- anxiety_check=true
+      -- for i=0,15 do
+      --  pal(i,12)
+      -- end
+      -- camera(2,0)
+      -- draw_object(o)
+      -- for i=0,15 do
+      --  pal(i,8)
+      -- end
+      -- camera(-2,0)
+      -- draw_object(o)
+      -- anxiety_check=false
+      -- pal()
+      -- camera(0,0)
       draw_object(o)
     end)
 
