@@ -1016,9 +1016,11 @@ badeline={
     --this.hitbox=rectangle(-4,-2,16,12)
     this.attack=2 --hardcoded for now, will eventually be loaded from level table
     --b=this
+    this.attack_timer=0
   end,
   update=function(this)
     this.off+=0.005
+    this.attack_timer+=1
     this.x,this.y=round(this.rx+4*sin(2*this.off)),round(this.ry+4*sin(this.off))
     if this.freeze>0 then 
       this.freeze-=1 
@@ -1029,6 +1031,8 @@ badeline={
       else  
         local hit=this.player_here()
         if hit then 
+          this.attack_timer=1
+          destroy_object(this.laser or {})
           if this.next_node>#this.nodes then 
             this.target_x=lvl_pw+50
             this.node=-1
@@ -1076,12 +1080,13 @@ badeline={
 
         --attacks
         elseif this.node!=-1 then 
-          if this.attack==1 and this.off%0.333<0.005 then --single orb
+          if this.attack==1 and this.attack_timer%120==0 then --single orb
             --assert(false)
             this.init_smoke()
             init_object(orb,this.x,this.y)
-          elseif this.attack==2 and this.off%0.5<0.005 then --laser
-            init_object(laser,this.x,this.y).badeline=this
+          elseif this.attack==2 and this.attack_timer%200==0 then --laser
+            this.laser=init_object(laser,this.x,this.y)
+            this.laser.badeline=this
           end 
         end 
       end 
