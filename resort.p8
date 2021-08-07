@@ -409,34 +409,54 @@ spring={
 
 sinking_platform = {
   init=function(this)
-      this.start=this.y
-      this.hitbox=rectangle(0,0,16,0)
-      this.semisolid_obj=true
-  this.rise_timer = 0
+    this.start=this.y
+    this.hitbox=rectangle(0,0,16,0)
+    this.semisolid_obj=true
+    this.rise_timer=0
+    this.shake=0
+    this.phit=false
+    this.home=true
   end,
   update=function(this)
+    gy=this.y
     local hit=this.check(player,0,-1)
+    if this.shake>0 then 
+      this.shake-=1
+    end 
     if hit then
       if hit.spd.y>=0 then
-        this.rise_timer = 2
-        this.spd.y = appr(this.spd.y, btn(3) and 2 or 1, 0.5)
-      end
+        this.spd.y = appr(this.spd.y, btn(3) and 1.5 or 0.75, 0.5)
+        this.rise_timer=1
+        if not this.phit then
+          this.shake=3
+          this.phit=true
+          
+        end 
+        this.home=false
+      end 
     elseif this.rise_timer > 0 then
       this.rise_timer -= 1
-      this.spd.y = appr(this.spd.y, 1.5, 0.8)
+      this.spd.y = appr(this.spd.y, 1, 0.5)
     else
-      this.spd.y = appr(this.spd.y, -2, 0.2)
+      this.phit=false
+      this.spd.y = max(appr(this.spd.y, -1.25, 0.2),this.start-this.y)
     end
-    if this.y<=this.start and not hit then
-      this.spd.y=0
-      this.y = this.start
+    if this.y==this.start and not this.home then
+      this.home=true
+      this.rem.y=0
+      this.shake=3
     end
   end,
 
   draw=function(this)
+    local x,y=this.x,this.y 
+    if this.shake>0 then 
+      x+=rnd(3)-1
+      y+=rnd(2)-1
+    end 
     rectfill(this.x+7,this.start+4,this.x+8,this.start+123,5) --tracks extending downwards from top position
     --visual issue to be fixed by porting to new base cart
-    spr(29,this.x,this.y,2,1)
+    spr(29,x,y,2,1)
   end
 }
 
