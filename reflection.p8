@@ -1079,11 +1079,11 @@ badeline={
 
         --attacks
         elseif this.node!=-1 then 
-          if this.attack==1 and this.attack_timer%120==0 then --single orb
+          if this.attack==1 and this.attack_timer%60==0 then --single orb
             --assert(false)
             this.init_smoke()
             init_object(orb,this.x,this.y)
-          elseif this.attack==2 and this.attack_timer%200==0 then --laser
+          elseif this.attack==2 and this.attack_timer%100==0 then --laser
             this.laser=init_object(laser,this.x,this.y)
             this.laser.badeline=this
           end 
