@@ -771,13 +771,13 @@ zip_mover={
     local r=4.5
     local oy,ox=r*cos(cang),r*sin(cang)
     --line(c1x,c1y,c2x,c2y,8)
-    line(round(c1x+ox),round(c1y+oy),round(c2x+ox),round(c2y+oy),4)
-    line(round(c1x-ox),round(c1y-oy),round(c2x-ox),round(c2y-oy),4)
+    line(round(c1x+ox),round(c1y+oy),round(c2x+ox),round(c2y+oy),2)
+    line(round(c1x-ox),round(c1y-oy),round(c2x-ox),round(c2y-oy),2)
 
     local oy,ox=(r+1)*cos(cang),(r+1)*sin(cang)
     poke(0x5f38,1)
     poke(0x5f3a,this.start.x/8+lvl_x+1)
-    pal(7,9)
+    pal(7,4)
     tline(round(c1x+ox),round(c1y+oy),round(c2x+ox),round(c2y+oy),0,this.start.y/8+0.5+this.ang*-40%4/8,0.125,0)
     tline(round(c1x-ox),round(c1y-oy),round(c2x-ox),round(c2y-oy),0,this.start.y/8+0.5+this.ang*40%4/8,0.125,0)
     pal()
