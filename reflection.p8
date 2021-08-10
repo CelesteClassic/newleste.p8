@@ -1139,6 +1139,7 @@ orb={
     end 
     this.t=0
     this.y_=this.y
+    this.particles={}
   end,
   update=function(this)
     this.t+=0.05
@@ -1149,13 +1150,37 @@ orb={
     if hit then 
       kill_player(hit)
     end 
-    
+    if rnd()<0.5 then 
+      add(this.particles,{
+        x=this.x,
+        y=this.y,
+        dx=rnd(1)*-this.spdx,
+        dy=rnd(1)*-this.spdy,
+        c=8,
+        d=15
+      })
+    end 
+    foreach(this.particles,function(p)
+      p.x+=p.dx 
+      p.y+=p.dy 
+      if rnd()<0.3 then 
+        p.c=split"7,8,14"[1+flr(rnd(3))]
+      end 
+      p.d-=1
+      if p.d<0 then 
+        del(this.particles,p)
+      end 
+    end)
   end,
   draw=function(this)
+    -- particles 
+    foreach(this.particles,function(p)
+      pset(p.x,p.y,p.c)
+    end)
     -- spinny thing
     local x,y,t=this.x,this.y,this.t
     for a=t,t+0.08,0.01 do 
-      pset(round(x+6*cos(-a)),round(y+6*sin(-a)),8)
+      pset(round(x+6*cos(a)),round(y-6*sin(a)),8)
     end 
 
     --inner animation
@@ -1296,65 +1321,65 @@ laser={
   end 
 }
 
-fall_plat={
-  init=function(this)
-    while this.right()<lvl_pw-1 and tile_at(this.right()/8+1,this.y/8)==76 do 
-      this.hitbox.w+=8
-    end 
-    while this.bottom()<lvl_ph-1 and tile_at(this.x/8,this.bottom()/8+1)==76 do 
-      this.hitbox.h+=8
-    end 
-    this.collides=true
-    this.solid_obj=true
-    this.timer=0
-  end,
-  update=function(this) 
-    if this.timer>0 then 
-      this.timer-=1
-      if this.timer==0 then 
-        this.state=this.finished and 2 or 1
-        this.spd.y=0.4
-      end 
-    elseif this.state==1 then 
-      if this.spd.y==0 then 
-        this.state=0
-        for i=0,this.hitbox.w-1,8 do 
-          this.init_smoke(i,this.hitbox.h-2)
-        end
-        this.timer=6
-        this.finished=true
-      end
-      this.spd.y=appr(this.spd.y,4,0.4)
-    end 
-  end,
-  draw=function(this)
-    local x,y=this.x,this.y
-    if this.state==0 then 
-      x+=rnd(2)-1
-      y+=rnd(2)-1
-    end
-    local r,d=x+this.hitbox.w-8,y+this.hitbox.h-8 
-    for i=x,r,r-x do 
-      for j=y,d,d-y do 
-        spr(33,i,j,1.0,1.0,i~=x,j~=y)
-      end 
-    end 
-    for i=x+8,r-8,8 do 
-      spr(34,i,y)
-      spr(50,i,d)
-    end
-    for i=y+8,d-8,8 do 
-      spr(36,x,i)
-      spr(38,r,i)
-    end
-    for i=x+8,r-8,8 do 
-      for j=y+8,d-8,8 do 
-        spr((i+j-x-y)%16==0 and 37 or 56,i,j)
-      end 
-    end 
-  end
+-- fall_plat={
+--   init=function(this)
+--     while this.right()<lvl_pw-1 and tile_at(this.right()/8+1,this.y/8)==76 do 
+--       this.hitbox.w+=8
+--     end 
+--     while this.bottom()<lvl_ph-1 and tile_at(this.x/8,this.bottom()/8+1)==76 do 
+--       this.hitbox.h+=8
+--     end 
+--     this.collides=true
+--     this.solid_obj=true
+--     this.timer=0
+--   end,
+--   update=function(this) 
+--     if this.timer>0 then 
+--       this.timer-=1
+--       if this.timer==0 then 
+--         this.state=this.finished and 2 or 1
+--         this.spd.y=0.4
+--       end 
+--     elseif this.state==1 then 
+--       if this.spd.y==0 then 
+--         this.state=0
+--         for i=0,this.hitbox.w-1,8 do 
+--           this.init_smoke(i,this.hitbox.h-2)
+--         end
+--         this.timer=6
+--         this.finished=true
+--       end
+--       this.spd.y=appr(this.spd.y,4,0.4)
+--     end 
+--   end,
+--   draw=function(this)
+--     local x,y=this.x,this.y
+--     if this.state==0 then 
+--       x+=rnd(2)-1
+--       y+=rnd(2)-1
+--     end
+--     local r,d=x+this.hitbox.w-8,y+this.hitbox.h-8 
+--     for i=x,r,r-x do 
+--       for j=y,d,d-y do 
+--         spr(33,i,j,1.0,1.0,i~=x,j~=y)
+--       end 
+--     end 
+--     for i=x+8,r-8,8 do 
+--       spr(34,i,y)
+--       spr(50,i,d)
+--     end
+--     for i=y+8,d-8,8 do 
+--       spr(36,x,i)
+--       spr(38,r,i)
+--     end
+--     for i=x+8,r-8,8 do 
+--       for j=y+8,d-8,8 do 
+--         spr((i+j-x-y)%16==0 and 37 or 56,i,j)
+--       end 
+--     end 
+--   end
 
-}
+-- }
 
 psfx=function(num)
   if sfx_timer<=0 then
