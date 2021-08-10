@@ -1081,8 +1081,8 @@ badeline={
         elseif this.node!=-1 and find_player() then 
           if this.attack==1 and this.attack_timer%60==0 then --single orb
             --assert(false)
-            this.init_smoke()
-            init_object(orb,this.x,this.y)
+            
+            init_object(orb,this.flip.x and this.right() or this.left() ,this.y+4)
           elseif this.attack==2 and this.attack_timer%100==0 then --laser
             this.laser=init_object(laser,this.x,this.y)
             this.laser.badeline=this
@@ -1091,11 +1091,8 @@ badeline={
       end 
       
     end 
-  end,
-  draw=function(this)
-    for i=1,2 do 
-      pal(i,this.freeze==0 and i or frames%2==0 and 14 or 7)
-    end 
+    
+    -- facing direction 
     foreach(objects,function(o)
       if o.type == player and this.freeze==0 then
         if o.x>this.x+16 then 
@@ -1105,6 +1102,11 @@ badeline={
         end 
       end 
     end)
+  end,
+  draw=function(this)
+    for i=1,2 do 
+      pal(i,this.freeze==0 and i or frames%2==0 and 14 or 7)
+    end 
     --this.draw_x,this.draw_y=this.x+4*sin(2*this.off)+0.5,this.y+4*sin(this.off)+0.5
     -- badehair(this,1,-0.1)
     -- badehair(this,1,-0.4)
@@ -1129,6 +1131,7 @@ end
 
 orb={
   init=function(this)
+    
     this.hitbox=rectangle(-2,-2,5,5)
     for o in all(objects) do 
       if o.type==player then 
@@ -1137,6 +1140,7 @@ orb={
         --this.spdx,this.spdy=-1/0.65,0
       end 
     end 
+    this.init_smoke(-4+2*sign(this.spdx),-4)
     this.t=0
     this.y_=this.y
     this.particles={}
