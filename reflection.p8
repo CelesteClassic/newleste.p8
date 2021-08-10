@@ -1014,7 +1014,7 @@ badeline={
     this.target_x,this.target_y=this.x,this.y
     this.rx,this.ry=this.x,this.y
     --this.hitbox=rectangle(-4,-2,16,12)
-    this.attack=2 --hardcoded for now, will eventually be loaded from level table
+    this.attack=1 --hardcoded for now, will eventually be loaded from level table
     --b=this
     this.attack_timer=0
   end,
@@ -1078,7 +1078,7 @@ badeline={
 
 
         --attacks
-        elseif this.node!=-1 then 
+        elseif this.node!=-1 and find_player() then 
           if this.attack==1 and this.attack_timer%60==0 then --single orb
             --assert(false)
             this.init_smoke()
@@ -1129,22 +1129,49 @@ end
 
 orb={
   init=function(this)
-    this.hitbox=rectangle(-2,-2,4,4)
+    this.hitbox=rectangle(-2,-2,5,5)
     for o in all(objects) do 
       if o.type==player then 
-        local k=sqrt((this.x-o.x)^2+(this.y-o.y)^2)
-        this.spd=vector((o.x-this.x)/(0.65*k),(o.y-this.y)/(0.65*k))
+        local k=sqrt((this.x-o.x-4)^2+(this.y-o.y-4)^2)
+        this.spdx,this.spdy=(o.x+4-this.x)/(0.65*k),(o.y+4-this.y)/(0.65*k)
+        --this.spdx,this.spdy=-1/0.65,0
       end 
     end 
+    this.t=0
+    this.y_=this.y
   end,
   update=function(this)
+    this.t+=0.05
+    this.x+=this.spdx 
+    this.y_+=this.spdy 
+    this.y=round(this.y_+sin(this.t))
     local hit=this.player_here()
     if hit then 
       kill_player(hit)
     end 
+    
   end,
   draw=function(this)
-    circfill(this.x,this.y,2,8)
+    -- spinny thing
+    local x,y,t=this.x,this.y,this.t
+    for a=t,t+0.08,0.01 do 
+      pset(round(x+6*cos(-a)),round(y+6*sin(-a)),8)
+    end 
+
+    --inner animation
+    local sx=sin(2*t+0.25)>=0.5 and 1 or 0
+    local sy=sin(2*t+0.25)<-0.5 and 1 or 0
+    r=2
+    local i=1+flr((1.5*t)%3)
+    ovalfill(x-r-sx,y-r-sy,x+r,y+r,i==2 and 8 or 2)
+    r=round(1+sin(1.5*t+0.25))
+    if r>0 or i==3 then 
+      if i==3 then r=2-r end 
+      ovalfill(x-r-sx,y-r-sy,x+r,y+r,split"14,7,8"[i]) 
+    end 
+
+
+    pal()
   end 
 }
 
