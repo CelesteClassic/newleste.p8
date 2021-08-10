@@ -1145,7 +1145,7 @@ orb={
     this.t+=0.05
     this.x+=this.spdx 
     this.y_+=this.spdy 
-    this.y=round(this.y_+sin(this.t))
+    this.y=round(this.y_+1.5*sin(this.t))
     local hit=this.player_here()
     if hit then 
       kill_player(hit)
