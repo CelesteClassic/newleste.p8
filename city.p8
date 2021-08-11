@@ -785,8 +785,8 @@ zip_mover={
     poke(0x5f38,1)
     poke(0x5f3a,this.start.x/8+lvl_x+1)
     pal(7,4)
-    tline(round(c1x+ox),round(c1y+oy),round(c2x+ox),round(c2y+oy),0,this.start.y/8+0.5+this.ang*-40%4/8,0.125,0)
-    tline(round(c1x-ox),round(c1y-oy),round(c2x-ox),round(c2y-oy),0,this.start.y/8+0.5+this.ang*40%4/8,0.125,0)
+    tline(round(c1x+ox),round(c1y+oy),round(c2x+ox),round(c2y+oy),0,this.start.y/8+0.875-flr(this.ang*40%4)/8,0.125,0)
+    tline(round(c1x-ox),round(c1y-oy),round(c2x-ox),round(c2y-oy),0,this.start.y/8+0.5+flr(this.ang*40%4)/8,0.125,0)
     pal()
     --tline(0,0,128,0,0,this.start.y/8+0.5--[[+this.ang*10%4/8]],0.125,0)
     
