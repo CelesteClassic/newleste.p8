@@ -772,6 +772,11 @@ zip_mover={
     local r=4.5
     ox,oy=r*cos(0.25+cang),r*sin(0.25+cang)
     --line(c1x,c1y,c2x,c2y,8)
+
+    c1x+=1*sin(0.25+cang)
+    c1y-=1*cos(0.25+cang)
+    c2x-=1*sin(0.25+cang)
+    c2y+=1*cos(0.25+cang)
     line(round(c1x+ox),round(c1y+oy),round(c2x+ox),round(c2y+oy),2)
     line(round(c1x-ox),round(c1y-oy),round(c2x-ox),round(c2y-oy),2)
 
