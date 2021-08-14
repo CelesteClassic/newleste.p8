@@ -706,6 +706,7 @@ zip_mover={
     this.break_timer,this.death_timer=0,0
     this.start=vector(this.x,this.y)
     this.ang=0
+    this.particles={}
   end,
   end_init=function(this)
     for o in all(objects) do 
@@ -742,6 +743,37 @@ zip_mover={
       local accel,maxspeed,shake,target
       if this.state==1 then 
         accel,maxspeed,shake,target=0.5,6,6,this.target
+
+        --create particles
+        -- this is really bad token wise, and can be optimized, but idc for now
+        local c1x=this.start.x+this.hitbox.w/2-0.5
+        local c1y=this.start.y+7.5
+        local c2x=this.target.x+this.hitbox.w/2-0.5
+        local c2y=this.target.y+7.5
+        cang=atan2(c1x-c2x,c1y-c2y)
+
+        local r=6
+        ox,oy=r*cos(0.25+cang),r*sin(0.25+cang)
+        --line(c1x,c1y,c2x,c2y,8)
+        if rnd()<0.8 then 
+          local cx,cy
+          if rnd()<0.5 then
+            cx,cy=c1x,c1y              
+          else 
+            cx,cy=c2x,c2y 
+          end 
+          if rnd()<0.5 then 
+            ox*=-1
+            oy*=-1
+          end 
+          add(this.particles,{
+            x=cx+ox+rnd(3)-1,
+            y=cy+oy+rnd(3)-1,
+            dx=ox*rnd(0.05),
+            dy=oy*rnd(0.05),
+            d=10
+          })
+        end 
       else 
         accel,maxspeed,shake,target=0.2,-1,4,this.start
       end 
@@ -758,6 +790,16 @@ zip_mover={
     if this.shake>0 then 
       this.shake-=1
     end 
+
+    --update particles 
+    for p in all(this.particles) do 
+      p.x+=p.dx 
+      p.y+=p.dy 
+      p.d-=1
+      if p.d<0 then 
+        del(this.particles,p)
+      end 
+    end 
   end,
   draw=function(this)
 
@@ -772,6 +814,7 @@ zip_mover={
     local r=4.5
     ox,oy=r*cos(0.25+cang),r*sin(0.25+cang)
     --line(c1x,c1y,c2x,c2y,8)
+    --pset(c1x+ox/r*(r+6),c1y+oy/r*(r+6),9)
 
     c1x+=1*sin(0.25+cang)
     c1y-=1*cos(0.25+cang)
@@ -779,7 +822,7 @@ zip_mover={
     c2y+=1*cos(0.25+cang)
     line(round(c1x+ox),round(c1y+oy),round(c2x+ox),round(c2y+oy),2)
     line(round(c1x-ox),round(c1y-oy),round(c2x-ox),round(c2y-oy),2)
-
+    
 
     --ox,oy=(r+1.5)*cos(0.25+cang),(r+1.5)*sin(0.25+cang)
     if abs(c1x-c2x)>abs(c1y-c2y) then 
@@ -799,7 +842,10 @@ zip_mover={
     spr_r(71,this.start.x+this.hitbox.w/2-8,this.start.y,this.ang)
     spr_r(71,this.target.x+this.hitbox.w/2-8,this.target.y,this.ang)
 
-    
+    --particles
+    for p in all(this.particles) do 
+      pset(p.x,p.y,10)
+    end 
 
     local x,y=this.x,this.y
     if this.shake>0 then 
