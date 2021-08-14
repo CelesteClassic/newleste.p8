@@ -803,48 +803,51 @@ zip_mover={
   end,
   draw=function(this)
 
-    --tracks
-    local c1x=this.start.x+this.hitbox.w/2-0.5
-    local c1y=this.start.y+7.5
-    local c2x=this.target.x+this.hitbox.w/2-0.5
-    local c2y=this.target.y+7.5
-    
-    cang=atan2(c1x-c2x,c1y-c2y)
+    if pal==_pal then --don't outline
+      --tracks
+      local c1x=this.start.x+this.hitbox.w/2-0.5
+      local c1y=this.start.y+7.5
+      local c2x=this.target.x+this.hitbox.w/2-0.5
+      local c2y=this.target.y+7.5
+      
+      cang=atan2(c1x-c2x,c1y-c2y)
 
-    local r=4.5
-    ox,oy=r*cos(0.25+cang),r*sin(0.25+cang)
-    --line(c1x,c1y,c2x,c2y,8)
-    --pset(c1x+ox/r*(r+6),c1y+oy/r*(r+6),9)
+      local r=4.5
+      ox,oy=r*cos(0.25+cang),r*sin(0.25+cang)
+      --line(c1x,c1y,c2x,c2y,8)
+      --pset(c1x+ox/r*(r+6),c1y+oy/r*(r+6),9)
 
-    c1x+=1*sin(0.25+cang)
-    c1y-=1*cos(0.25+cang)
-    c2x-=1*sin(0.25+cang)
-    c2y+=1*cos(0.25+cang)
-    line(round(c1x+ox),round(c1y+oy),round(c2x+ox),round(c2y+oy),2)
-    line(round(c1x-ox),round(c1y-oy),round(c2x-ox),round(c2y-oy),2)
-    
+      c1x+=1*sin(0.25+cang)
+      c1y-=1*cos(0.25+cang)
+      c2x-=1*sin(0.25+cang)
+      c2y+=1*cos(0.25+cang)
+      line(round(c1x+ox),round(c1y+oy),round(c2x+ox),round(c2y+oy),2)
+      line(round(c1x-ox),round(c1y-oy),round(c2x-ox),round(c2y-oy),2)
+      
 
-    --ox,oy=(r+1.5)*cos(0.25+cang),(r+1.5)*sin(0.25+cang)
-    if abs(c1x-c2x)>abs(c1y-c2y) then 
-      oy+=1
-    else 
-      ox+=1
+      --ox,oy=(r+1.5)*cos(0.25+cang),(r+1.5)*sin(0.25+cang)
+      if abs(c1x-c2x)>abs(c1y-c2y) then 
+        oy+=1
+      else 
+        ox+=1
+      end
+      poke(0x5f38,1)
+      poke(0x5f3a,this.start.x/8+lvl_x+1)
+      pal(7,4)
+      tline(round(c1x+ox),round(c1y+oy),round(c2x+ox),round(c2y+oy),0,this.start.y/8+0.875-flr(this.ang*40%4)/8,0.125,0)
+      tline(round(c1x-ox),round(c1y-oy),round(c2x-ox),round(c2y-oy),0,this.start.y/8+0.5+flr(this.ang*40%4)/8,0.125,0)
+      pal()
+      --tline(0,0,128,0,0,this.start.y/8+0.5--[[+this.ang*10%4/8]],0.125,0)
     end
-    poke(0x5f38,1)
-    poke(0x5f3a,this.start.x/8+lvl_x+1)
-    pal(7,4)
-    tline(round(c1x+ox),round(c1y+oy),round(c2x+ox),round(c2y+oy),0,this.start.y/8+0.875-flr(this.ang*40%4)/8,0.125,0)
-    tline(round(c1x-ox),round(c1y-oy),round(c2x-ox),round(c2y-oy),0,this.start.y/8+0.5+flr(this.ang*40%4)/8,0.125,0)
-    pal()
-    --tline(0,0,128,0,0,this.start.y/8+0.5--[[+this.ang*10%4/8]],0.125,0)
-    
     -- gears  
     spr_r(71,this.start.x+this.hitbox.w/2-8,this.start.y,this.ang)
     spr_r(71,this.target.x+this.hitbox.w/2-8,this.target.y,this.ang)
 
-    --particles
-    for p in all(this.particles) do 
-      pset(p.x,p.y,10)
+    if pal==_pal then 
+      --particles
+      for p in all(this.particles) do 
+        pset(p.x,p.y,10)
+      end 
     end 
 
     local x,y=this.x,this.y
