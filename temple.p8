@@ -1136,8 +1136,8 @@ theo_door={
     this.hitbox.h=22
     this.ogy=this.y
     this.state=0
+    this.r_height=-1
     this.solid_obj=true
-    this.delay=0
   end,
   update=function(this)
     local theo_dist=10000
@@ -1151,10 +1151,14 @@ theo_door={
       if theo_dist<2300 then 
         this.state=1 
       end 
-    elseif this.state==1 then 
+      if this.ogy-this.y<4 and this.r_height>=0 then
+        this.r_height-=5
+      end
+    else 
       this.spd.y=max(appr(this.spd.y,-4,1.5),this.ogy-22-this.y)
       if theo_dist>3500 then 
         this.state=0
+        this.r_height=23
       end 
     end 
   end,
@@ -1164,11 +1168,14 @@ theo_door={
     pal(6,4)
     local x,oy,y=this.x,this.ogy,this.y
     rectfill(x+2,oy,x+5,y+23,4)
-    if this.delay>0 then 
+    if this.state==1 and this.y+23>oy+8 then 
       pal(6,11)
-      rectfill(x+2,oy+max(this.delay-7,0)*3,x+5,y+23,11)
+      rectfill(x+2,oy+max((oy-y)/2-4,0),x+5,max(y+23,oy+8),11)
+    elseif this.state==0 and this.r_height>=0 then 
+      pal(6,8)
+      rectfill(x+2,y,x+5,y+this.r_height,8)
     end 
-    local o=(oy-y)
+    local o=oy-y
     local o2=max(o-8,0)
     sspr(16,40+o,8,8-o,x,y+o)
     sspr(16,40+o2,8,16-o2,x,y+8+o2)
