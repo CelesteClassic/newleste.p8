@@ -20,6 +20,20 @@ function rectangle(x,y,w,h)
   return {x=x,y=y,w=w,h=h}
 end
 
+-- <lighting> --
+function pal_vvdark()
+  pal(split"0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0")
+end
+
+function pal_vdark()
+ pal(split"0,0,0,1,0,1,1,1,1,2,0,0,1,1,2")
+end
+
+function pal_dark()
+  pal(split"0,1,1,2,1,5,5,2,2,4,1,1,1,2,4")
+end
+-- </lighting> --
+
 -- [globals]
 
 --tables
@@ -92,6 +106,10 @@ player={
     this.key_count=0
     -- </keydoor> --
     -- </fruitrain> --
+
+    --<lighting>--
+    this.lighting=true 
+    --</lighting>--
   end,
   update=function(this)
     if pause_player then
@@ -372,6 +390,10 @@ player_spawn={
       fruitrain[i]=f
     end
     --- </fruitrain> </keydoor> ---
+
+    --<lighting>--
+    this.lighting=true 
+    --</lighting>--
   end,
   update=function(this)
     -- jumping up
@@ -980,7 +1002,7 @@ red_bubble={
 }
 --</red_bubble>--
 
-dash_switch={
+--[[dash_switch={
   layer=0,
   init=function(this)
     this.solid_obj=true
@@ -1052,7 +1074,7 @@ dash_switch={
     end 
     --rect(this.x,this.y,this.right(),this.bottom(),7)
   end
-}
+}]]
 
 switch_door={
   layer=0,
@@ -1567,18 +1589,44 @@ function _draw()
   cls()
 
   -- bg clouds effect
-  foreach(clouds,function(c)
+  --[[foreach(clouds,function(c)
     c.x+=c.spd-cam_spdx
     rectfill(c.x+draw_x,c.y+draw_y,c.x+c.w+draw_x,c.y+16-c.w*0.1875+draw_y,1)
     if c.x>128 then
       c.x=-c.w
       c.y=rnd(120)
     end
-  end)
+  end)]]
 
-		-- draw bg terrain
-  map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,4)
+	--<lighting>--
+  local function lighting_circ(x,y,r,palinator,l)
+    palinator()
+    for dr=0,r do
+      local dx=sqrt(r^2-dr^2)
+        for sn=-1,1,2 do
+          local dy=sn*dr
+          tline(x-dx,y+dy,x+dx,y+dy,lvl_x+(x-dx)/8,lvl_y+(y+dy)/8,0.125,0,l)
+        end
+      end
+    end
+  
+  
+    lighting_sources={}
+    for o in all(objects) do
+      if o.lighting then
+        add(lighting_sources,o)
+      end
+    end
 
+    
+      -- draw bg terrain
+    for i,func in pairs{pal_vdark,pal_dark,pal} do 
+      for p in all(lighting_sources) do
+        lighting_circ(p.x+4,p.y+4,({36,32,24})[i],func,4) 
+      end 
+    end 
+
+    --</lighting>--
   -- draw outlines
   for i=0,15 do pal(i,1) end
   pal=time
@@ -1606,16 +1654,30 @@ function _draw()
       add(layers[o.type.layer or 1],o) --add object to layer, default draw below player
     end
   end)
+  
+  --<lighting> --
   -- draw terrain
-  map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,2)
+  for i,func in pairs{pal_vdark,pal_dark,pal} do 
+    for p in all(lighting_sources) do
+      lighting_circ(p.x+4,p.y+4,({36,32,24})[i],func,2) 
+    end 
+  end 
+  --</lighting>
   
   -- draw objects
   foreach(layers,function(l)
     foreach(l,draw_object)
   end)
 
+  --<lighting> --
   -- draw platforms
-  map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,8)
+  for i,func in pairs{pal_vdark,pal_dark,pal} do 
+    for p in all(lighting_sources) do
+      lighting_circ(p.x+4,p.y+4,({36,32,24})[i],func,8) 
+    end 
+  end 
+  --</lighting>--
+
   -- particles
   foreach(particles,function(p)
     p.x+=p.spd-cam_spdx
@@ -1676,7 +1738,18 @@ function _draw()
   -- </transition>
 end
 
+
 function draw_object(obj)
+   --<lighting>--
+  local d=0x7fff.ffff 
+  for p in all(lighting_sources) do 
+    d=min(d,(obj.x+obj.hitbox.w/2-p.x-p.hitbox.w/2)^2+(obj.y+obj.hitbox.h/2-p.y-p.hitbox.h/2)^2)
+  end 
+  if d>1296 then return--pal_vvdark()
+  elseif d>1024 then pal_vdark()
+  elseif d>576 then pal_dark()
+  else pal() end
+  --</lighting>--
   -- <red_bubble> --
   if not obj.invisible then 
     srand(obj.draw_seed);
