@@ -777,7 +777,7 @@ lifeup={
   end
 }]]
 --commented out berries- fix golden berry later
-kevin={
+--[[kevin={
   init=function(this)
     while this.right()<lvl_pw-1 and tile_at(this.right()/8+1,this.y/8)==65 do 
       this.hitbox.w+=8
@@ -896,7 +896,7 @@ kevin={
     spr(this.active and 67 or 66,x+this.hitbox.w/2-4,y+this.hitbox.h/2-4)
   end 
     
-}
+}]]
 
 
 bumper={
@@ -1014,7 +1014,7 @@ badeline={
     this.target_x,this.target_y=this.x,this.y
     this.rx,this.ry=this.x,this.y
     --this.hitbox=rectangle(-4,-2,16,12)
-    this.attack=1 --hardcoded for now, will eventually be loaded from level table
+    this.attack=0 --hardcoded for now, will eventually be loaded from level table
     --b=this
     this.attack_timer=0
   end,
@@ -1325,65 +1325,161 @@ laser={
   end 
 }
 
--- fall_plat={
---   init=function(this)
---     while this.right()<lvl_pw-1 and tile_at(this.right()/8+1,this.y/8)==76 do 
---       this.hitbox.w+=8
---     end 
---     while this.bottom()<lvl_ph-1 and tile_at(this.x/8,this.bottom()/8+1)==76 do 
---       this.hitbox.h+=8
---     end 
---     this.collides=true
---     this.solid_obj=true
---     this.timer=0
---   end,
---   update=function(this) 
---     if this.timer>0 then 
---       this.timer-=1
---       if this.timer==0 then 
---         this.state=this.finished and 2 or 1
---         this.spd.y=0.4
---       end 
---     elseif this.state==1 then 
---       if this.spd.y==0 then 
---         this.state=0
---         for i=0,this.hitbox.w-1,8 do 
---           this.init_smoke(i,this.hitbox.h-2)
---         end
---         this.timer=6
---         this.finished=true
---       end
---       this.spd.y=appr(this.spd.y,4,0.4)
---     end 
---   end,
---   draw=function(this)
---     local x,y=this.x,this.y
---     if this.state==0 then 
---       x+=rnd(2)-1
---       y+=rnd(2)-1
---     end
---     local r,d=x+this.hitbox.w-8,y+this.hitbox.h-8 
---     for i=x,r,r-x do 
---       for j=y,d,d-y do 
---         spr(33,i,j,1.0,1.0,i~=x,j~=y)
---       end 
---     end 
---     for i=x+8,r-8,8 do 
---       spr(34,i,y)
---       spr(50,i,d)
---     end
---     for i=y+8,d-8,8 do 
---       spr(36,x,i)
---       spr(38,r,i)
---     end
---     for i=x+8,r-8,8 do 
---       for j=y+8,d-8,8 do 
---         spr((i+j-x-y)%16==0 and 37 or 56,i,j)
---       end 
---     end 
---   end
+fall_plat={
+  init=function(this)
+    while this.right()<lvl_pw-1 and tile_at(this.right()/8+1,this.y/8)==76 do 
+      this.hitbox.w+=8
+    end 
+    while this.bottom()<lvl_ph-1 and tile_at(this.x/8,this.bottom()/8+1)==76 do 
+      this.hitbox.h+=8
+    end 
+    this.collides=true
+    this.solid_obj=true
+    this.timer=0
+  end,
+  update=function(this) 
+    if this.timer>0 then 
+      this.timer-=1
+      if this.timer==0 then 
+        this.state=this.finished and 2 or 1
+        this.spd.y=0.4
+      end 
+    elseif this.state==1 then 
+      if this.spd.y==0 then 
+        this.state=0
+        for i=0,this.hitbox.w-1,8 do 
+          this.init_smoke(i,this.hitbox.h-2)
+        end
+        this.timer=6
+        this.finished=true
+      end
+      this.spd.y=appr(this.spd.y,4,0.4)
+    end 
+  end,
+  draw=function(this)
+    local x,y=this.x,this.y
+    if this.state==0 then 
+      x+=rnd(2)-1
+      y+=rnd(2)-1
+    end
+    local r,d=x+this.hitbox.w-8,y+this.hitbox.h-8 
+    for i=x,r,r-x do 
+      for j=y,d,d-y do 
+        spr(33,i,j,1.0,1.0,i~=x,j~=y)
+      end 
+    end 
+    for i=x+8,r-8,8 do 
+      spr(34,i,y)
+      spr(50,i,d)
+    end
+    for i=y+8,d-8,8 do 
+      spr(36,x,i)
+      spr(38,r,i)
+    end
+    for i=x+8,r-8,8 do 
+      for j=y+8,d-8,8 do 
+        spr((i+j-x-y)%16==0 and 37 or 56,i,j)
+      end 
+    end 
+  end
 
--- }
+}
+
+function find_match(this,hit)
+  for o in all(objects) do 
+    if o.spr==hit.spr then
+      if o!=hit then 
+        this.targetx,this.targety=o.x,o.y
+      end 
+      destroy_object(hit)
+    end 
+  end 
+end 
+
+osc_plat={
+  init=function(this) 
+    local hit=this.check(garbage,0,-1)
+    if hit then 
+      this.badestate=hit.spr-127
+      destroy_object(hit)
+    end 
+    hit=this.check(garbage,-1,0)
+    if hit then 
+      find_match(this,hit)
+    end 
+  end 
+  end_init=function(this)
+
+    local hit=this.check(garbage,0,1)
+    if hit then 
+      this.badestate=hit.spr-127
+      destroy_object(hit)
+      this.hitbox.h+=8
+    end 
+
+    hit=this.check(garbage,1,0)
+    if hit then 
+      find_match(this,hit)
+      this.hitbox.w+=8
+    end 
+
+    while this.right()<lvl_pw-1 and tile_at(this.right()/8+1,this.y/8)==76 do 
+      this.hitbox.w+=8
+    end 
+    while this.bottom()<lvl_ph-1 and tile_at(this.x/8,this.bottom()/8+1)==76 do 
+      this.hitbox.h+=8
+    end 
+    this.collides=true
+    this.solid_obj=true
+    this.timer=this.badestate and 0 or 1
+  end,
+  update=function(this) 
+    if this.timer>0 then 
+      this.timer-=1
+      if this.timer==0 then 
+        this.state=this.finished and 2 or 1
+        this.spd.y=0.4
+      end 
+    elseif this.state==1 then 
+      if this.spd.y==0 then 
+        this.state=0
+        for i=0,this.hitbox.w-1,8 do 
+          this.init_smoke(i,this.hitbox.h-2)
+        end
+        this.timer=6
+        this.finished=true
+      end
+      this.spd.y=appr(this.spd.y,4,0.4)
+    end 
+  end,
+  draw=function(this)
+    local x,y=this.x,this.y
+    if this.state==0 then 
+      x+=rnd(2)-1
+      y+=rnd(2)-1
+    end
+    local r,d=x+this.hitbox.w-8,y+this.hitbox.h-8 
+    for i=x,r,r-x do 
+      for j=y,d,d-y do 
+        spr(33,i,j,1.0,1.0,i~=x,j~=y)
+      end 
+    end 
+    for i=x+8,r-8,8 do 
+      spr(34,i,y)
+      spr(50,i,d)
+    end
+    for i=y+8,d-8,8 do 
+      spr(36,x,i)
+      spr(38,r,i)
+    end
+    for i=x+8,r-8,8 do 
+      for j=y+8,d-8,8 do 
+        spr((i+j-x-y)%16==0 and 37 or 56,i,j)
+      end 
+    end 
+  end
+
+}
 
 psfx=function(num)
   if sfx_timer<=0 then
@@ -1405,7 +1501,8 @@ tiles={
   [68]=bumper,
   [70]=feather,
   [74]=badeline,
-  [75]=fall_plat
+  [75]=fall_plat,
+  [77]=osc_plat
 }
 
 
@@ -2018,14 +2115,14 @@ __gfx__
 777cc7777777ccccc777777ccccc77777777ccc7777777777ccc777777cccc77cc7ccccc55555500005555555505555555555555000000000000000000000000
 777cc777777777777777777777777777777777777777777777777777777cc777ccccc7cc55555550055555555555555555555555000000000000000000000000
 77cccc7757777777777777777777777557777777777777777777777557777775cccccccc55555555555555555555555555555555000000000000000000000000
-0220cc5555cccc55ddd00dddddd00ddd000000000000000000aaa0000099aa0000999aa0000aaa00000000005777777777777777000000000000000000000000
-2125ccc55cccccc50000000000000000000001111110000009aaa900099aaaa0099aaaaa00aaaaa0022222207777777777777777000000000000000000000000
-222c5cc55cc11cc5011001100cc00cc0000015dccd51000001aaa1009911aaaa995aaa11009a5a90222222227777cccccccccccc000000000000000000000000
-05cc1cc111111111000000000cc00cc00001cddccddc10000111110091110aa095aa0001009a5a9025555222777ccc7ccccccccc000000000000000000000000
-cc511522222222220011110000111100001ccc1111ccc100011111009110000095a000000099599028dd8d2277cccccccccccccc000000000000000000000000
-cccc5524444444440111111001d11d10015dc144441cd510011111001100000095a00000009959900666662077c7cccccccccccc000000000000000000000000
-5ccc224444444444001dd10001d11d1001dd14c44c41dd10001110001000000009500000000959000011111077cccc7ccccccccc000000000000000000000000
-5551244444444444000dd0000011110001cc14c44c41cc10000010001000000000500000000500000005000577cccccccccccccc000000000000000000000000
+0220cc5555cccc55ddd00dddddd00ddd000000000000000000aaa0000099aa0000999aa0000aaa00000000005777777777777777577777770000000000000000
+2125ccc55cccccc50000000000000000000001111110000009aaa900099aaaa0099aaaaa00aaaaa0022222207777777777777777777777770000000000000000
+222c5cc55cc11cc5011001100cc00cc0000015dccd51000001aaa1009911aaaa995aaa11009a5a90222222227777cccccccccccc7777cc7c0000000000000000
+05cc1cc111111111000000000cc00cc00001cddccddc10000111110091110aa095aa0001009a5a9025555222777ccc7ccccccccc777cc7770000000000000000
+cc511522222222220011110000111100001ccc1111ccc100011111009110000095a000000099599028dd8d2277cccccccccccccc77cccc7c0000000000000000
+cccc5524444444440111111001d11d10015dc144441cd510011111001100000095a00000009959900666662077c7cccccccccccc77cccc7c0000000000000000
+5ccc224444444444001dd10001d11d1001dd14c44c41dd10001110001000000009500000000959000011111077cccc7ccccccccc77ccc7770000000000000000
+5551244444444444000dd0000011110001cc14c44c41cc10000010001000000000500000000500000005000577cccccccccccccc77cccc7c0000000000000000
 5551244400000000000000000000000001cc14444441cc1000000000000000000000000000000000000000000000000000000000000000000000000000000000
 5cc1244400000000000000000000000001dd144cc441dd1000000000000000000000000000000000000000000000000000000000000000000000000000000000
 ccc12444000000000000000000000000015dc144441cd51000000000000000000000000000000000000000000000000000000000000000000000000000000000
