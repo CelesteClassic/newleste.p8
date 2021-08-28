@@ -1327,65 +1327,65 @@ laser={
   end 
 }
 
-fall_plat={
-  init=function(this)
-    while this.right()<lvl_pw-1 and tile_at(this.right()/8+1,this.y/8)==76 do 
-      this.hitbox.w+=8
-    end 
-    while this.bottom()<lvl_ph-1 and tile_at(this.x/8,this.bottom()/8+1)==76 do 
-      this.hitbox.h+=8
-    end 
-    this.collides=true
-    this.solid_obj=true
-    this.timer=0
-  end,
-  update=function(this) 
-    if this.timer>0 then 
-      this.timer-=1
-      if this.timer==0 then 
-        this.state=this.finished and 2 or 1
-        this.spd.y=0.4
-      end 
-    elseif this.state==1 then 
-      if this.spd.y==0 then 
-        this.state=0
-        for i=0,this.hitbox.w-1,8 do 
-          this.init_smoke(i,this.hitbox.h-2)
-        end
-        this.timer=6
-        this.finished=true
-      end
-      this.spd.y=appr(this.spd.y,4,0.4)
-    end 
-  end,
-  draw=function(this)
-    local x,y=this.x,this.y
-    if this.state==0 then 
-      x+=rnd(2)-1
-      y+=rnd(2)-1
-    end
-    local r,d=x+this.hitbox.w-8,y+this.hitbox.h-8 
-    for i=x,r,r-x do 
-      for j=y,d,d-y do 
-        spr(33,i,j,1.0,1.0,i~=x,j~=y)
-      end 
-    end 
-    for i=x+8,r-8,8 do 
-      spr(34,i,y)
-      spr(50,i,d)
-    end
-    for i=y+8,d-8,8 do 
-      spr(36,x,i)
-      spr(38,r,i)
-    end
-    for i=x+8,r-8,8 do 
-      for j=y+8,d-8,8 do 
-        spr((i+j-x-y)%16==0 and 37 or 56,i,j)
-      end 
-    end 
-  end
+-- fall_plat={
+--   init=function(this)
+--     while this.right()<lvl_pw-1 and tile_at(this.right()/8+1,this.y/8)==76 do 
+--       this.hitbox.w+=8
+--     end 
+--     while this.bottom()<lvl_ph-1 and tile_at(this.x/8,this.bottom()/8+1)==76 do 
+--       this.hitbox.h+=8
+--     end 
+--     this.collides=true
+--     this.solid_obj=true
+--     this.timer=0
+--   end,
+--   update=function(this) 
+--     if this.timer>0 then 
+--       this.timer-=1
+--       if this.timer==0 then 
+--         this.state=this.finished and 2 or 1
+--         this.spd.y=0.4
+--       end 
+--     elseif this.state==1 then 
+--       if this.spd.y==0 then 
+--         this.state=0
+--         for i=0,this.hitbox.w-1,8 do 
+--           this.init_smoke(i,this.hitbox.h-2)
+--         end
+--         this.timer=6
+--         this.finished=true
+--       end
+--       this.spd.y=appr(this.spd.y,4,0.4)
+--     end 
+--   end,
+--   draw=function(this)
+--     local x,y=this.x,this.y
+--     if this.state==0 then 
+--       x+=rnd(2)-1
+--       y+=rnd(2)-1
+--     end
+--     local r,d=x+this.hitbox.w-8,y+this.hitbox.h-8 
+--     for i=x,r,r-x do 
+--       for j=y,d,d-y do 
+--         spr(33,i,j,1.0,1.0,i~=x,j~=y)
+--       end 
+--     end 
+--     for i=x+8,r-8,8 do 
+--       spr(34,i,y)
+--       spr(50,i,d)
+--     end
+--     for i=y+8,d-8,8 do 
+--       spr(36,x,i)
+--       spr(38,r,i)
+--     end
+--     for i=x+8,r-8,8 do 
+--       for j=y+8,d-8,8 do 
+--         spr((i+j-x-y)%16==0 and 37 or 56,i,j)
+--       end 
+--     end 
+--   end
 
-}
+-- }
 
 function find_match(this,hit)
   for o in all(objects) do 
@@ -1398,14 +1398,9 @@ function find_match(this,hit)
   end 
 end 
 
-function oscillate(s,e,k,t) --start, end, acceleration, time (0-1)
-  local r=(s-e)/2
-  local m=(e+s)/2
-  local v=2^(k*cos(t))
-  local scale=(2^k+1)/(2^k-1)
-  return round(m+scale*r*((v-1)/(v+1)))
+function clamp_magnitude(x,m)
+  return mid(-abs(m),x,abs(m))
 end 
-
 osc_plat={
   init=function(this) 
     local hit=this.check(garbage,0,-1)
@@ -1447,9 +1442,14 @@ osc_plat={
     this.palswap=not this.badestate
   
     this.startx,this.starty=this.x,this.y
-    -- local d=sqrt(this.targetx^2+this.targety)
 
-    -- this.dirx,this.diry=
+    local dx,dy=this.targetx-this.startx,this.targety-this.starty 
+    local d=sqrt(dx^2+dy^2)
+
+    this.dirx,this.diry=dx/d,dy/d 
+
+    this.state=0
+
     --this.start=true
   end,
   update=function(this) 
@@ -1463,13 +1463,40 @@ osc_plat={
         this.state=nil
       end 
     elseif this.start then 
-      this.t+=1/90
-      -- if this.t%1<1/90 or (this.t-0.5)%1<1/90 then 
-      --   this.shake=3
-      -- end 
-      local newx=oscillate(this.startx,this.targetx, 5,this.t)
-      local newy=oscillate(this.starty,this.targety, 5,this.t)
-      this.spd=vector(newx-this.x,newy-this.y)
+      if this.state==0 then 
+        if this.t==0 then 
+          this.state=1
+        elseif this.t==40 then 
+          this.state=2
+        end 
+      else 
+        local s,tx,ty=1,this.targetx,this.targety
+        if this.state==2 then 
+          s,tx,ty=-1,this.startx,this.starty
+        end 
+        this.spd=vector(clamp_magnitude(appr(this.spd.x,s*5*this.dirx,abs(s*0.5*this.dirx)),tx-this.x),
+                        clamp_magnitude(appr(this.spd.y,s*5*this.diry,abs(s*0.5*this.diry)),ty-this.y))
+        if this.spd.x==0 and this.spd.y==0 then 
+          this.shake=3
+          this.state=0
+          if this.is_solid(sign(s*this.dirx),0) then 
+            for oy=0,this.hitbox.h-1,8 do 
+              this.init_smoke(sign(s*this.dirx)==1 and this.hitbox.w-1 or -4,oy)
+            end 
+          end 
+          if this.is_solid(0,sign(s*this.diry)) then 
+            for ox=0,this.hitbox.w-1,8 do 
+              this.init_smoke(ox,sign(s*this.diry)==1 and this.hitbox.h-1 or -4)
+            end 
+          end 
+
+        end
+      end 
+
+      --end 
+      
+
+      this.t=(this.t+1)%80
     end 
     if this.shake>0 then 
       this.shake-=1
@@ -1489,8 +1516,9 @@ osc_plat={
       pal(7,14)
     end 
 
-    if this.timer>0 and this.timer<8 then 
-      rect(x-1.5*this.timer,y-1.5*this.timer,r+1.5*this.timer+8,d+1.5*this.timer+8,14)
+    local t=this.timer-3
+    if t>0 and t<8 then 
+      rect(x-1.5*t,y-1.5*t,r+1.5*t+8,d+1.5*t+8,14)
     end 
 
     for i=x,r,r-x do 
