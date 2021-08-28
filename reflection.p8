@@ -1443,7 +1443,9 @@ osc_plat={
     this.timer=this.badestate and 0 or 1
 
     this.t=0
-
+    this.shake=0
+    this.palswap=not this.badestate
+  
     this.startx,this.starty=this.x,this.y
     -- local d=sqrt(this.targetx^2+this.targety)
 
@@ -1453,24 +1455,44 @@ osc_plat={
   update=function(this) 
     if this.timer>0 then 
       this.timer-=1
+      if this.timer==2 then 
+        this.palswap=true
+      end 
       if this.timer==0 then 
         this.start=true
         this.state=nil
       end 
     elseif this.start then 
       this.t+=1/90
+      -- if this.t%1<1/90 or (this.t-0.5)%1<1/90 then 
+      --   this.shake=3
+      -- end 
       local newx=oscillate(this.startx,this.targetx, 5,this.t)
       local newy=oscillate(this.starty,this.targety, 5,this.t)
       this.spd=vector(newx-this.x,newy-this.y)
     end 
+    if this.shake>0 then 
+      this.shake-=1
+    end 
   end,
   draw=function(this)
     local x,y=this.x,this.y
-    if this.state==0 then 
+    if this.shake>0 then 
       x+=rnd(2)-1
       y+=rnd(2)-1
     end
+
     local r,d=x+this.hitbox.w-8,y+this.hitbox.h-8 
+    
+    if this.palswap then 
+      pal(12,2)
+      pal(7,14)
+    end 
+
+    if this.timer>0 and this.timer<8 then 
+      rect(x-1.5*this.timer,y-1.5*this.timer,r+1.5*this.timer+8,d+1.5*this.timer+8,14)
+    end 
+
     for i=x,r,r-x do 
       for j=y,d,d-y do 
         spr(33,i,j,1.0,1.0,i~=x,j~=y)
@@ -1489,7 +1511,9 @@ osc_plat={
         spr((i+j-x-y)%16==0 and 37 or 56,i,j)
       end 
     end 
+     pal()
   end
+ 
 
 }
 
