@@ -1388,6 +1388,8 @@ fall_plat={
         this.spd.y=0.4
         this.palswap=true
         this.shake=0
+      elseif not this.finished then 
+        this.shake=1
       end 
     elseif this.state==1 then 
       if this.spd.y==0 then 
@@ -1400,8 +1402,6 @@ fall_plat={
         this.shake=3
       end
       this.spd.y=appr(this.spd.y,4,0.4)
-    elseif this.state==0 then 
-      this.shake=1
     end 
   end,
   draw=plat_draw
