@@ -1137,8 +1137,9 @@ orb={
     
     for o in all(objects) do 
       if o.type==player then 
-        local k=sqrt((this.x-o.x-4)^2+(this.y-o.y-4)^2)
-        this.spdx,this.spdy=(o.x+4-this.x)/(0.65*k),(o.y+4-this.y)/(0.65*k)
+        local dx,dy=o.x+4-this.x,o.y+4-this.y
+        local k=sqrt(dx^2+dy^2)*0.65
+        this.spdx,this.spdy=dx/k,dy/k
         --this.spdx,this.spdy=-1/0.65,0
       end 
     end 
@@ -1157,12 +1158,12 @@ orb={
     if hit then 
       kill_player(hit)
     end 
-    if rnd()<0.5 then 
+    if maybe() then 
       add(this.particles,{
         x=this.x,
         y=this.y,
-        dx=rnd(1)*-this.spdx,
-        dy=rnd(1)*-this.spdy,
+        dx=-rnd()*this.spdx,
+        dy=-rnd()*this.spdy,
         c=8,
         d=15
       })
@@ -1191,14 +1192,25 @@ orb={
     end 
 
     --inner animation
-    local sx,sy,r,i=cos(2*t)<=-0.5 and 1 or 0, cos(2*t)>0.5 and 1 or 0, 2, 1+flr((1.5*t)%3)
-    ovalfill(x-r-sx,y-r-sy,x+r,y+r,i==2 and 8 or 2)
-    r=round(1-cos(1.5*t))
-    if r>0 or i==3 then 
-      if i==3 then r=2-r end 
-      ovalfill(x-r-sx,y-r-sy,x+r,y+r,split"14,7,8"[i]) 
+    local sx,sy,i=cos(2*t)<=-0.5 and 1 or 0, cos(2*t)>0.5 and 1 or 0, 1+flr((1.5*t)%3)
+
+    --unoptimized, clearer code 
+    --[[
+      local r=2
+      ovalfill(x-r-sx,y-r-sy,x+r,y+r,i==2 and 8 or 2)
+      r=round(1-cos(1.5*t))
+      if r>0 or i==3 then 
+        if i==3 then r=2-r end 
+        ovalfill(x-r-sx,y-r-sy,x+r,y+r,split"14,7,8"[i]) 
+      end
+    ]]
+    for r in all{2.001,round(1-cos(1.5*t))} do 
+      if r>0 or i==3 then 
+        if r!=2.001 and i==3 then r=2-r end 
+        ovalfill(x-r-sx,y-r-sy,x+r,y+r,r!=2.001 and split"14,7,8"[i] or i==2 and 8 or 2) 
+      end 
+      pal()
     end 
-    pal()
   end 
 }
 
@@ -1248,12 +1260,13 @@ laser={
     outline=false
     timer=0
     particles={}
+    playerx,playery=badeline.x,badeline.y
   end,
   update=function(this) 
     this.timer+=1
     local p=find_player()
     if this.timer<30 then 
-      this.playerx,this.playery=appr(this.playerx or this.badeline.x ,p.x,10),appr(this.playery or this.badeline.y,p.y,10)
+      this.playerx,this.playery=appr(this.playerx,p.x,10),appr(this.playery,p.y,10)
     elseif this.timer==45 then 
       if line_dist(p.x+4,p.y+6,get_laser_coords(this))<6 then 
         kill_player(p)
@@ -1261,21 +1274,22 @@ laser={
     elseif this.timer>=48 and #this.particles==0 then 
       destroy_object(this)
     end 
-    for p in all(this.particles) do
+    foreach(this.particles, function(p)
       p.x+=p.dx
       p.y+=p.dy
       p.d-=1
       if p.d<0 then
         del(this.particles,p)
       end
-    end
+    end)
   end,
   draw=function(this) 
     local timer=this.timer
     if timer>42 and timer<45 then return end
     if timer<48 then 
       local x1,y1,x2,y2=get_laser_coords(this)
-      local x3,y3=x1-128*(x1-x2),y1-128*(y1-y2)
+      local dx12,dy12=x1-x2,y1-y2
+      local x3,y3=x1-128*dx12,y1-128*dy12
 
       --draw ball electricity lines
       for i=0,rnd(4) do
@@ -1284,16 +1298,16 @@ laser={
       end
 
       --x,y,magnitude to player,scale with big laser,color flashing white
-      local _x,_y,d,s,c=x1,y1,sqrt((x2-x1)^2+(y2-y1)^2)*0.1,timer>45 and 2 or 0.5,timer>=30 and timer%4<2 and 7 or 8
+      local _x,_y,d,s,c=x1,y1,sqrt(dx12^2+dy12^2)*0.1,timer>45 and 2 or 0.5,timer>=30 and timer%4<2 and 7 or 8
 
       --draw laser electricity lines
       line(x1,y1,x1,y1,8) --set line cursor pos
       for i=0,10 do
-        _x+=(x2-x1)/d
-        _y+=(y2-y1)/d
-        line(_x+(rnd(10)-5)*s,_y+(rnd(10)-5)*s,maybe() and (timer>45 and c or 2) or 0)
+        _x-=dx12/d
+        _y-=dy12/d
+        line(_x+(rnd(10)-5)*s,_y+(rnd(10)-5)*s,maybe() and 0 or timer>45 and c or 2)
         if timer==47 then
-          for j=1,3 do
+          for j=1,3 do 
             add(this.particles,{
               x=_x,
               y=_y,
@@ -1316,7 +1330,7 @@ laser={
         -- rectfillr(x1+2,y1-4,x1+132,y1-3,atan2(x3-x1,y3-y1),x1,y1,8)
         -- rectfillr(x1+2,y1+3,x1+132,y1+4,atan2(x3-x1,y3-y1),x1,y1,8)
         for i=1,3 do 
-          rectfillr(x1+2,y1+(i==3 and 3 or -4),x1+132,y1+(i==2 and -3 or 4),atan2(x3-x1,y3-y1),x1,y1,i==1 and 7 or 8)
+          rectfillr(x1+2,y1+split"-4,-4,3"[i],x1+132,y1+split"4,-3,4"[i],atan2(x3-x1,y3-y1),x1,y1,split"7,8,8"[i])
         end 
         circfill(x1,y1,4,7)
       end 
@@ -1334,16 +1348,15 @@ function plat_draw(this)
     y+=rnd(2)-1
   end
 
-  local r,d=x+this.hitbox.w-8,y+this.hitbox.h-8 
+  local r,d,t=x+this.hitbox.w-8,y+this.hitbox.h-8,1.5*this.timer-4.5
   
   if this.palswap then 
     pal(12,2)
     pal(7,14)
   end 
 
-  local t=this.timer-3
-  if t>0 and t<8 and this.state==0 then 
-    rect(x-1.5*t,y-1.5*t,r+1.5*t+8,d+1.5*t+8,14)
+  if t>0 and t<12 and this.state==0 then 
+    rect(x-t,y-t,r+t+8,d+t+8,14)
   end 
    
 
@@ -1367,16 +1380,18 @@ function plat_draw(this)
   end 
   pal()
 end
+
+
 fall_plat={
   init=function(this)
+    -- beware if changing implementation, osc_plat calls this func
     while this.right()<lvl_pw-1 and tile_at(this.right()/8+1,this.y/8)==76 do 
       this.hitbox.w+=8
     end 
     while this.bottom()<lvl_ph-1 and tile_at(this.x/8,this.bottom()/8+1)==76 do 
       this.hitbox.h+=8
     end 
-    this.collides,this.solid_obj,this.timer,this.shake=true,true,0,0
-    this.state=0
+    this.collides,this.solid_obj,this.timer,this.shake,this.state=true,true,0,0,0
   end,
   update=function(this) 
     local _ENV,appr=this,appr
@@ -1410,36 +1425,32 @@ function find_match(this,hit)
       if o!=hit then 
         this.targetx,this.targety=o.x,o.y
       end 
-      destroy_object(hit)
+      destroy_object(o)
     end 
   end)
 end 
 
-function clamp_magnitude(x,m)
-  return mid(-abs(m),x,abs(m))
+function find_badestate(this,dir) 
+  local hit=this.check(garbage,0,dir)
+  if hit then 
+    this.badestate=hit.spr+1
+    destroy_object(hit)
+    this.hitbox.h+=4+4*dir
+  end 
 end 
 osc_plat={
   init=function(this) 
-    local hit=this.check(garbage,0,-1)
-    if hit then 
-      this.badestate=hit.spr+1
-      destroy_object(hit)
-    end 
+    find_badestate(this,-1)
     this.target_garb=this.check(garbage,-1,0)
   end,
   end_init=function(this)
-    local hit=this.check(garbage,0,1)
-    if hit then 
-      this.badestate=hit.spr+1
-      destroy_object(hit)
-      this.hitbox.h+=8
-    end 
+    find_badestate(this,1)
 
-    hit=this.target_garb or this.check(garbage,1,0)
+    local hit=this.check(garbage,1,0)
     if hit then 
-      find_match(this,hit)
       this.hitbox.w+=8
     end 
+    find_match(this,this.target_garb or hit)
 
     fall_plat.init(this) -- kinda terrible because depends on fall_plat implementation, but tokens
     
@@ -1461,35 +1472,31 @@ osc_plat={
     --this.start=true
   end,
   update=function(this) 
-    if this.timer>0 then 
-      this.timer-=1
-      if this.timer==2 then 
-        this.palswap=true
-      elseif this.timer==0 then 
-        this.start=true
-        --this.state=nil
-      end 
-    elseif this.start then 
-      if this.state==0 then 
-        this.state=this.t==0 and 1 or this.t==40 and 2 or 0
+    local _ENV,vector,appr,abs,sign=this,vector,appr,abs,sign
+    if timer>0 then 
+      timer-=1
+      palswap,start=timer<=2,timer==0
+    elseif start then 
+      if state==0 then 
+        state=t==0 and 1 or t==40 and 2 or 0
       else 
-        local s,tx,ty=1,this.targetx,this.targety
-        if this.state==2 then 
-          s,tx,ty=-1,this.startx,this.starty
+        local s,tx,ty=1,targetx,targety
+        if state==2 then 
+          s,tx,ty=-1,startx,starty
         end 
 
-        this.spd=vector(clamp_magnitude(appr(this.spd.x,s*5*this.dirx,abs(s*0.5*this.dirx)),tx-this.x),
-                        clamp_magnitude(appr(this.spd.y,s*5*this.diry,abs(s*0.5*this.diry)),ty-this.y)) --vectors worth?
-        if this.spd.x==0 and this.spd.y==0 then 
-          this.shake,this.state=3,0
-          if this.is_solid(sign(s*this.dirx),0) then 
-            for oy=0,this.hitbox.h-1,8 do 
-              this.init_smoke(sign(s*this.dirx)==1 and this.hitbox.w-1 or -4,oy)
+        spd=vector(mid(appr(spd.x,s*5*dirx,abs(0.5*dirx)),tx-x,x-tx),
+                   mid(appr(spd.y,s*5*diry,abs(0.5*diry)),ty-y,y-ty)) 
+        if spd.x|spd.y==0 then 
+          shake,state=3,0
+          if is_solid(sign(s*dirx),0) then 
+            for oy=0,hitbox.h-1,8 do 
+              init_smoke(sign(dirx)==s and hitbox.w-1 or -4,oy)
             end 
           end 
-          if this.is_solid(0,sign(s*this.diry)) then 
-            for ox=0,this.hitbox.w-1,8 do 
-              this.init_smoke(ox,sign(s*this.diry)==1 and this.hitbox.h-1 or -4)
+          if is_solid(0,sign(s*diry)) then 
+            for ox=0,hitbox.w-1,8 do 
+              init_smoke(ox,sign(diry)==s and hitbox.h-1 or -4)
             end 
           end 
 
@@ -1499,11 +1506,9 @@ osc_plat={
       --end 
       
 
-      this.t=(this.t+1)%80
+      t=(t+1)%80
     end 
-    if this.shake>0 then 
-      this.shake-=1
-    end 
+    shake=max(shake-1) --,0
   end,
   draw=plat_draw 
 }
