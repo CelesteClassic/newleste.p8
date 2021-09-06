@@ -252,8 +252,9 @@ player={
         dash_target_y=(spd.y>=0 and 2 or 1.5)*sign(spd.y)
         dash_accel_x=spd.y==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
         dash_accel_y=spd.x==0 and 1.5 or 1.06066017177
-
-        if h_input~=0 and ph_input==-h_input and mid(x+ph_input,-1,lvl_pw-7)~=x+ph_input then 
+        
+        -- emulate soft dashes
+        if h_input~=0 and ph_input==-h_input and oob(ph_input,0) then 
           spd.x=0
         end 
 
