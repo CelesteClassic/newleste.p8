@@ -49,8 +49,7 @@ block tutorial level that should be tall
 2 - 3 more block levels
 <br><br>
 
-<img src="https://cdn.discordapp.com/attachments/884306542487281697/884316642203566120/ridge_-_8.PNG" width="400">
-<img src="" width="400">
+<img src="https://cdn.discordapp.com/attachments/884306542487281697/884316621198471168/ridge_-_9.PNG" width="400">
 5 levels combining all these mechanics together
 <br><br>
 
