@@ -1587,14 +1587,9 @@ end
 --level table
 --"x,y,w,h,wind speed"
 levels={
-<<<<<<< Updated upstream
-	"0,0,1,1,0",
-  "1,0,3,1,-0.6"
-=======
 	"0,0,2,1,0",
 	"2,0,2,1,0",
 	"4,0,3,1,0"
->>>>>>> Stashed changes
 }
 
 --<camtrigger>--
