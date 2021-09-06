@@ -662,7 +662,7 @@ fuzz={
       else 
         this.spd[axis]=appr(this.spd[axis],this.speed*this.f_dir,0.4)
       end
-    else if axis=="theta" then -- spinny fuzzies (todo)
+    --else if axis=="theta" then -- rotating fuzzies (TODO)
     end
     local hit=this.player_here()
     if hit then 
