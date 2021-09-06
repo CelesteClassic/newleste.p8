@@ -127,7 +127,7 @@ player={
     
     -- spike collision / bottom death
     if is_flag(0,0,-1) or 
-	    y>lvl_ph then
+	    y>lvl_ph and not exit_bottom then
 	    kill_player(_ENV)
     end
 
@@ -278,6 +278,12 @@ player={
         dash_target_y=(spd.y>=0 and 2 or 1.5)*sign(spd.y)
         dash_accel_x=spd.y==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
         dash_accel_y=spd.x==0 and 1.5 or 1.06066017177
+        
+        -- emulate soft dashes
+        if h_input~=0 and ph_input==-h_input and oob(ph_input,0) then 
+          spd.x=0
+        end 
+
       elseif djump<=0 and dash then
         -- failed dash smoke
         psfx(21)
@@ -292,22 +298,18 @@ player={
       btn(⬆️) and 7 or -- look up
       spd.x~=0 and h_input~=0 and 1+spr_off%4 or 1 -- walk or stand
     update_hair(_ENV)
-    -- exit level off the top (except summit)
-    if y<-4 and levels[lvl_id+1] then
+    -- exit level (except summit)
+    if (exit_right and left()>=lvl_pw or exit_top and y<-4 or exit_left and right()<0 or exit_bottom and top()>=lvl_ph) and levels[lvl_id+1] then
       next_level()
     end
     
     -- was on the ground
     was_on_ground=on_ground
+    --previous horizontal input (for soft dashes)
+    ph_input=h_input
   end,
   
   draw=function(_ENV)
-    -- clamp in screen
-    local clamped=mid(x,-1,lvl_pw-7)
-    if x~=clamped then
-      x=clamped
-      spd.x=0
-    end
     -- draw player hair and sprite
     set_hair_color(djump)
     draw_hair(_ENV)
@@ -1164,7 +1166,13 @@ function init_object(type,sx,sy,tile)
            and not dreaming)
            -- </dream_block> --
   end
-  
+  function oob(ox,oy)
+    return not exit_left and left()+ox<0 or not exit_right and right()+ox>=lvl_pw or top()+oy<=-8
+  end
+  function place_free(ox,oy)
+    return not (is_solid(ox,oy) or oob(ox,oy))
+  end
+
   function is_flag(ox,oy,flag)
     for i=mid(0,lvl_w-1,(left()+ox)\8),mid(0,lvl_w-1,(right()+ox)/8) do
       for j=mid(0,lvl_h-1,(top()+oy)\8),mid(0,lvl_h-1,(bottom()+oy)/8) do
@@ -1218,7 +1226,7 @@ function init_object(type,sx,sy,tile)
         local d=axis=="x" and step or 0
         local p=_ENV[axis]
         for i=start,abs(amt) do
-          if not is_solid(d,step-d) then
+          if place_free(d,step-d) then
             _ENV[axis]+=step
           else
             spd[axis],rem[axis]=0,0
@@ -1329,12 +1337,14 @@ function load_level(id)
   --set level globals
   local tbl=split(levels[lvl_id])
   --<badeline>--
-  lvl_x,lvl_y,lvl_w,lvl_h,bad_num=tbl[1]*16,tbl[2]*16,tbl[3]*16,tbl[4]*16,tbl[5] or 0
+  lvl_x,lvl_y,lvl_w,lvl_h,bad_num=tbl[1]*16,tbl[2]*16,tbl[3]*16,tbl[4]*16,tbl[6] or 0
   --</badeline>--
   
   lvl_pw=lvl_w*8
   lvl_ph=lvl_h*8
   
+  local exits=tonum(tbl[5]) or 0b0001 
+  exit_top,exit_right,exit_bottom,exit_left=exits&1!=0,exits&2!=0,exits&4!=0, exits&8!=0
   
   --drawing timer setup
   ui_timer=5
@@ -1693,10 +1703,11 @@ end
 --[map metadata]
 
 --level table
---"x,y,w,h,badeline num"
+--"x,y,w,h,exit_dirs,badeline num"
+--exit directions "0b"+"exit_left"+"exit_bottom"+"exit_right"+"exit_top" (default top- 0b0001)
 levels={
 	"0,0,1,1",
-  "1,0,2,2,1"
+  "1,0,2,2,?,1"
 }
 
 --<camtrigger>--
