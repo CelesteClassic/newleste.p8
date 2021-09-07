@@ -714,6 +714,13 @@ function spr_r(s,x,y,a)
   end
 end
 
+
+function mynorm(dx,dy)
+	dx>>=8
+	dy>>=8
+	return sqrt(dx*dx+dy*dy)<<8
+end 
+
 zip_mover={
   init=function(_ENV)
     solid_obj=true
@@ -743,7 +750,7 @@ zip_mover={
     end 
     local dx=target.x-x 
     local dy=target.y-y 
-    local d=sqrt(dx^2+dy^2)
+    local d=mynorm(dx,dy)
     dir=vector(dx/d,dy/d)
   end,
   update=function(_ENV)
