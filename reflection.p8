@@ -374,6 +374,7 @@ player={
     was_on_ground=on_ground
     --previous horizontal input (for soft dashes)
     ph_input=h_input
+    end 
   end,
   
   draw=function(_ENV)
