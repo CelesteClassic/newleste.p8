@@ -711,10 +711,12 @@ badeline_orb = {
       end
     else 
       local target=positions[next_pos]
-      x,start=appr(x,target.x,12),appr(start,target.y,12)
+      x+=0.3*(target.x-x)
+      start+=0.3*(target.y-y)
       y=start
       --printh(x,y)
-      if x==target.x and y==target.y then
+      if round(x)==target.x and round(y)==target.y then
+        x,y,start=round(x),round(y),round(start)
         off=0
         can_launch=true 
         next_pos+=1 
