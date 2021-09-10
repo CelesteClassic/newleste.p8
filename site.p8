@@ -90,7 +90,7 @@ stars_active=true
 
 player={
   layer=2,
-  init=function(_ENV) 
+  init=function(_ENV)
     grace,jbuffer=0,0
     djump=max_djump
     dash_time,dash_effect_time=0,0
@@ -104,29 +104,34 @@ player={
     berry_timer=0
     berry_count=0
     -- </fruitrain> --
+    -- <berry_seed> --
+    seed_timer=0
+    seed_count=0
+    allseeds=false
+    -- </berry_seed> --
   end,
   update=function(_ENV)
     if pause_player then
       return
     end
-    
+
     -- <dream_block> --
-    if dreaming and not check(dream_block,0,0) then 
-      dreaming=false 
+    if dreaming and not check(dream_block,0,0) then
+      dreaming=false
       spd=vector(mid(dash_target_x,-2,2),
                       mid(dash_target_y,-2,2))
       dash_time,dash_effect_time=0,0
-      if spd.x~=0 then 
+      if spd.x~=0 then
         grace=2
-      end 
+      end
     end
     -- </dream_block> --
 
     -- horizontal input
     local h_input=btn(➡️) and 1 or btn(⬅️) and -1 or 0
-    
+
     -- spike collision / bottom death
-    if is_flag(0,0,-1) or 
+    if is_flag(0,0,-1) or
 	    y>lvl_ph and not exit_bottom then
 	    kill_player(_ENV)
     end
@@ -137,11 +142,16 @@ player={
         -- <fruitrain> --
     if on_ground then
       berry_timer+=1
+      -- <berry_seed> --
+      if seed_count==3 then
+        seed_timer+=1
+      end
+      -- </berry_seed> --
     else
       berry_timer=0
       berry_count=0
     end
-
+    
     for f in all(fruitrain) do
       if f.type==fruit and not f.golden and berry_timer>5 and f then
         -- to be implemented:
@@ -157,9 +167,30 @@ player={
         destroy_object(f)
         if (fruitrain[1]) fruitrain[1].target=_ENV
       end
+      -- <berry_seed> --
+      if seed_timer>5 and f.type==seed and f then
+        init_object(smoke,f.x,f.y,26)
+        destroy_object(f)
+        del(fruitrain,f)
+        if (fruitrain[1]) fruitrain[1].target=_ENV
+        allseeds=true
+        got_fruit[f.fruit_id]=true
+        berry_timer=-5
+        berry_count+=1
+        _g.berry_count+=1
+      end
+      -- </berry_seed> --
     end
+    -- <berry_seed> --
+    if allseeds then
+      seed_timer=0
+      init_object(lifeup,x,y,berry_count)
+      allseeds=false
+      seed_count=0
+    end
+    -- </berry_seed> --
     -- </fruitrain> --
-    
+
     -- landing smoke
     if on_ground and not was_on_ground then
       init_smoke(0,4)
@@ -175,7 +206,7 @@ player={
     elseif jbuffer>0 then
       jbuffer-=1
     end
-    
+
     -- grace frames and dash restoration
     if on_ground then
       grace=6
@@ -203,10 +234,10 @@ player={
       local maxrun=1
       local accel=on_ground and 0.6 or 0.4
       local deccel=0.15
-    
+
       -- set x speed
-      spd.x=abs(spd.x)<=1 and 
-        appr(spd.x,h_input*maxrun,accel) or 
+      spd.x=abs(spd.x)<=1 and
+        appr(spd.x,h_input*maxrun,accel) or
         appr(spd.x,sign(spd.x)*maxrun,deccel)
 
       -- facing direction
@@ -216,7 +247,7 @@ player={
 
       -- y movement
       local maxfall=2
-    
+
       -- wall slide
       if h_input~=0 and is_solid(h_input,0) then
         maxfall=0.4
@@ -252,22 +283,22 @@ player={
           end
         end
       end
-    
+
       -- dash
       local d_full=5
       local d_half=3.5355339059 -- 5 * sqrt(2)
-    
+
       if djump>0 and dash then
         init_smoke()
-        djump-=1   
+        djump-=1
         dash_time=4
         _g.has_dashed=true
         dash_effect_time=10
         -- vertical input
         local v_input=btn(⬆️) and -1 or btn(⬇️) and 1 or 0
         -- calculate dash speeds
-        spd=vector(h_input~=0 and 
-        h_input*(v_input~=0 and d_half or d_full) or 
+        spd=vector(h_input~=0 and
+        h_input*(v_input~=0 and d_half or d_full) or
         (v_input~=0 and 0 or flip.x and -1 or 1)
         ,v_input~=0 and v_input*(h_input~=0 and d_half or d_full) or 0)
         -- effects
@@ -278,11 +309,11 @@ player={
         dash_target_y=(spd.y>=0 and 2 or 1.5)*sign(spd.y)
         dash_accel_x=spd.y==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
         dash_accel_y=spd.x==0 and 1.5 or 1.06066017177
-        
+
         -- emulate soft dashes
-        if h_input~=0 and ph_input==-h_input and oob(ph_input,0) then 
+        if h_input~=0 and ph_input==-h_input and oob(ph_input,0) then
           spd.x=0
-        end 
+        end
 
       elseif djump<=0 and dash then
         -- failed dash smoke
@@ -290,7 +321,7 @@ player={
         init_smoke()
       end
     end
-    
+
     -- animation
     spr_off+=0.25
     sprite = not on_ground and (is_solid(h_input,0) and 5 or 3) or  -- wall slide or mid air
@@ -302,13 +333,13 @@ player={
     if (exit_right and left()>=lvl_pw or exit_top and y<-4 or exit_left and right()<0 or exit_bottom and top()>=lvl_ph) and levels[lvl_id+1] then
       next_level()
     end
-    
+
     -- was on the ground
     was_on_ground=on_ground
     --previous horizontal input (for soft dashes)
     ph_input=h_input
   end,
-  
+
   draw=function(_ENV)
     -- draw player hair and sprite
     set_hair_color(djump)
@@ -419,15 +450,15 @@ player_spawn={
 --<camtrigger>--
 camera_trigger={
   update=function(_ENV)
-    if timer and timer>0 then 
+    if timer and timer>0 then
       timer-=1
-      if timer==0 then 
+      if timer==0 then
         _g.cam_offx=offx
         _g.cam_offy=offy
-      else 
+      else
         _g.cam_offx+=cam_gain*(offx-cam_offx)
         _g.cam_offy+=cam_gain*(offy-cam_offy)
-      end 
+      end
     elseif player_here() then
       timer=5
     end
@@ -475,13 +506,13 @@ side_spring={
 
 
 refill={
-  init=function(_ENV) 
+  init=function(_ENV)
     offset=rnd()
     timer=0
     hitbox=rectangle(-1,-1,10,10)
     active=true
   end,
-  update=function(_ENV) 
+  update=function(_ENV)
     if active then
       offset+=0.02
       local hit=player_here()
@@ -494,17 +525,17 @@ refill={
       end
     elseif timer>0 then
       timer-=1
-    else 
+    else
       psfx(12)
       init_smoke()
-      active=true 
+      active=true
     end
   end,
   draw=function(_ENV)
     if active then
       spr(15,x,y+sin(offset)+0.5)
 
-    else  
+    else
       -- color(7)
       -- line(x,y+4,x+3,y+7)
       -- line(x+4,y+7,x+7,y+4)
@@ -517,7 +548,7 @@ refill={
       3,0,0,3]],"\n"),function(t)
 	        local o1,o2,o3,o4=unpack(split(t))
 	        line(x+o1,y+o2,x+o3,y+o4,7)
-	      end 
+	      end
       )
     end
   end
@@ -532,7 +563,7 @@ fall_floor={
     -- idling
     if state==0 then
       for i=0,2 do
-        if check(player,i-1,-(i%2)) then 
+        if check(player,i-1,-(i%2)) then
           psfx(13)
           state,delay=1,15
           init_smoke()
@@ -559,7 +590,7 @@ fall_floor={
     end
   end,
   draw=function(_ENV)
-    spr(state==1 and 26-delay/5 or state==0 and 23,x,y) --add an if statement if you use sprite 0 
+    spr(state==1 and 26-delay/5 or state==0 and 23,x,y) --add an if statement if you use sprite 0
   end
 }
 
@@ -622,7 +653,7 @@ fruit={
 
 fly_fruit={
   check_fruit=true,
-  init=function(_ENV) 
+  init=function(_ENV)
     start=y
     step=0.5
     sfx_delay=8
@@ -653,7 +684,7 @@ fly_fruit={
       init_smoke(6)
 
       local f=init_object(fruit,x,y,10) --if this happens to be in the exact location of a different fruit that has already been collected, this'll cause a crash
-      --TODO: fix this if needed 
+      --TODO: fix this if needed
       f.fruit_id=fruit_id
       fruit.update(f)
       --- </fruitrain> ---
@@ -692,59 +723,59 @@ lifeup={
 }
 
 badeline={
-  init=function(_ENV) 
-    for o in all(objects) do 
-      if (o.type==player_spawn or o.type==badeline) and not o.tracked then 
+  init=function(_ENV)
+    for o in all(objects) do
+      if (o.type==player_spawn or o.type==badeline) and not o.tracked then
         bade_track(_ENV,o)
         break
-      end 
-    end 
+      end
+    end
     states={}
     timer=0
-    
+
   end,
-  update=function(_ENV) 
+  update=function(_ENV)
     local tr,states=tracking,states
-    if tr.type==player_spawn and tr.state==2 and tr.delay<0 then 
-      for o in all(objects) do 
-        if o.type==player then 
+    if tr.type==player_spawn and tr.state==2 and tr.delay<0 then
+      for o in all(objects) do
+        if o.type==player then
           bade_track(_ENV,o)
           tr=o
           break
         end
-      end  
-    elseif tr.type==badeline and tr.timer<30 then 
-      return 
-    end 
-    if timer<70 then 
+      end
+    elseif tr.type==badeline and tr.timer<30 then
+      return
+    end
+    if timer<70 then
       timer+=1
-    end 
+    end
     local sm={}
-    for s in all(smokes) do 
+    for s in all(smokes) do
       add(sm,s)
-    end 
+    end
     smokes={}
     add(states,{tr.x,tr.y,tr.flip.x,tr.sprite or 1,sm})
-    if #states>=30 then 
+    if #states>=30 then
       x,y,flip.x,sprite,sm=unpack(states[1])
       del(states,states[1])
-      for s in all(sm) do 
+      for s in all(sm) do
         init_smoke(unpack(s))
       end
-    end 
-    if timer==30 then 
+    end
+    if timer==30 then
       create_hair(_ENV)
     end
     if timer>=30 then
       update_hair(_ENV)
-    end 
+    end
     local hit=check(player,0,0)
-    if hit and timer>=70 then 
+    if hit and timer>=70 then
       kill_player(hit)
-    end 
+    end
   end,
   draw=function(_ENV)
-    if timer>=30 then 
+    if timer>=30 then
       pal(8,2)
       pal(15,6)
       pal(3,1)
@@ -753,79 +784,79 @@ badeline={
       draw_hair(_ENV)
       draw_obj_sprite(_ENV)
       pal()
-    end 
+    end
 	end
 }
 function bade_track(_ENV,o)
-  o.tracked=true 
-  tracking=o 
+  o.tracked=true
+  tracking=o
   hitbox=o.hitbox
   local f=o.init_smoke
   o.init_smoke=function(...)
     add(smokes,{...})
     f(...)
-  end 
-end 
+  end
+end
 
 fall_plat={
   init=function(_ENV)
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==67 do 
+    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==67 do
       hitbox.w+=8
-    end 
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==67 do 
+    end
+    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==67 do
       hitbox.h+=8
-    end 
+    end
     collides=true
     solid_obj=true
     timer=0
   end,
-  update=function(_ENV) 
+  update=function(_ENV)
     if not state and check(player,0,-1) then
       state = 0  -- shake
       timer = 10
-    elseif timer>0 then 
+    elseif timer>0 then
       timer-=1
-      if timer==0 then 
+      if timer==0 then
         state=finished and 2 or 1
         spd.y=0.4
-      end 
-    elseif state==1 then 
-      if spd.y==0 then 
+      end
+    elseif state==1 then
+      if spd.y==0 then
         state=0
-        for i=0,hitbox.w-1,8 do 
+        for i=0,hitbox.w-1,8 do
           init_smoke(i,hitbox.h-2)
         end
         timer=6
         finished=true
       end
       spd.y=appr(spd.y,4,0.4)
-    end 
+    end
   end,
   draw=function(_ENV)
     local x,y=x,y
-    if state==0 then 
+    if state==0 then
       x+=rnd(2)-1
       y+=rnd(2)-1
     end
-    local r,d=x+hitbox.w-8,y+hitbox.h-8 
-    for i=x,r,r-x do 
-      for j=y,d,d-y do 
+    local r,d=x+hitbox.w-8,y+hitbox.h-8
+    for i=x,r,r-x do
+      for j=y,d,d-y do
         spr(80,i,j,1.0,1.0,i~=x,j~=y)
-      end 
-    end 
-    for i=x+8,r-8,8 do 
+      end
+    end
+    for i=x+8,r-8,8 do
       spr(81,i,y)
       spr(81,i,d,1,1,false,true)
     end
-    for i=y+8,d-8,8 do 
+    for i=y+8,d-8,8 do
       spr(83,x,i)
       spr(83,r,i,1,1,true)
     end
-    for i=x+8,r-8,8 do 
-      for j=y+8,d-8,8 do 
+    for i=x+8,r-8,8 do
+      for j=y+8,d-8,8 do
         spr((i+j-x-y)%16==0 and 84 or 85,i,j)
-      end 
-    end 
+      end
+    end
   end
 
 }
@@ -835,27 +866,27 @@ touch_switch={
     off=2
   end,
   update=function(_ENV)
-    if player_here() and not collected then 
-      collected=true 
+    if player_here() and not collected then
+      collected=true
       controller.missing-=1
       init_smoke()
-    end 
+    end
     off+=collected and 0.5 or 0.2
     off%=4
   end,
   draw=function(_ENV)
     palt(0,false)
     palt(8,true)
-    if controller.active then 
+    if controller.active then
       sprite=68
       pal(12,2)
-    else 
+    else
       sprite=split"68,69,70,69"[1+flr(off)]
       flip.x=off>=3
-      if collected then 
+      if collected then
         pal(12,7)
-      end 
-    end 
+      end
+    end
     draw_obj_sprite(_ENV)
     palt()
     pal()
@@ -864,57 +895,57 @@ touch_switch={
 switch_block={
   init=function(_ENV)
     solid_obj=true
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==72 do 
+    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==72 do
       hitbox.w+=8
-    end 
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==87 do 
+    end
+    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==87 do
       hitbox.h+=8
-    end 
+    end
     delay,end_delay=0,0
   end,
-  end_init=function(_ENV) 
+  end_init=function(_ENV)
     switches={}
-    for o in all(objects) do 
-      if o.type==touch_switch then 
+    for o in all(objects) do
+      if o.type==touch_switch then
         add(switches,o)
-        o.controller=_ENV 
-      elseif o.sprite==88 then 
+        o.controller=_ENV
+      elseif o.sprite==88 then
         target=vector(o.x,o.y)
         destroy_object(o)
         dirx,diry=sign(o.x-x),sign(o.y-y)
         distx,disty=abs(o.x-x),abs(o.y-y)
-      end 
+      end
     end
-    missing=#switches 
+    missing=#switches
   end,
   update=function(_ENV)
-    if missing==0 and not active then 
-      active=true 
+    if missing==0 and not active then
+      active=true
       for s in all(switches) do
-        for i=1,2 do 
+        for i=1,2 do
           s.init_smoke()
-        end 
-      end 
+        end
+      end
       delay=20
-    end 
+    end
 
-    if end_delay>0 then 
+    if end_delay>0 then
       end_delay-=1
-      if end_delay==0 then 
+      if end_delay==0 then
         delay=10
-        if dirx~=0 then 
-          for i=0,hitbox.h-1,8 do 
+        if dirx~=0 then
+          for i=0,hitbox.h-1,8 do
             init_smoke(dirx==-1 and -6 or hitbox.w-2,i)
-          end 
-        end 
-        if diry~=0 then 
-          for i=0,hitbox.w-1,8 do 
+          end
+        end
+        if diry~=0 then
+          for i=0,hitbox.w-1,8 do
             init_smoke(i,diry==-1 and -6 or hitbox.h-2)
-          end 
-        end 
-      end 
-    end 
-    if delay>0 then 
+          end
+        end
+      end
+    end
+    if delay>0 then
       delay-=1
     elseif active then
       local dx,dy=target.x-x,target.y-y
@@ -924,56 +955,56 @@ switch_block={
       --local c=clamp(abs(dx),abs(dy),16)/8
       --c=c==0.125 and 0.25 or c
       spd=vector(cx*sign(dx),cy*sign(dy))
-      if dx==0 and dy==0 and not done then 
+      if dx==0 and dy==0 and not done then
         end_delay=5
         done=true
-      end 
-      
-    end 
-  end, 
+      end
+
+    end
+  end,
   draw=function(_ENV)
     --TODO: put this into a function to save tokens with fall_plat
     local x,y=x,y
-    if delay>3 then 
+    if delay>3 then
       x+=rnd(2)-1
-      y+=rnd(2)-1 
-    end 
-    
-    local r,d=x+hitbox.w-8,y+hitbox.h-8 
-    for i=x,r,r-x do 
-      for j=y,d,d-y do 
+      y+=rnd(2)-1
+    end
+
+    local r,d=x+hitbox.w-8,y+hitbox.h-8
+    for i=x,r,r-x do
+      for j=y,d,d-y do
         spr(71,i,j,1.0,1.0,i~=x,j~=y)
-      end 
-    end 
-    for i=x+8,r-8,8 do 
+      end
+    end
+    for i=x+8,r-8,8 do
       spr(72,i,y)
       spr(72,i,d,1.0,1.0,true,true)
     end
-    for i=y+8,d-8,8 do 
+    for i=y+8,d-8,8 do
       spr(87,x,i)
       spr(87,r,i,1.0,1.0,true)
     end
-    for i=x+8,r-8,8 do 
-      for j=y+8,d-8,8 do 
+    for i=x+8,r-8,8 do
+      for j=y+8,d-8,8 do
         rectfill(i,j,i+8,j+8,1)
-      end 
+      end
     end
 
     spr(88,x+hitbox.w/2-4,y+hitbox.h/2-4)
-  end 
+  end
 }
 -- <touch_switch> --
 dream_block={
   init=function(_ENV)
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==65 do 
+    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==65 do
       hitbox.w+=8
-    end 
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==65 do 
+    end
+    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==65 do
       hitbox.h+=8
-    end 
+    end
     kill_timer=0
     particles={}
-    for i=1,hitbox.w*hitbox.h/32 do 
+    for i=1,hitbox.w*hitbox.h/32 do
       add(particles,
       {x=rnd(hitbox.w-1)+x,
       y=rnd(hitbox.h-1)+y,
@@ -991,25 +1022,25 @@ dream_block={
     if hit then --could save a bunch of tokens by doing local this,_ENV=_ENV,hit, not gonna do it for now cause it's more confusing
       hit.dash_effect_time=10
       hit.dash_time=2
-      if hit.dash_target_y==-1.5 then 
+      if hit.dash_target_y==-1.5 then
         hit.dash_target_y=-2
       end
-      if hit.dash_target_x==0 then 
+      if hit.dash_target_x==0 then
         hit.dash_target_y=sign(hit.dash_target_y)*2.5
-      end 
+      end
       if hit.dash_target_y==0 then
         hit.dash_target_x=sign(hit.dash_target_x)*2.5
-      end 
-      if not hit.dreaming then 
+      end
+      if not hit.dreaming then
         hit.spd=vector(hit.dash_target_x*(hit.dash_target_y==0 and 2.5  or 1.7678),hit.dash_target_y*(hit.dash_target_x==0 and 2.5 or 1.7678))
       end
-      if abs(hit.spd.x)<abs(hit.dash_target_x) or abs(hit.spd.y)<abs(hit.dash_target_y) then 
+      if abs(hit.spd.x)<abs(hit.dash_target_x) or abs(hit.spd.y)<abs(hit.dash_target_y) then
         hit.move(hit.dash_target_x,hit.dash_target_y,0)
-        if hit.is_solid(hit.dash_target_x,hit.dash_target_y) then 
+        if hit.is_solid(hit.dash_target_x,hit.dash_target_y) then
           kill_player(hit)
-        end 
+        end
       end
-      hit.dreaming=true 
+      hit.dreaming=true
       hit.djump=max_djump
       if dtimer>0 then
         dtimer-=1
@@ -1040,12 +1071,12 @@ dream_block={
     color(7)
     if #disp_shapes==0 then
       --rect(x,y,right(),bottom(),7)
-      for i=y,bottom(),hitbox.h-1 do 
-        line(x+1, i, right()-1,i)        
-      end      
-      for i=x,right(),hitbox.w-1 do 
-        line(i, y+1, i,bottom()-1)      
-      end         
+      for i=y,bottom(),hitbox.h-1 do
+        line(x+1, i, right()-1,i)
+      end
+      for i=x,right(),hitbox.w-1 do
+        line(i, y+1, i,bottom()-1)
+      end
     else
       for x_=x,right() do
         for y_=y,bottom(),(x_==x or x_==right()) and 1 or bottom()-y do
@@ -1059,7 +1090,7 @@ dream_block={
     pset(x, bottom(), 0)
     pset(right(), y, 0)
     pset(right(), bottom(), 0)]]--
-  end 
+  end
 }
 
 
@@ -1098,6 +1129,43 @@ function sdf_circ(p, origin, r)
   return abs(d-r), d, po
 end
 
+-- <berry_seed> --
+seed={
+  check_fruit=true,
+  init=function(_ENV)
+    y_=y
+    off=0
+    follow=false
+    tx=x
+    ty=y
+  end,
+  update=function(_ENV)
+    if not follow then
+      local hit=player_here()
+      if hit then
+        hit.seed_count+=1
+        hit.seed_timer=0
+        follow=true
+        target=#fruitrain==0 and hit or fruitrain[#fruitrain]
+        r=#fruitrain==0 and 12 or 8
+        add(fruitrain,_ENV)
+      end
+    else
+      if target then
+        tx+=0.2*(target.x-tx)
+        ty+=0.2*(target.y-ty)
+        local a=atan2(x-tx,y_-ty)
+        local k=(x-tx)^2+(y_-ty)^2 > r^2 and 0.2 or 0.1
+        x+=k*(tx+r*cos(a)-x)
+        y_+=k*(ty+r*sin(a)-y_)
+      end
+    end
+    off+=0.025
+    y=y_+sin(off)*2.5
+  end
+}
+-- <berry_seed> --
+
 psfx=function(num)
   if sfx_timer<=0 then
    sfx(num)
@@ -1120,7 +1188,10 @@ tiles={
   -- <touch_switch> --
   [88]={},
   -- <touch_switch> --
-  [64]=dream_block
+  [64]=dream_block,
+  -- <berry_seed> --
+  [96]=seed
+  -- <berry_seed> --
 }
 
 -- [object functions]
@@ -1128,8 +1199,8 @@ tiles={
 function init_object(type,sx,sy,tile)
   --generate and check berry id
   local id=sx..","..sy..","..lvl_id
-  if type.check_fruit and got_fruit[id] then 
-    return 
+  if type.check_fruit and got_fruit[id] then
+    return
   end
   --local _g=_g
   local _ENV={
@@ -1153,16 +1224,16 @@ function init_object(type,sx,sy,tile)
   function bottom() return top()+hitbox.h-1 end
 
   function is_solid(ox,oy)
-    for o in all(objects) do 
-      if o!=_ENV and (o.solid_obj or o.semisolid_obj and not objcollide(o,ox,0) and oy>0) and objcollide(o,ox,oy)  then 
-        return true 
-      end  
-    end 
+    for o in all(objects) do
+      if o!=_ENV and (o.solid_obj or o.semisolid_obj and not objcollide(o,ox,0) and oy>0) and objcollide(o,ox,oy)  then
+        return true
+      end
+    end
     return (oy>0 and not is_flag(ox,0,3) and is_flag(ox,oy,3)) or  -- one way platform or
             is_flag(ox,oy,0) -- solid terrain
             -- <dream_block> --
-           or check(dream_block,ox,oy) and (dash_effect_time<=2 or  
-           not check(dream_block,sign(dash_target_x),sign(dash_target_y)) 
+           or check(dream_block,ox,oy) and (dash_effect_time<=2 or
+           not check(dream_block,sign(dash_target_x),sign(dash_target_y))
            and not dreaming)
            -- </dream_block> --
   end
@@ -1189,16 +1260,16 @@ function init_object(type,sx,sy,tile)
             spd.x>=0 and right()%8>=6})[tile-15] then
             return true
           end
-        end 
-      end 
-    end 
+        end
+      end
+    end
   end
-  function objcollide(other,ox,oy) 
+  function objcollide(other,ox,oy)
 
     return other.collideable and
-    other.right()>=left()+ox and 
+    other.right()>=left()+ox and
     other.bottom()>=top()+oy and
-    other.left()<=right()+ox and 
+    other.left()<=right()+ox and
     other.top()<=bottom()+oy
   end
   function check(type,ox,oy)
@@ -1212,7 +1283,7 @@ function init_object(type,sx,sy,tile)
   function player_here()
     return check(player,0,0)
   end
-  
+
   function move(ox,oy,start)
     for axis in all{"x","y"} do
       rem[axis]+=axis=="x" and ox or oy
@@ -1235,38 +1306,38 @@ function init_object(type,sx,sy,tile)
         end
         movamt=_ENV[axis]-p --save how many px moved to use later for solids
       else
-        movamt=amt 
-        if (solid_obj or semisolid_obj) and upmoving and riding then 
+        movamt=amt
+        if (solid_obj or semisolid_obj) and upmoving and riding then
           movamt+=top()-bottom()-1
           local hamt=round(riding.spd.y+riding.rem.y)
           hamt+=sign(hamt)
-          if movamt<hamt then 
+          if movamt<hamt then
             riding.spd.y=max(riding.spd.y)--,0)
-          else 
+          else
             movamt=0
           end
         end
         _ENV[axis]+=amt
       end
       if (solid_obj or semisolid_obj) and collideable then
-        collideable=false 
+        collideable=false
         local hit=player_here()
-        if hit and solid_obj then 
-          hit.move(axis=="x" and (amt>0 and right()+1-hit.left() or amt<0 and left()-hit.right()-1) or 0, 
+        if hit and solid_obj then
+          hit.move(axis=="x" and (amt>0 and right()+1-hit.left() or amt<0 and left()-hit.right()-1) or 0,
                   axis=="y" and (amt>0 and bottom()+1-hit.top() or amt<0 and top()-hit.bottom()-1) or 0,
                   1)
-          if player_here() then 
+          if player_here() then
             kill_player(hit)
-          end 
-        elseif riding then 
+          end
+        elseif riding then
           riding.move(axis=="x" and movamt or 0, axis=="y" and movamt or 0,1)
         end
-        collideable=true 
+        collideable=true
       end
     end
   end
 
-  function init_smoke(ox,oy) 
+  function init_smoke(ox,oy)
     init_object(smoke,x+(ox or 0),y+(oy or 0),26)
   end
 
@@ -1322,42 +1393,42 @@ end
 
 function load_level(id)
   has_dashed=false
-  
+
   --remove existing objects
   foreach(objects,destroy_object)
-  
+
   --reset camera speed
   cam_spdx,cam_spdy=0,0
-		
+
   local diff_level=lvl_id~=id
-  
+
 		--set level index
   lvl_id=id
-  
+
   --set level globals
   local tbl=split(levels[lvl_id])
   --<badeline>--
   lvl_x,lvl_y,lvl_w,lvl_h,bad_num=tbl[1]*16,tbl[2]*16,tbl[3]*16,tbl[4]*16,tbl[6] or 0
   --</badeline>--
-  
+
   lvl_pw=lvl_w*8
   lvl_ph=lvl_h*8
-  
-  local exits=tonum(tbl[5]) or 0b0001 
+
+  local exits=tonum(tbl[5]) or 0b0001
   exit_top,exit_right,exit_bottom,exit_left=exits&1!=0,exits&2!=0,exits&4!=0, exits&8!=0
-  
+
   --drawing timer setup
   ui_timer=5
 
   --reload map
-  if diff_level then 
+  if diff_level then
     reload()
     --chcek for mapdata strings
     if mapdata[lvl_id] then
       replace_mapdata(lvl_x,lvl_y,lvl_w,lvl_h,mapdata[lvl_id])
     end
-  end 
-  
+  end
+
   -- entities
   for tx=0,lvl_w-1 do
     for ty=0,lvl_h-1 do
@@ -1368,7 +1439,7 @@ function load_level(id)
     end
   end
   --<badeline>--
-  for i=1,bad_num do 
+  for i=1,bad_num do
     init_object(badeline,0,0)
   end
   --</badeline>--
@@ -1398,24 +1469,24 @@ function _update()
     seconds%=60
   end
   frames%=30
-  
+
   if music_timer>0 then
     music_timer-=1
     if music_timer<=0 then
       music(10,0,7)
     end
   end
-  
+
   if sfx_timer>0 then
     sfx_timer-=1
   end
-  
+
   -- cancel if freeze
-  if freeze>0 then 
+  if freeze>0 then
     freeze-=1
     return
   end
-  
+
   -- restart (soon)
   if delay_restart>0 then
   	cam_spdx,cam_spdy=0,0
@@ -1428,7 +1499,7 @@ function _update()
       -- </fruitrain> --
       else
         load_level(lvl_id)
-      end 
+      end
     end
   end
 
@@ -1455,10 +1526,10 @@ function _draw()
   if freeze>0 then
     return
   end
-  
+
   -- reset all palette values
   pal()
-  
+
 	--set cam draw position
   draw_x=round(cam_x)-64
   draw_y=round(cam_y)-64
@@ -1495,7 +1566,7 @@ function _draw()
         c.y=rnd(120)
       end
     end)
-  end 
+  end
   --</stars>--
 
   -- bg clouds effect
@@ -1524,7 +1595,7 @@ function _draw()
   pal=_pal
   camera(draw_x,draw_y)
   pal()
-	
+
   --set draw layering
   --0: background layer
   --1: default layer
@@ -1540,7 +1611,7 @@ function _draw()
   end)
   -- draw terrain
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,2)
-  
+
   -- draw objects
   foreach(layers,function(l)
     foreach(l,draw_object)
@@ -1555,7 +1626,7 @@ function _draw()
     y%=128
     off+=_g.min(0.05,spd/32)
     _g.rectfill(x+_g.draw_x,y+_g.draw_y,x+s+_g.draw_x,y+s+_g.draw_y,c)
-    if x>132 then 
+    if x>132 then
       x=-4
       y=_g.rnd128()
    	elseif x<-4 then
@@ -1563,7 +1634,7 @@ function _draw()
      	y=_g.rnd128()
     end
   end)
-  
+
   -- dead particles
   foreach(dead_particles,function(_ENV)
     x+=dx
@@ -1662,7 +1733,7 @@ end
 
 function tile_at(x,y)
   return mget(lvl_x+x,lvl_y+y)
-end 
+end
 
 function spikes_at(x1,y1,x2,y2,xspd,yspd)
   for i=max(0,x1\8),min(lvl_w-1,x2/8) do
@@ -1671,8 +1742,8 @@ function spikes_at(x1,y1,x2,y2,xspd,yspd)
           y1%8<=2 and yspd<=0,
           x1%8<=2 and xspd<=0,
           x2%8>=6 and xspd>=0})[tile_at(i,j)-15] then
-            return true 
-      end 
+            return true
+      end
     end
   end
 end
@@ -1709,8 +1780,8 @@ levels={
 	"0,0,1,1,0b0010,0",
 	"1,0,1,1,0b0100,0",
 	"0,1,2,1,0b0100,0",
-	"0,2,1,2,0b0100,0",
 	"1,2,1,2,0b0010,0",
+	"0,2,1,2,0b0010,0",
 	"6,0,2,2,0b1000,3"
 }
 
@@ -1784,9 +1855,9 @@ function get_mapdata(x,y,w,h)
 end
 
 --convert mapdata to memory data
-function num2hex(v) 
+function num2hex(v)
   return sub(tostr(v,true),5,6)
-end 
+end
 __gfx__
 000000000000000000000000088888800000000000000000000000000000000000000000000000000300b0b00a0aa0a000000000000000000000000000077000
 00000000088888800888888088888888088888800888880000000000088888800004000000000000003b33000aa88aa0000777770000000000000000007bb700
@@ -1837,12 +1908,13 @@ ddddddd66dddd11111111111111dddd666d116dd6d166616611ddd66ddddd1111166111155000000
 77cc77cccccccccccccccc77777cccccccccccccccccc7cc000000006dd1111111cccc1100000067600000000000000000000000000000000000000000000000
 77cccccccccccccccccccc7777cccccccccccccccccccccc000000006dd11111111cc11111dd6677766dd1100000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000067600000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000100d060d0010000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000001006001000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000000000000000000000000000000000001000d000100000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000010d010000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000
+00099000000000000000000000000000000000000000000000000000000000000000000000100d060d0010000000000000000000000000000000000000000000
+009af900000000000000000000000000000000000000000000000000000000000000000000001006001000000000000000000000000000000000000000000000
+09aaaa9000000000000000000000000000000000000000000000000000000000000000000001000d000100000000000000000000000000000000000000000000
+09faaa9000000000000000000000000000000000000000000000000000000000000000000000010d010000000000000000000000000000000000000000000000
+009aa900000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000
+009af900000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000
+00099000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1851,70 +1923,69 @@ ddddddd66dddd11111111111111dddd666d116dd6d166616611ddd66ddddd1111166111155000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+52620000000000425252620000004252525233000000133300000013525252520000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-62000000004252525252525252525252526200000000000142525252525252520000000000000000000000000000000000000000000000000000000000000000
+52620000000000135252330006004252233300000000111100000000132352520000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-62100000001323525252525252525252526200000000001252232323232352520000000000000000000000000000000000000000000000000000000000000000
+52330000000000001333000000001352000000000000000000000000000013520000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-62410000000000132352525252525252526200000000014233000000000013520000000000000000000000000000000000000000000000000000000000000000
+33000000000000001111000000000042000000000000010100000000000000420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-62000000000000000013525252232323523300000010126200000000000031420000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000042001000000000123200000000000000420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-62010000000000000000132333111111621100000061426200000001000031420000000000000000000000000000000000000000000000000000000000000000
+00000000000000000101000000000042222232000000426280000000000000420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-52320000000000000000111111000000620000000000136200003172210031420000000000000000000000000000000000000000000000000000000000000000
+22320010000000001232010190010142525262010000426280000000000000420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-52620000000000000000000000000000620100000000007300003103210031420000000000000000000000000000000000000000000000000000000000000000
+52522222320000004252222222222252525252320101426200000000000000420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-52620000000100000000010101000000523201000000000000003103210031420000000000000000000000000000000000000000000000000000000000000000
+52525252620000004252525252525252525252522222526201010101000000420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-52620100007200000000122232000000525232000000000000003103210031420000000000000000000000000000000000000000000000000000000000000000
+52525252620000004252525252525252525252525252525222222232000000420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-23236301010300000000425262000000525262800000000000003103210031420000000000000000000000000000000000000000000000000000000000000000
+52232323330000004252525252525252525223232352525223232333000000420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000012226201000001425262000000525262800000000000003103210031420000000000000000000000000000000000000000000000000000000000000000
+33000000000000004252522323235252523300000013233300000000000000420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00a00013232363000012525233000000525262010000000001010103210031420000000000000000000000000000000000000000000000000000000000000000
+00000000000000004252620000004252620000000011111100000000000000420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000011111111000042526211000000525252320101010112222262210031420000000000000000000000000000000000000000000000000000000000000000
+00000000007171004252620006004252330000000000000000000000000000420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000f000000142523300000001525252522222222252522333210031420000000000000000000000000000000000000000000000000000000000000000
+00000001010101014252622100004252000000000000010100000000000080420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000010101011252621100000012525252525252525223330000000031420000000000000000000000000000000000000000000000000000000000000000
+00000012222222225252620000004252000000000000123200000000000000420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000122222225252330000000142522323235252523300000000000031420000000000000000000000000000000000000000000000000000000000000000
+00000013525252525252620000314252000000000000426201010000000001420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000132323233333110000001252621111111323330000000000000001420000000000000000000000000000000000000000000000000000000000000000
+00000011132323235252620000004252000000243434425222320101010112520000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000001111111111110000f0004252330000001111110000000100000012520000000000000000000000000000000000000000000000000000000000000000
+00000000111111111323622100004252000000340000135252522222222252520000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-010100f00000000000000000000142520000000000000000f0007200000042520000000000000000000000000000000000000000000000000000000000000000
+01010000000000000000730000004252000000340000004252525252525252520000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-22320101010100000001010101125252000000000001010000000301010142520000000000000000000000000000000000000000000000000000000000000000
+22320101010100000000000000314252000000340000001323235252525252520000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-52522222223200000012222222525252000000000012320101014222222252520000000000000000000000000000000000000000000000000000000000000000
+52522222223200000000000000001352000000340000000000001352525252520000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-52525252526200000013232323525252002434340013522222225252525252520000000000000000000000000000000000000000000000000000000000000000
+52525252526280000000000000000042000000340000000000000042232323520000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-52525252526200000011111111135252003400000000425252525223232352520000000000000000000000000000000000000000000000000000000000000000
+5252525252628000000000000000004200000034000000000000000300a000420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-52525252526200f00000000000004252003400000000132323233300000013230000000000000000000000000000000000000000000000000000000000000000
+52525252526201010101010000000042000000000000617200000003000000420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-52525252526201010101010000004252000000000000000000111100000000000000000000000000000000000000000000000000000000000000000000000000
+52525252525222222222320100000042000000000000004232000003000000420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-52525252232353532222320000004252000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+52525252525252525252523200000042000000000000004262000003210000420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-52525233111111111323330000004252000000000001000000010100000000000000000000000000000000000000000000000000000000000000000000000000
+52525252522323232323233300000013000000000000014262000003000000420000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-52526211000000001111110000004252000000000072010101123200000000000000000000000000000000000000000000000000000000000000000000000000
+52525252620000000000000000000000000000000000125262000073000031130000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-5252620000000000000000f000004252000000000042222222526200000000000000000000000000000000000000000000000000000000000000000000000000
+52525252620006000100000000000000000000000000425262000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-52523300000000000000000000014252000000000142525252526241516112220000000000000000000000000000000000000000000000000000000000000000
+52525252620000007200000000000000000000000101425262000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-52621100000000000101010101125252000000001252525252526200000042520000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-52620000000000001222222222525252000000004252525252526200000042520000000000000000000000000000000000000000000000000000000000000000
+52525252620000000300000000516112000000001222525252222222222222220000000000000000000000000000000000000000000000000000000000000000
 __label__
 cccccccccccccccccccccccccccccccccccccc775500000000000000000000000000000000070000000000000000000000000000000000000000000000000000
 cccccccccccccccccccccccccccccccccccccc776670000000000000000000000000000000000000000000000000000000000000000000000000000000000000
