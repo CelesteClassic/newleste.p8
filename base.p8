@@ -118,9 +118,19 @@ player={
     if on_ground then
       berry_timer+=1
       -- <berry_seed> --
-      if seed_count==3 then
-        seed_timer+=1
+      for i,f in ipairs(fruitrain) do 
+        if f.type==seed then 
+          f.init_smoke()
+          destroy_object(f)
+          del(fruitrain,f)
+          if fruitrain[i] then 
+            fruitrain[i].target=f.target 
+            fruitrain[i].r=f.r
+          end 
+          init_object(seed,f.ogx,f.ogy,f.sprite)--.init_smoke()
+        end 
       end
+      seed_count=0
       -- </berry_seed> --
     else
       berry_timer=0
@@ -704,6 +714,7 @@ seed={
     follow=false
     tx=x
     ty=y
+    ogx,ogy=x,y
   end,
   update=function(_ENV)
     if not follow then
@@ -715,6 +726,9 @@ seed={
         target=#fruitrain==0 and hit or fruitrain[#fruitrain]
         r=#fruitrain==0 and 12 or 8
         add(fruitrain,_ENV)
+        if hit.seed_count==3 then 
+          init_object(cutscene,0,0)
+        end
       end
     else
       if target then
@@ -729,6 +743,77 @@ seed={
     off+=0.025
     y=y_+sin(off)*2.5
   end
+}
+
+cutscene={
+  init=function(_ENV)
+    t=0
+    a=0
+    berries={}
+    cx,cy=0,0
+    r=16
+    local i=1
+    for f in all(fruitrain) do 
+      if f.type==seed then 
+        del(fruitrain,f)
+        destroy_object(f)
+        if fruitrain[i] then 
+          fruitrain[i].target=f.target 
+          fruitrain[i].r=f.r
+        end
+        got_fruit[f.fruit_id]=true
+        add(berries,vector(f.x,f.y))
+        cx+=f.x 
+        cy+=f.y
+      else
+        i+=1
+      end
+    end 
+    cx/=3
+    cy/=3
+    aspd=0
+  end,
+  update=function(_ENV)
+    for i,f in ipairs(berries) do 
+      local tx,ty=cx+r*cos(a+i/3),cy+r*sin(a+i/3)
+      if t<8 then 
+        f.x+=0.3*(tx-f.x)
+        f.y+=0.3*(ty-f.y)
+      else 
+        f.x=tx 
+        f.y=ty
+      end 
+    end  
+    t+=1
+    if t>=8 then 
+      a+=aspd 
+      aspd-=0.002
+    end
+    if t>=40 then 
+      r-=0.5
+    end 
+    if r==0 then 
+      local p
+      for o in all(objects) do 
+        if o.type==player then 
+          p=o 
+        end 
+      end 
+      destroy_object(_ENV)
+      init_smoke(cx,cy)
+      local f=init_object(fruit,cx,cy,10)
+      f.follow=true
+      f.target=#fruitrain==0 and p or fruitrain[#fruitrain]
+      f.r=#fruitrain==0 and 12 or 8
+      add(fruitrain,f)
+      --p.berry_timer=0
+    end
+  end,
+  draw=function(_ENV)
+    for f in all(berries) do 
+      spr(29,round(f.x),round(f.y))
+    end  
+  end 
 }
 -- <berry_seed> --
 
