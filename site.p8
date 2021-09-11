@@ -1307,9 +1307,7 @@ function kill_player(obj)
   end
   --- </fruitrain> ---
   delay_restart=15
-  -- <transition>
-  tstate=0
-  -- </transition>
+  transition:play()
 end
 
 -- [room functions]
@@ -1446,6 +1444,10 @@ function _update()
       return
     end
   end)
+
+  -- <transition>
+  transition:update()
+  -- </transition>
 
 end
 
@@ -1584,27 +1586,7 @@ function _draw()
   end
 
   -- <transition>
-  camera()
-  color(0)
-  if tstate>=0 then
-    local t20=tpos+20
-    if tstate==0 then
-      po1tri(tpos,0,t20,0,tpos,127)
-      if(tpos>0) rectfill(0,0,tpos,127)
-      if(tpos>148) then
-        tstate=1
-        tpos=-20
-      end
-    else
-      po1tri(t20,0,t20,127,tpos,127)
-      if(tpos<108) rectfill(t20,0,127,127)
-      if(tpos>148) then
-        tstate=-1
-        tpos=-20
-      end
-    end
-    tpos+=14
-  end
+  transition:draw()
   -- </transition>
 end
 
@@ -1677,27 +1659,60 @@ function spikes_at(x1,y1,x2,y2,xspd,yspd)
   end
 end
 
---<transition>--
-
--- transition globals
-tstate=-1
-tpos=-20
-
--- triangle functions
-function po1tri(x0,y0,x1,y1,x2,y2)
-  local c=x0+(x2-x0)/(y2-y0)*(y1-y0)
-  p01traph(x0,x0,x1,c,y0,y1)
-  p01traph(x1,c,x2,x2,y1,y2)
-end
-
-function p01traph(l,r,lt,rt,y0,y1)
-  lt,rt=(lt-l)/(y1-y0),(rt-r)/(y1-y0)
-  for y0=y0,y1 do
-    rectfill(l,y0,r,y0)
-    l+=lt
-    r+=rt
+-- <transition> --
+transition = {
+  -- state:
+  --  1 | wiping in
+  -- -1 | wiping out
+  --  0 | idle
+  state=0,
+  tw = 6,
+  play=function(this)
+    local _ENV,rnd=this,rnd
+    state = state==0 and 1 or state
+    pixelw = 128/(tw-1)
+    circles = {}
+    local ctotal = this.tw*this.tw
+    for i=0,ctotal-1 do
+      local c = {
+        x=i%tw * pixelw + rnd(6)-3,
+        y=i\tw * pixelw + rnd(6)-3,
+        delay=i%tw * 2 + rnd(4)-2,
+        radius=state==1 and 0 or pixelw
+      }
+      add(circles, c)
+    end
+  end,
+  update=function(this)
+    local _ENV=this
+    if (state==0) return
+    for i=1,#circles do
+      local c = circles[i]
+      if c.delay > 0 then
+        c.delay -= 1
+      else
+        c.radius += state*3
+      end
+    end
+    local lastr = circles[#circles].radius
+    if state==1 and lastr > pixelw*0.7 then
+      state=-1
+      this:play()
+    elseif lastr < 0 then
+      state=0
+    end
+  end,
+  draw=function(this)
+    if (this.state==0) return
+    camera()
+    for i=1,#this.circles do
+      local c = this.circles[i]
+      if c.radius > 0 then
+        circfill(c.x, c.y, c.radius, 0)
+      end
+    end
   end
-end
+}
 -- </transition> --
 -->8
 --[map metadata]
