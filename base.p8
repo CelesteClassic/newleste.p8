@@ -727,7 +727,8 @@ seed={
         r=#fruitrain==0 and 12 or 8
         add(fruitrain,_ENV)
         if hit.seed_count==3 then 
-          init_object(cutscene,0,0)
+          _g.cutscene=cocreate(cutscene_run)
+          coresume(cutscene)
         end
       end
     else
@@ -745,76 +746,79 @@ seed={
   end
 }
 
-cutscene={
-  init=function(_ENV)
-    t=0
-    a=0
-    berries={}
-    cx,cy=0,0
-    r=16
-    local i=1
-    for f in all(fruitrain) do 
-      if f.type==seed then 
-        del(fruitrain,f)
-        destroy_object(f)
-        if fruitrain[i] then 
-          fruitrain[i].target=f.target 
-          fruitrain[i].r=f.r
-        end
-        got_fruit[f.fruit_id]=true
-        add(berries,vector(f.x,f.y))
-        cx+=f.x 
-        cy+=f.y
-      else
-        i+=1
+cutscene_run=function(op)
+  t=0
+  a=0
+  berries={}
+  cx,cy=0,0
+  r=16
+  local i=1
+  for f in all(fruitrain) do 
+    if f.type==seed then 
+      del(fruitrain,f)
+      destroy_object(f)
+      if fruitrain[i] then 
+        fruitrain[i].target=f.target 
+        fruitrain[i].r=f.r
       end
-    end 
-    cx/=3
-    cy/=3
-    aspd=0
-  end,
-  update=function(_ENV)
-    for i,f in ipairs(berries) do 
-      local tx,ty=cx+r*cos(a+i/3),cy+r*sin(a+i/3)
-      if t<8 then 
-        f.x+=0.3*(tx-f.x)
-        f.y+=0.3*(ty-f.y)
-      else 
-        f.x=tx 
-        f.y=ty
-      end 
-    end  
-    t+=1
-    if t>=8 then 
-      a+=aspd 
-      aspd-=0.002
+      got_fruit[f.fruit_id]=true
+      add(berries,vector(f.x,f.y))
+      cx+=f.x 
+      cy+=f.y
+    else
+      i+=1
     end
-    if t>=40 then 
-      r-=0.5
-    end 
-    if r==0 then 
-      local p
-      for o in all(objects) do 
-        if o.type==player then 
-          p=o 
-        end 
-      end 
-      destroy_object(_ENV)
-      init_smoke(cx,cy)
-      local f=init_object(fruit,cx,cy,10)
-      f.follow=true
-      f.target=#fruitrain==0 and p or fruitrain[#fruitrain]
-      f.r=#fruitrain==0 and 12 or 8
-      add(fruitrain,f)
-      --p.berry_timer=0
-    end
-  end,
-  draw=function(_ENV)
-    for f in all(berries) do 
-      spr(29,round(f.x),round(f.y))
-    end  
   end 
-}
+  cx/=3
+  cy/=3
+  aspd=0
+  op=yield()
+  while true do  
+    if op=="update" then 
+      for i,f in ipairs(berries) do 
+        local tx,ty=cx+r*cos(a+i/3),cy+r*sin(a+i/3)
+        if t<8 then 
+          f.x+=0.3*(tx-f.x)
+          f.y+=0.3*(ty-f.y)
+        else 
+          f.x=tx 
+          f.y=ty
+        end 
+      end  
+      t+=1
+      if t>=8 then 
+        a+=aspd 
+        aspd-=0.002
+      end
+      if t>=40 then 
+        r-=0.5
+      end 
+      if r==0 then 
+        local p
+        for o in all(objects) do 
+          if o.type==player then 
+            p=o 
+          end 
+        end 
+        local f=init_object(fruit,cx,cy,10)
+        f.init_smoke()
+        f.follow=true
+        f.target=#fruitrain==0 and p or fruitrain[#fruitrain]
+        f.r=#fruitrain==0 and 12 or 8
+        add(fruitrain,f)
+        --p.berry_timer=0
+        return
+      end
+
+      op=yield()
+    else
+      for f in all(berries) do 
+        spr(29,round(f.x),round(f.y))
+      end 
+      op=yield() 
+    end
+  end
+end 
 -- <berry_seed> --
 
 psfx=function(num)
@@ -1112,7 +1116,16 @@ function _update()
     freeze-=1
     return
   end
-  
+  --<berry_seed>-- 
+  if cutscene then
+    coresume(cutscene,"update")
+    if costatus(cutscene)=='dead' then 
+      cutscene=nil
+    else 
+      return 
+    end
+  end 
+  -- </berry_seed> --
   -- restart (soon)
   if delay_restart>0 then
   	cam_spdx,cam_spdy=0,0
@@ -1166,7 +1179,11 @@ function _draw()
 
   -- bg clouds effect
   foreach(clouds,function(c)
-    c.x+=c.spd-cam_spdx
+    --<berry_seed>--
+    if not cutscene then 
+      c.x+=c.spd-cam_spdx
+    end
+    --</berry_seed>--
     rectfill(c.x+draw_x,c.y+draw_y,c.x+c.w+draw_x,c.y+16-c.w*0.1875+draw_y,1)
     if c.x>128 then
       c.x=-c.w
@@ -1212,14 +1229,24 @@ function _draw()
     foreach(l,draw_object)
   end)
 
+  --<berry_seed>--
+  if cutscene then 
+    coresume(cutscene,"draw")
+  end
+  --</berry_seed>--
+    
   -- draw platforms
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,8)
   -- particles
   foreach(particles,function(_ENV)
-    x+=spd-_g.cam_spdx
-    y+=_g.sin(off)-_g.cam_spdy
-    y%=128
-    off+=_g.min(0.05,spd/32)
+    -- <berry_seed> --
+    if not _g.cutscene then 
+      x+=spd-_g.cam_spdx
+      y+=_g.sin(off)-_g.cam_spdy
+      y%=128
+      off+=_g.min(0.05,spd/32)
+    end
+    -- </berry_seed> --
     _g.rectfill(x+_g.draw_x,y+_g.draw_y,x+s+_g.draw_x,y+s+_g.draw_y,c)
     if x>132 then 
       x=-4
