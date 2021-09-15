@@ -707,8 +707,11 @@ lifeup={
 
 -- <berry_seed> --
 seed={
-  check_fruit=true,
   init=function(_ENV)
+    if got_fruit["seed"..lvl_id] then 
+      destroy_object(_ENV)
+      return
+    end
     y_=y
     off=0
     follow=false
@@ -761,7 +764,6 @@ cutscene_run=function(op)
         fruitrain[i].target=f.target 
         fruitrain[i].r=f.r
       end
-      got_fruit[f.fruit_id]=true
       add(berries,vector(f.x,f.y))
       cx+=f.x 
       cy+=f.y
@@ -805,6 +807,7 @@ cutscene_run=function(op)
         f.follow=true
         f.target=#fruitrain==0 and p or fruitrain[#fruitrain]
         f.r=#fruitrain==0 and 12 or 8
+        f.fruit_id="seed"..lvl_id
         add(fruitrain,f)
         --p.berry_timer=0
         return
