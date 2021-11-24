@@ -1253,7 +1253,7 @@ function kill_player(obj)
   --- </fruitrain> ---
   delay_restart=15
   -- <transition>
-  tstate=0
+  transition:play()
   -- </transition>
 end
 
@@ -1385,6 +1385,10 @@ function _update()
     end
   end)
 
+  -- <transition>
+  transition:update()
+  -- </transition>
+
 end
 
 -- [drawing functions]
@@ -1500,27 +1504,7 @@ function _draw()
   end
 
   -- <transition>
-  camera()
-  color(0)
-  if tstate>=0 then
-    local t20=tpos+20
-    if tstate==0 then
-      po1tri(tpos,0,t20,0,tpos,127)
-      if(tpos>0) rectfill(0,0,tpos,127)
-      if(tpos>148) then
-        tstate=1
-        tpos=-20
-      end
-    else
-      po1tri(t20,0,t20,127,tpos,127)
-      if(tpos<108) rectfill(t20,0,127,127)
-      if(tpos>148) then
-        tstate=-1
-        tpos=-20
-      end
-    end
-    tpos+=14
-  end
+  transition:draw()
   -- </transition>
 end
 
@@ -1571,10 +1555,47 @@ function tile_at(x,y)
 end
 
 --<transition>--
-
--- transition globals
-tstate=-1
-tpos=-20
+transition = {
+  -- state:
+  --  1 | wiping in
+  -- -1 | wiping out
+  --  0 | idle
+  state=0,
+  play=function(this)
+    local _ENV=this
+    state = state==0 and 1 or state
+    x=-64
+  end,
+  update=function(this)
+    local _ENV=this
+    if (state==0) return
+    if state==1 and x>128 then
+      state=-1
+      this:play()
+    elseif state==-1 and x>192 then
+      state=0
+    end
+    x+=14
+  end,
+  draw=function(this)
+      camera()
+      color(0)
+    local _ENV,g=this,_ENV
+    if (state==0) return
+    local x20=x+20
+    if state==1 then
+      for yo=-2,128,10 do
+        g.po1tri(x,yo,x+64,yo+5,x,yo+10)
+      end
+      if (x>0) g.rectfill(0,0,x,127,0)
+    else
+      for yo=-2,128,10 do
+        g.po1tri(x20,yo,x20-64,yo+5,x20,yo+10)
+      end
+      if (x<108) g.rectfill(x20,0,127,127,0)
+    end
+  end
+}
 
 -- triangle functions
 function po1tri(x0,y0,x1,y1,x2,y2)
