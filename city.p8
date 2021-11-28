@@ -1483,35 +1483,32 @@ transition = {
   -- -1 | wiping out
   --  0 | idle
   state=0,
-  play=function(this)
-    local _ENV=this
+  play=function(_ENV)
     state = state==0 and 1 or state
     x=-20
   end,
-  update=function(this)
-    local _ENV=this
+  update=function(_ENV)
     if (state==0) return
     if x>148 then
       if state==1 then
         state=-1
-        this:play()
+        play(_ENV)
       else
         state=0
       end
     end
   end,
-  draw=function(this)
-    camera()
-    local _ENV,g=this,_ENV
+  draw=function(_ENV)
     if (state==0) return
-    g.color(0)
+    _g.camera()
+    _g.color(0)
     local x20=x+20
     if state==1 then
-      g.po1tri(x,0,x20,0,x,127)
-      if (x>0) g.rectfill(0,0,x,127)
+      _g.po1tri(x,0,x20,0,x,127)
+      if (x>0) _g.rectfill(0,0,x,127)
     else
-      g.po1tri(x20,0,x20,127,x,127)
-      if (x<108) g.rectfill(x20,0,127,127)
+      _g.po1tri(x20,0,x20,127,x,127)
+      if (x<108) _g.rectfill(x20,0,127,127)
     end
     x+=14
   end
