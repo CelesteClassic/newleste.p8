@@ -1667,24 +1667,22 @@ transition = {
   --  0 | idle
   state=0,
   tw = 6,
-  play=function(this)
-    local _ENV,rnd=this,rnd
+  play=function(_ENV)
     state = state==0 and 1 or state
     pixelw = 128/(tw-1)
     circles = {}
-    local ctotal = this.tw*this.tw
+    local ctotal = tw*tw
     for i=0,ctotal-1 do
       local c = {
-        x=i%tw * pixelw + rnd(6)-3,
-        y=i\tw * pixelw + rnd(6)-3,
-        delay=i%tw * 2 + rnd(4)-2,
+        x=i%tw * pixelw + _g.rnd(6)-3,
+        y=i\tw * pixelw + _g.rnd(6)-3,
+        delay=i%tw * 2 + _g.rnd(4)-2,
         radius=state==1 and 0 or pixelw
       }
       add(circles, c)
     end
   end,
-  update=function(this)
-    local _ENV=this
+  update=function(_ENV)
     if (state==0) return
     for i=1,#circles do
       local c = circles[i]
@@ -1697,7 +1695,7 @@ transition = {
     local lastr = circles[#circles].radius
     if state==1 and lastr > pixelw*0.7 then
       state=-1
-      this:play()
+      play(_ENV)
     elseif lastr < 0 then
       state=0
     end
