@@ -215,28 +215,28 @@ player={
           grace=0
           -- <zip_mover>
             local hit=check(zip_mover,0,1)
-            if hit and hit.state==1 then 
-              if hit.delay>=12 then 
+            if hit and hit.state==1 then
+              if hit.delay>=12 then
                 spd.x=hit.dir.x*4
                 spd.y=min(hit.dir.y*3,-2)
-              else 
+              else
                 spd.x=(hit.spd.x-sign(hit.spd.x))*0.75
                 spd.y=mid(hit.spd.y-sign(hit.spd.y),-2,-3)
-              end 
-              
+              end
+
               -- local d=sqrt(((hit.x-hit.target.x)^2+(hit.y-hit.target.y)^2)/36) -- frames till reaching target (i think)
-              -- if hit.delay>=12 or d<=3 and d!=0 then 
+              -- if hit.delay>=12 or d<=3 and d!=0 then
               --   spd=vector(hit.dir.x*4,min(3*hit.dir.y,-2))
-              -- elseif hit.delay==0 and d<=7 then 
+              -- elseif hit.delay==0 and d<=7 then
               --   spd=vector(hit.spd.x-1,min(3*hit.dir.y,-2))
               -- else
               --   spd.y=-2
               --   spd.x=hit.spd.x-1
-              -- end 
+              -- end
 
-            else 
+            else
               spd.y=-2
-            end 
+            end
           -- </zip_mover>
           init_smoke(0,4)
         else
@@ -692,7 +692,7 @@ lifeup={
 --<zip_mover> --
 function spr_r(s,x,y,a)
   x+=1
-  y+=1 --idk why this is 
+  y+=1 --idk why this is
   local sx,sy=s%16*8,s\16*8 --bad tokens but lazy
   local ca,sa=cos(a),sin(a)
   local dx,dy=ca,sa
@@ -719,7 +719,7 @@ function mynorm(dx,dy)
 	dx>>=8
 	dy>>=8
 	return sqrt(dx*dx+dy*dy)<<8
-end 
+end
 
 zip_mover={
   init=function(_ENV)
@@ -728,28 +728,28 @@ zip_mover={
     state=0
     shake=0
     id=tile_at(x/8,y/8-1)
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==68 do 
+    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==68 do
       hitbox.w+=8
-    end 
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==68 do 
+    end
+    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==68 do
       hitbox.h+=8
-    end 
+    end
     break_timer,death_timer=0,0
     start=vector(x,y)
     ang=0
     particles={}
   end,
   end_init=function(_ENV)
-    for o in all(objects) do 
-      if o.sprite==id then 
-        if o.x!=x or o.y!=y-8 then 
+    for o in all(objects) do
+      if o.sprite==id then
+        if o.x!=x or o.y!=y-8 then
           target=vector(o.x,o.y)
-        end 
+        end
         destroy_object(o)
       end
-    end 
-    local dx=target.x-x 
-    local dy=target.y-y 
+    end
+    local dx=target.x-x
+    local dy=target.y-y
     local d=mynorm(dx,dy)
     dir=vector(dx/d,dy/d)
   end,
@@ -758,21 +758,21 @@ zip_mover={
     -- 0 - idle
     -- 1 - active moving towards target
     -- 2 - returning back to original pos
-    if delay>0 then 
+    if delay>0 then
       delay-=1
-      if delay==0 then 
+      if delay==0 then
         state=(state+1)%3
-      end 
+      end
       --ang=appr(ang,state==1 and flr(ang) or ceil(ang),0.2)
-    elseif state==0 then 
+    elseif state==0 then
       local hit=check(player,0,-1)
-      if hit then 
+      if hit then
         delay=4
         shake=4
       end
     else
       local accel,maxspeed,shake,target
-      if state==1 then 
+      if state==1 then
         accel,maxspeed,shake,target=0.5,6,6,_ENV.target
 
         --create particles
@@ -786,17 +786,17 @@ zip_mover={
         local r=6
         ox,oy=r*cos(0.25+cang),r*sin(0.25+cang)
         --line(c1x,c1y,c2x,c2y,8)
-        if rnd()<0.8 then 
+        if rnd()<0.8 then
           local cx,cy
           if rnd()<0.5 then
-            cx,cy=c1x,c1y              
-          else 
-            cx,cy=c2x,c2y 
-          end 
-          if rnd()<0.5 then 
+            cx,cy=c1x,c1y
+          else
+            cx,cy=c2x,c2y
+          end
+          if rnd()<0.5 then
             ox*=-1
             oy*=-1
-          end 
+          end
           add(particles,{
             x=cx+ox+rnd(3)-1,
             y=cy+oy+rnd(3)-1,
@@ -804,33 +804,33 @@ zip_mover={
             dy=oy*rnd(0.05),
             d=10
           })
-        end 
-      else 
+        end
+      else
         accel,maxspeed,shake,target=0.2,-1,4,start
-      end 
-      for axis in all{"x","y"} do 
+      end
+      for axis in all{"x","y"} do
         spd[axis]=mid(appr(spd[axis],maxspeed*dir[axis],abs(accel*dir[axis])),_ENV[axis]-target[axis],target[axis]-_ENV[axis])
       end
       ang+=sqrt(spd.x^2+spd.y^2)/100*(state==1 and 1 or -1)
-      if x==target.x and y==target.y then 
+      if x==target.x and y==target.y then
         delay=15
-        shake=shake
+        _ENV.shake=shake
         ang=0
-      end 
+      end
     end
-    if shake>0 then 
-      shake-=1
-    end 
+    if _ENV.shake>0 then
+      _ENV.shake-=1
+    end
 
-    --update particles 
-    for p in all(particles) do 
-      p.x+=p.dx 
-      p.y+=p.dy 
+    --update particles
+    for p in all(particles) do
+      p.x+=p.dx
+      p.y+=p.dy
       p.d-=1
-      if p.d<0 then 
+      if p.d<0 then
         del(particles,p)
-      end 
-    end 
+      end
+    end
   end,
   draw=function(_ENV)
 
@@ -840,7 +840,7 @@ zip_mover={
       local c1y=start.y+7.5
       local c2x=target.x+hitbox.w/2-0.5
       local c2y=target.y+7.5
-      
+
       cang=atan2(c1x-c2x,c1y-c2y)
 
       local r=4.5
@@ -854,12 +854,12 @@ zip_mover={
       c2y+=1*cos(0.25+cang)
       line(round(c1x+ox),round(c1y+oy),round(c2x+ox),round(c2y+oy),2)
       line(round(c1x-ox),round(c1y-oy),round(c2x-ox),round(c2y-oy),2)
-      
+
 
       --ox,oy=(r+1.5)*cos(0.25+cang),(r+1.5)*sin(0.25+cang)
-      if abs(c1x-c2x)>abs(c1y-c2y) then 
+      if abs(c1x-c2x)>abs(c1y-c2y) then
         oy+=1
-      else 
+      else
         ox+=1
       end
       poke(0x5f38,1)
@@ -871,49 +871,49 @@ zip_mover={
       pal()
       --tline(0,0,128,0,0,start.y/8+0.5--[[+ang*10%4/8]],0.125,0)
     end
-    -- gears  
+    -- gears
     spr_r(101,start.x+hitbox.w/2-8,start.y,ang)
     spr_r(101,target.x+hitbox.w/2-8,target.y,ang)
 
-    if pal==_pal then 
+    if pal==_pal then
       --particles
-      for p in all(particles) do 
+      for p in all(particles) do
         pset(p.x,p.y,10)
-      end 
-    end 
+      end
+    end
 
     local x,y=x,y
-    if shake>0 then 
+    if shake>0 then
       x+=rnd(2)-1
       y+=rnd(2)-1
     end
     local r,b=x+hitbox.w-1,y+hitbox.h-1
-    
+
     if state==1 then
     	pal(2,3)
     	pal(8,11)
-    elseif state==2 and delay==0 then 
+    elseif state==2 and delay==0 then
       pal(2,9)
       pal(8,10)
-    end 
-    
+    end
+
     --chasis
     line(x,y,r,y,7)
     rectfill(x,y+1,r,b,1)
     rect(x+1,y+2,r-1,b-1,5)
     spr(67,x+hitbox.w/2-4,y)
     rect(x,y+1,r,b,6)
-    
+
     --top corner sprites
     if hitbox.w>8 then
     	spr(70,x,y)
     	spr(70,r-7,y,1,1,true)
     end
-    
+
     --bottom corner sprites
     spr(70,x,b-7,1,1,false,true)
     spr(70,r-7,b-7,1,1,true,true)
-    
+
     pal()
     --pset(start.x+8,start.y+4,11)
     --pset(c1x+ox,c1y+oy,11)
@@ -924,62 +924,62 @@ zip_mover={
 
 fall_plat={
   init=function(_ENV)
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==119 do 
+    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==119 do
       hitbox.w+=8
-    end 
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==119 do 
+    end
+    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==119 do
       hitbox.h+=8
-    end 
+    end
     collides=true
     solid_obj=true
     timer=0
   end,
-  update=function(_ENV) 
+  update=function(_ENV)
     if not state and check(player,0,-1) then
       state = 0  -- shake
       timer = 10
-    elseif timer>0 then 
+    elseif timer>0 then
       timer-=1
-      if timer==0 then 
+      if timer==0 then
         state=finished and 2 or 1
         spd.y=0.4
-      end 
-    elseif state==1 then 
-      if spd.y==0 then 
+      end
+    elseif state==1 then
+      if spd.y==0 then
         state=0
-        for i=0,hitbox.w-1,8 do 
+        for i=0,hitbox.w-1,8 do
           init_smoke(i,hitbox.h-2)
         end
         timer=6
         finished=true
       end
       spd.y=appr(spd.y,4,0.4)
-    end 
+    end
   end,
   draw=function(_ENV)
     local x,y=x,y
-    if state==0 then 
+    if state==0 then
       x+=rnd(2)-1
       y+=rnd(2)-1
     end
-    local r,d=x+hitbox.w-8,y+hitbox.h-8 
+    local r,d=x+hitbox.w-8,y+hitbox.h-8
     spr(38,x,y)
     spr(40,r,y)
     spr(54,x,d)
     spr(56,r,d)
-    for i=x+8,r-8,8 do 
+    for i=x+8,r-8,8 do
       spr(39,i,y)
       spr(55,i,d)
     end
-    for i=y+8,d-8,8 do 
+    for i=y+8,d-8,8 do
       spr(52,x,i)
       spr(53,r,i)
     end
-    for i=x+8,r-8,8 do 
-      for j=y+8,d-8,8 do 
+    for i=x+8,r-8,8 do
+      for j=y+8,d-8,8 do
         spr((i+j-x-y)%16==0 and 41 or 57,i,j)
-      end 
-    end 
+      end
+    end
   end
 }
 psfx=function(num)
@@ -1111,7 +1111,7 @@ function init_object(type,sx,sy,tile)
       else
         movamt=amt
         --<zip_mover> --
-        if (solid_obj or semisolid_obj) and upmoving and riding and riding.spd.y>-1 then 
+        if (solid_obj or semisolid_obj) and upmoving and riding and riding.spd.y>-1 then
         --</zip_mover> --
           movamt+=top()-riding.bottom()-1
           local hamt=round(riding.spd.y+riding.rem.y)
@@ -1315,7 +1315,7 @@ function _update()
       return
     end
   end)
-  
+
   -- <transition>
   transition:update()
   -- </transition>
@@ -1354,7 +1354,7 @@ function _draw()
 		pal(11,0)
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,4)
 		pal()
-		
+
   -- draw outlines
   for i=0,15 do pal(i,1) end
   pal=time
