@@ -1256,6 +1256,7 @@ swap_block={
     startx=x
     starty=y
     timer=-1
+    animation_timer=0
     arrivaltime=-100
     hitbox=sprite==72 and rectangle(0,0,24,16) or rectangle(0,0,16,24)
     for ox=-1,1 do
@@ -1275,6 +1276,10 @@ swap_block={
     end
   end,
   update=function(_ENV)
+    animation_timer+=1
+    if x==startx and y==starty then
+      animation_timer=0
+    end
     if timer>=0 then
       spd.x=mid(appr(spd.x,6*dirx,2),targetx-x,x-targetx)
       spd.y=mid(appr(spd.y,6*diry,2),targety-y,y-targety)
@@ -1309,9 +1314,22 @@ swap_block={
         spr(90,r,i,1,1,true,false)
       end
     end
+    if timer!=-1 then
+      pal(8,11)
+      pal(2,3)
+    end
+    --draw corners
     for i=0,3 do
       local cx,cy=i%2,i\2
       spr(72,x+(hitbox.w-8)*cx,y+(hitbox.h-8)*cy,1,1,cx==1,cy==1)
+    end
+
+    --can maybe tweak the values here to look a bit smoother
+    s=animation_timer%12
+    local cx,cy=x+hitbox.w/2, y+hitbox.h/2
+    if s>=4 and s<6 then
+      pal(8,10)
+      pal(2,10)
     end
     if hitbox.w==16 then
       spr(88,x,y+8)
@@ -1320,6 +1338,17 @@ swap_block={
       spr(75,x+8,y)
       spr(91,x+8,y+8)
     end
+
+    if s>=9 then
+      rectfill(cx-1,cy-1,cx,cy,10)
+    elseif s>=6 then
+      rectfill(cx-2,cy-1,cx+1,cy,10)
+    elseif s>=4 then
+      rectfill(cx-1,cy-1,cx,cy,7)
+    end
+
+    pal()
+
   end
 }
 psfx=function(num)
