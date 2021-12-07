@@ -80,7 +80,7 @@ dead_particles={}
 
 player={
   layer=2,
-  init=function(_ENV) 
+  init=function(_ENV)
     grace,jbuffer=0,0
     djump=max_djump
     dash_time,dash_effect_time=0,0
@@ -99,13 +99,13 @@ player={
     if pause_player then
       return
     end
-    
+
     -- horizontal input
     local h_input=btn(➡️) and 1 or btn(⬅️) and -1 or 0
-    
+
     -- spike collision / bottom death
-    if is_flag(0,0,-1) or 
-	    y>lvl_ph then
+    if is_flag(0,0,-1) or
+	    y>lvl_ph and not exit_bottom then
 	    kill_player(_ENV)
     end
 
@@ -137,7 +137,7 @@ player={
       end
     end
     -- </fruitrain> --
-    
+
     -- landing smoke
     if on_ground and not was_on_ground then
       init_smoke(0,4)
@@ -153,7 +153,7 @@ player={
     elseif jbuffer>0 then
       jbuffer-=1
     end
-    
+
     -- grace frames and dash restoration
     if on_ground then
       grace=6
@@ -181,12 +181,12 @@ player={
       local maxrun=1
       local accel=on_ground and 0.6 or 0.4
       local deccel=0.15
-    
+
       -- set x speed
-      spd.x=abs(spd.x)<=1 and 
-        appr(spd.x,h_input*maxrun,accel) or 
+      spd.x=abs(spd.x)<=1 and
+        appr(spd.x,h_input*maxrun,accel) or
         appr(spd.x,sign(spd.x)*maxrun,deccel)
-      
+
       -- facing direction
       if spd.x~=0 then
         flip.x=spd.x<0
@@ -194,7 +194,7 @@ player={
 
       -- y movement
       local maxfall=2
-    
+
       -- wall slide
       if h_input~=0 and is_solid(h_input,0) then
         maxfall=0.4
@@ -242,7 +242,7 @@ player={
           end
         end
       end
-    
+
       -- dash
       local d_full=5
       local d_half=3.5355339059 -- 5 * sqrt(2)
@@ -252,7 +252,7 @@ player={
         do_dash=false
       -- </green_bubble> -- 
         init_smoke()
-        djump-=1   
+        djump-=1
         dash_time=4
         _g.has_dashed=true
         dash_effect_time=10
@@ -260,8 +260,8 @@ player={
         -- vertical input
         local v_input=btn(⬆️) and -1 or btn(⬇️) and 1 or 0
         -- calculate dash speeds
-        spd=vector(h_input~=0 and 
-        h_input*(v_input~=0 and d_half or d_full) or 
+        spd=vector(h_input~=0 and
+        h_input*(v_input~=0 and d_half or d_full) or
         (v_input~=0 and 0 or flip.x and -1 or 1)
         ,v_input~=0 and v_input*(h_input~=0 and d_half or d_full) or 0)
         -- effects
@@ -272,13 +272,19 @@ player={
         dash_target_y=(spd.y>=0 and 2 or 1.5)*sign(spd.y)
         dash_accel_x=spd.y==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
         dash_accel_y=spd.x==0 and 1.5 or 1.06066017177
+
+        -- emulate soft dashes
+        if h_input~=0 and ph_input==-h_input and oob(ph_input,0) then
+          spd.x=0
+        end
+
       elseif djump<=0 and dash then
         -- failed dash smoke
         psfx(21)
         init_smoke()
       end
     end
-    
+
     -- animation
     spr_off+=0.25
     sprite = not on_ground and (is_solid(h_input,0) and 5 or 3) or  -- wall slide or mid air
@@ -286,22 +292,18 @@ player={
       btn(⬆️) and 7 or -- look up
       spd.x~=0 and h_input~=0 and 1+spr_off%4 or 1 -- walk or stand
     update_hair(_ENV)
-    -- exit level off the top (except summit)
-    if y<-4 and levels[lvl_id+1] then
+    -- exit level (except summit)
+    if (exit_right and left()>=lvl_pw or exit_top and y<-4 or exit_left and right()<0 or exit_bottom and top()>=lvl_ph) and levels[lvl_id+1] then
       next_level()
     end
-    
+
     -- was on the ground
     was_on_ground=on_ground
+    --previous horizontal input (for soft dashes)
+    ph_input=h_input
   end,
-  
+
   draw=function(_ENV)
-    -- clamp in screen
-    local clamped=mid(x,-1,lvl_pw-7)
-    if x~=clamped then
-      x=clamped
-      spd.x=0
-    end
     -- draw player hair and sprite
     set_hair_color(djump)
     draw_hair(_ENV)
@@ -411,15 +413,15 @@ player_spawn={
 --<camtrigger>--
 camera_trigger={
   update=function(_ENV)
-    if timer and timer>0 then 
+    if timer and timer>0 then
       timer-=1
-      if timer==0 then 
+      if timer==0 then
         _g.cam_offx=offx
         _g.cam_offy=offy
-      else 
+      else
         _g.cam_offx+=cam_gain*(offx-cam_offx)
         _g.cam_offy+=cam_gain*(offy-cam_offy)
-      end 
+      end
     elseif player_here() then
       timer=5
     end
@@ -469,13 +471,13 @@ side_spring={
 
 
 refill={
-  init=function(_ENV) 
+  init=function(_ENV)
     offset=rnd()
     timer=0
     hitbox=rectangle(-1,-1,10,10)
     active=true
   end,
-  update=function(_ENV) 
+  update=function(_ENV)
     if active then
       offset+=0.02
       local hit=player_here()
@@ -488,17 +490,17 @@ refill={
       end
     elseif timer>0 then
       timer-=1
-    else 
+    else
       psfx(12)
       init_smoke()
-      active=true 
+      active=true
     end
   end,
   draw=function(_ENV)
     if active then
       spr(15,x,y+sin(offset)+0.5)
 
-    else  
+    else
       -- color(7)
       -- line(x,y+4,x+3,y+7)
       -- line(x+4,y+7,x+7,y+4)
@@ -511,7 +513,7 @@ refill={
       3,0,0,3]],"\n"),function(t)
 	        local o1,o2,o3,o4=unpack(split(t))
 	        line(x+o1,y+o2,x+o3,y+o4,7)
-	      end 
+	      end
       )
     end
   end
@@ -526,7 +528,7 @@ fall_floor={
     -- idling
     if state==0 then
       for i=0,2 do
-        if check(player,i-1,-(i%2)) then 
+        if check(player,i-1,-(i%2)) then
           psfx(13)
           state,delay=1,15
           init_smoke()
@@ -553,7 +555,7 @@ fall_floor={
     end
   end,
   draw=function(_ENV)
-    spr(state==1 and 26-delay/5 or state==0 and 23,x,y) --add an if statement if you use sprite 0 
+    spr(state==1 and 26-delay/5 or state==0 and 23,x,y) --add an if statement if you use sprite 0
   end
 }
 
@@ -616,7 +618,7 @@ fruit={
 
 fly_fruit={
   check_fruit=true,
-  init=function(_ENV) 
+  init=function(_ENV)
     start=y
     step=0.5
     sfx_delay=8
@@ -647,7 +649,7 @@ fly_fruit={
       init_smoke(6)
 
       local f=init_object(fruit,x,y,10) --if this happens to be in the exact location of a different fruit that has already been collected, this'll cause a crash
-      --TODO: fix this if needed 
+      --TODO: fix this if needed
       f.fruit_id=fruit_id
       fruit.update(f)
       --- </fruitrain> ---
@@ -910,7 +912,7 @@ green_bubble={
 -- requires <solids> 
 arrow_platform={
   init=function(_ENV)
-    dir=sprite==71 and -1 or 1
+    dir=sprite==71 and -1 or sprite==72 and 1 or 0
     solid_obj=true
     collides=true
 
@@ -943,7 +945,7 @@ arrow_platform={
       end 
     end 
 
-    if spd.x==0 and active then 
+    if (dir!=0 and spd.x==0 or dir==0 and spd.y==0) and active then 
       break_timer+=1
     else 
       break_timer=0
@@ -954,10 +956,10 @@ arrow_platform={
       collideable=false
     end
 
-    spd=vector(active and dir or 0,0)
+    spd=vector(active and dir or 0,active and dir==0 and -1 or 0)
     local hit=check(player,0,-1)
     if hit then 
-      spd=vector(dir,btn(⬇️) and 1 or btn(⬆️) and not hit.is_solid(0,-1) and -1 or 0)
+      spd=vector(dir,dir==0 and -1 or btn(⬇️) and 1 or btn(⬆️) and not hit.is_solid(0,-1) and -1 or 0)
       active=true
     end
   end,
@@ -977,14 +979,16 @@ arrow_platform={
     rect(x+1,y+2,r-1,b-1,13)
     line(x+3,y+2,r-3,y+2,1)
     local mx,my=x+hitbox.w/2,y+hitbox.h/2
-    spr(shake and 72 or spd.y~=0 and 73 or 71,mx-4,my+(break_timer<=8 and spd.y<0 and -3 or -4),1.0,1.0,dir==-1,spd.y>0)
+    spr(shake and 72 or dir==0 and 87 or spd.y~=0 and 73 or 71,mx-4,my+(break_timer<=8 and spd.y<0 and dir!=0 and -3 or -4),1.0,1.0,dir==-1,spd.y>0)
     if hitbox.h==8 and shake then 
       rect(mx-3,my-3,mx+2,my+2,1)
     end
-    line(x+1,y,r-1,y,13)
-    if not check(player,0,-1) and not is_solid(0,-1) then
-      line(x+2,y-1,r-2,y-1,13)
-    end
+    if dir!=0 then
+      line(x+1,y,r-1,y,13)
+      if not check(player,0,-1) and not is_solid(0,-1) then
+        line(x+2,y-1,r-2,y-1,13)
+      end
+    end 
     pal()
   end
 
@@ -1050,6 +1054,7 @@ tiles={
   [70] = green_bubble,
   [71] = arrow_platform,
   [72] = arrow_platform,
+  [87] = arrow_platform,
   [74] = bg_flag
 }
 
@@ -1058,8 +1063,8 @@ tiles={
 function init_object(type,sx,sy,tile)
   --generate and check berry id
   local id=sx..","..sy..","..lvl_id
-  if type.check_fruit and got_fruit[id] then 
-    return 
+  if type.check_fruit and got_fruit[id] then
+    return
   end
   --local _g=_g
   local _ENV={
@@ -1083,15 +1088,21 @@ function init_object(type,sx,sy,tile)
   function bottom() return top()+hitbox.h-1 end
 
   function is_solid(ox,oy)
-    for o in all(objects) do 
-      if o!=_ENV and (o.solid_obj or o.semisolid_obj and not objcollide(o,ox,0) and oy>0) and objcollide(o,ox,oy)  then 
-        return true 
-      end 
-    end 
+    for o in all(objects) do
+      if o!=_ENV and (o.solid_obj or o.semisolid_obj and not objcollide(o,ox,0) and oy>0) and objcollide(o,ox,oy)  then
+        return true
+      end
+    end
     return (oy>0 and not is_flag(ox,0,3) and is_flag(ox,oy,3)) or  -- one way platform or
             is_flag(ox,oy,0) -- solid terrain
   end
-  
+  function oob(ox,oy)
+    return not exit_left and left()+ox<0 or not exit_right and right()+ox>=lvl_pw or top()+oy<=-8
+  end
+  function place_free(ox,oy)
+    return not (is_solid(ox,oy) or oob(ox,oy))
+  end
+
   function is_flag(ox,oy,flag)
     for i=mid(0,lvl_w-1,(left()+ox)\8),mid(0,lvl_w-1,(right()+ox)/8) do
       for j=mid(0,lvl_h-1,(top()+oy)\8),mid(0,lvl_h-1,(bottom()+oy)/8) do
@@ -1112,12 +1123,12 @@ function init_object(type,sx,sy,tile)
       end
     end
   end
-  function objcollide(other,ox,oy) 
+  function objcollide(other,ox,oy)
 
     return other.collideable and
-    other.right()>=left()+ox and 
+    other.right()>=left()+ox and
     other.bottom()>=top()+oy and
-    other.left()<=right()+ox and 
+    other.left()<=right()+ox and
     other.top()<=bottom()+oy
   end
   function check(type,ox,oy)
@@ -1131,7 +1142,7 @@ function init_object(type,sx,sy,tile)
   function player_here()
     return check(player,0,0)
   end
-  
+
   function move(ox,oy,start)
     for axis in all{"x","y"} do
       -- <wind> --
@@ -1148,7 +1159,7 @@ function init_object(type,sx,sy,tile)
         local d=axis=="x" and step or 0
         local p=_ENV[axis]
         for i=start,abs(amt) do
-          if not is_solid(d,step-d) then
+          if place_free(d,step-d) then
             _ENV[axis]+=step
           else
             spd[axis],rem[axis]=0,0
@@ -1157,38 +1168,38 @@ function init_object(type,sx,sy,tile)
         end
         movamt=_ENV[axis]-p --save how many px moved to use later for solids
       else
-        movamt=amt 
-        if (solid_obj or semisolid_obj) and upmoving and riding then 
+        movamt=amt
+        if (solid_obj or semisolid_obj) and upmoving and riding then
           movamt+=top()-bottom()-1
           local hamt=round(riding.spd.y+riding.rem.y)
           hamt+=sign(hamt)
-          if movamt<hamt then 
+          if movamt<hamt then
             riding.spd.y=max(riding.spd.y)--,0)
-          else 
+          else
             movamt=0
           end
         end
         _ENV[axis]+=amt
       end
       if (solid_obj or semisolid_obj) and collideable then
-        collideable=false 
+        collideable=false
         local hit=player_here()
-        if hit and solid_obj then 
-          hit.move(axis=="x" and (amt>0 and right()+1-hit.left() or amt<0 and left()-hit.right()-1) or 0, 
+        if hit and solid_obj then
+          hit.move(axis=="x" and (amt>0 and right()+1-hit.left() or amt<0 and left()-hit.right()-1) or 0,
                   axis=="y" and (amt>0 and bottom()+1-hit.top() or amt<0 and top()-hit.bottom()-1) or 0,
                   1)
-          if player_here() then 
+          if player_here() then
             kill_player(hit)
-          end 
-        elseif riding then 
+          end
+        elseif riding then
           riding.move(axis=="x" and movamt or 0, axis=="y" and movamt or 0,1)
         end
-        collideable=true 
+        collideable=true
       end
     end
   end
 
-  function init_smoke(ox,oy) 
+  function init_smoke(ox,oy)
     init_object(smoke,x+(ox or 0),y+(oy or 0),26)
   end
 
@@ -1242,7 +1253,7 @@ function kill_player(obj)
   --- </fruitrain> ---
   delay_restart=15
   -- <transition>
-  tstate=0
+  transition:play()
   -- </transition>
 end
 
@@ -1256,39 +1267,41 @@ end
 
 function load_level(id)
   has_dashed=false
-  
+
   --remove existing objects
   foreach(objects,destroy_object)
-  
+
   --reset camera speed
   cam_spdx,cam_spdy=0,0
-		
+
   local diff_level=lvl_id~=id
-  
+
 		--set level index
   lvl_id=id
-  
+
   prev_wind_spd=wind_spd or 0
   --set level globals
   local tbl=split(levels[lvl_id])
-  lvl_x,lvl_y,lvl_w,lvl_h,wind_spd=tbl[1]*16,tbl[2]*16,tbl[3]*16,tbl[4]*16,tbl[5] or 0
+  lvl_x,lvl_y,lvl_w,lvl_h,wind_spd=tbl[1]*16,tbl[2]*16,tbl[3]*16,tbl[4]*16,tbl[6] or 0
 
   lvl_pw=lvl_w*8
   lvl_ph=lvl_h*8
-  
-  
+
+  local exits=tonum(tbl[5]) or 0b0001
+  exit_top,exit_right,exit_bottom,exit_left=exits&1!=0,exits&2!=0,exits&4!=0, exits&8!=0
+
   --drawing timer setup
   ui_timer=5
 
   --reload map
-  if diff_level then 
+  if diff_level then
     reload()
     --chcek for mapdata strings
     if mapdata[lvl_id] then
-      replace_mapdata(lvl_x,lvl_y,lvl_w,lvl_h,mapdata[lvl_id])
+      replace_mapdata(0,0,lvl_w,lvl_h,mapdata[lvl_id])
     end
-  end 
-  
+  end
+
   -- entities
   for tx=0,lvl_w-1 do
     for ty=0,lvl_h-1 do
@@ -1323,24 +1336,24 @@ function _update()
     seconds%=60
   end
   frames%=30
-  
+
   if music_timer>0 then
     music_timer-=1
     if music_timer<=0 then
       music(10,0,7)
     end
   end
-  
+
   if sfx_timer>0 then
     sfx_timer-=1
   end
-  
+
   -- cancel if freeze
-  if freeze>0 then 
+  if freeze>0 then
     freeze-=1
     return
   end
-  
+
   -- restart (soon)
   if delay_restart>0 then
   	cam_spdx,cam_spdy=0,0
@@ -1353,7 +1366,7 @@ function _update()
       -- </fruitrain> --
       else
         load_level(lvl_id)
-      end 
+      end
     end
   end
 
@@ -1372,6 +1385,10 @@ function _update()
     end
   end)
 
+  -- <transition>
+  transition:update()
+  -- </transition>
+
 end
 
 -- [drawing functions]
@@ -1380,10 +1397,10 @@ function _draw()
   if freeze>0 then
     return
   end
-  
+
   -- reset all palette values
   pal()
-  
+
 	--set cam draw position
   draw_x=round(cam_x)-64
   draw_y=round(cam_y)-64
@@ -1418,7 +1435,7 @@ function _draw()
   pal=_pal
   camera(draw_x,draw_y)
   pal()
-	
+
   --set draw layering
   --0: background layer
   --1: default layer
@@ -1434,7 +1451,7 @@ function _draw()
   end)
   -- draw terrain
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,2)
-  
+
   -- draw objects
   foreach(layers,function(l)
     foreach(l,draw_object)
@@ -1458,7 +1475,7 @@ function _draw()
       _g.rectfill(x+_g.draw_x,y+_g.draw_y,x+s+_g.draw_x+wspd*-1.5,y+s+_g.draw_y,c)
     end
     -- </wind> --
-    if x>132 then 
+    if x>132 then
       x=-4
       y=_g.rnd128()
    	elseif x<-4 then
@@ -1466,7 +1483,7 @@ function _draw()
      	y=_g.rnd128()
     end
   end)
-  
+
   -- dead particles
   foreach(dead_particles,function(_ENV)
     x+=dx
@@ -1487,27 +1504,7 @@ function _draw()
   end
 
   -- <transition>
-  camera()
-  color(0)
-  if tstate>=0 then
-    local t20=tpos+20
-    if tstate==0 then
-      po1tri(tpos,0,t20,0,tpos,127)
-      if(tpos>0) rectfill(0,0,tpos,127)
-      if(tpos>148) then
-        tstate=1
-        tpos=-20
-      end
-    else
-      po1tri(t20,0,t20,127,tpos,127)
-      if(tpos<108) rectfill(t20,0,127,127)
-      if(tpos>148) then
-        tstate=-1
-        tpos=-20
-      end
-    end
-    tpos+=14
-  end
+  transition:draw()
   -- </transition>
 end
 
@@ -1558,10 +1555,44 @@ function tile_at(x,y)
 end
 
 --<transition>--
-
--- transition globals
-tstate=-1
-tpos=-20
+transition = {
+  -- state:
+  --  1 | wiping in
+  -- -1 | wiping out
+  --  0 | idle
+  state=0,
+  play=function(_ENV)
+    state = state==0 and 1 or state
+    x=-64
+  end,
+  update=function(_ENV)
+    if (state==0) return
+    if state==1 and x>128 then
+      state=-1
+      play(_ENV)
+    elseif state==-1 and x>192 then
+      state=0
+    end
+    x+=14
+  end,
+  draw=function(_ENV)
+    if (state==0) return
+    _g.camera()
+    _g.color(0)
+    local x20=x+20
+    if state==1 then
+      for yo=-2,128,10 do
+        _g.po1tri(x,yo,x+64,yo+5,x,yo+10)
+      end
+      if (x>0) _g.rectfill(0,0,x,127,0)
+    else
+      for yo=-2,128,10 do
+        _g.po1tri(x20,yo,x20-64,yo+5,x20,yo+10)
+      end
+      if (x<108) _g.rectfill(x20,0,127,127,0)
+    end
+  end
+}
 
 -- triangle functions
 function po1tri(x0,y0,x1,y1,x2,y2)
@@ -1582,11 +1613,13 @@ end
 -->8
 --[map metadata]
 
+--@begin
 --level table
---"x,y,w,h,wind speed"
+--"x,y,w,h,exit_dirs,wind_speed"
+--exit directions "0b"+"exit_left"+"exit_bottom"+"exit_right"+"exit_top" (default top- 0b0001)
 levels={
-	"0,0,1,1,0",
-  "1,0,3,1,-0.6"
+	"0,0,1,1,?,0",
+  "1,0,3,1,?,-0.6"
 }
 
 --<camtrigger>--
@@ -1600,6 +1633,7 @@ camera_offsets={
 --assigned levels will load from here instead of the map
 mapdata={
 }
+--@end
 
 
 function move_camera(obj)
@@ -1659,9 +1693,9 @@ function get_mapdata(x,y,w,h)
 end
 
 --convert mapdata to memory data
-function num2hex(v) 
+function num2hex(v)
   return sub(tostr(v,true),5,6)
-end 
+end
 __gfx__
 000000000000000000000000088888800000000000000000000000000000000000000000000000000300b0b00a0aa0a000000000000000000000000000077000
 00000000088888800888888088888888088888800888880000000000088888800004000000000000003b33000aa88aa0000777770000000000000000007bb700
@@ -1703,14 +1737,14 @@ __gfx__
 000000000000000057cc77ccccc7cc757777776666777777b333333b1111dd1111d11d1111d111114c111ccc0000000000000000000000000000000000000000
 0000000000000000577c77ccccccc77507777660066777700b3333b01111d1111d1111d1111111114ccc111cccc0000000000000000000000000000000000000
 0000000000000000777cccccccccc777006666000066770000bbbb00111111111111111100000000ccccccccc000000000000000000000000000000000000000
-0000000000000000777cccccccccc777000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000077cccccccccccc77000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000077cccc7ccccccc77000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000577cccccccccc775000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000577cccccc77cc775000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000077ccccccc77ccc77000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000077cc7ccccccccc77000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000777cccccccccc777000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000777cccccccccc777000000000000000000000000111111110000000000000000000000000000000000000000000000000000000000000000
+000000000000000077cccccccccccc77000000000000000000000000111dd1110000000000000000000000000000000000000000000000000000000000000000
+000000000000000077cccc7ccccccc7700000000000000000000000011dddd110000000000000000000000000000000000000000000000000000000000000000
+0000000000000000577cccccccccc7750000000000000000000000001dddddd10000000000000000000000000000000000000000000000000000000000000000
+0000000000000000577cccccc77cc775000000000000000000000000111dd1110000000000000000000000000000000000000000000000000000000000000000
+000000000000000077ccccccc77ccc77000000000000000000000000111dd1110000000000000000000000000000000000000000000000000000000000000000
+000000000000000077cc7ccccccccc77000000000000000000000000111dd1110000000000000000000000000000000000000000000000000000000000000000
+0000000000000000777cccccccccc777000000000000000000000000111111110000000000000000000000000000000000000000000000000000000000000000
 __label__
 cccccccccccccccccccccccccccccccccccccc775500000000000000000000000000000000070000000000000000000000000000000000000000000000000000
 cccccccccccccccccccccccccccccccccccccc776670000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1853,7 +1887,7 @@ __map__
 1000000000001111111100000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 2708000000000000000000000000082700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 3708000000004300000000460000083700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000574900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000474949000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000a0000000000490000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000004000005300004100004a4b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1990,3 +2024,4 @@ __music__
 00 41425253
 00 41425253
 00 41425253
+

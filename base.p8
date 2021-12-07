@@ -77,7 +77,7 @@ dead_particles={}
 
 player={
   layer=2,
-  init=function(_ENV) 
+  init=function(_ENV)
     grace,jbuffer=0,0
     djump=max_djump
     dash_time,dash_effect_time=0,0
@@ -96,13 +96,13 @@ player={
     if pause_player then
       return
     end
-    
+
     -- horizontal input
     local h_input=btn(➡️) and 1 or btn(⬅️) and -1 or 0
-    
+
     -- spike collision / bottom death
-    if is_flag(0,0,-1) or 
-	    y>lvl_ph then
+    if is_flag(0,0,-1) or
+	    y>lvl_ph and not exit_bottom then
 	    kill_player(_ENV)
     end
 
@@ -133,7 +133,7 @@ player={
       end
     end
     -- </fruitrain> --
-    
+
     -- landing smoke
     if on_ground and not was_on_ground then
       init_smoke(0,4)
@@ -149,7 +149,7 @@ player={
     elseif jbuffer>0 then
       jbuffer-=1
     end
-    
+
     -- grace frames and dash restoration
     if on_ground then
       grace=6
@@ -177,12 +177,12 @@ player={
       local maxrun=1
       local accel=on_ground and 0.6 or 0.4
       local deccel=0.15
-    
+
       -- set x speed
-      spd.x=abs(spd.x)<=1 and 
-        appr(spd.x,h_input*maxrun,accel) or 
+      spd.x=abs(spd.x)<=1 and
+        appr(spd.x,h_input*maxrun,accel) or
         appr(spd.x,sign(spd.x)*maxrun,deccel)
-      
+
       -- facing direction
       if spd.x~=0 then
         flip.x=spd.x<0
@@ -190,7 +190,7 @@ player={
 
       -- y movement
       local maxfall=2
-    
+
       -- wall slide
       if h_input~=0 and is_solid(h_input,0) then
         maxfall=0.4
@@ -226,22 +226,22 @@ player={
           end
         end
       end
-    
+
       -- dash
       local d_full=5
       local d_half=3.5355339059 -- 5 * sqrt(2)
-    
+
       if djump>0 and dash then
         init_smoke()
-        djump-=1   
+        djump-=1
         dash_time=4
         _g.has_dashed=true
         dash_effect_time=10
         -- vertical input
         local v_input=btn(⬆️) and -1 or btn(⬇️) and 1 or 0
         -- calculate dash speeds
-        spd=vector(h_input~=0 and 
-        h_input*(v_input~=0 and d_half or d_full) or 
+        spd=vector(h_input~=0 and
+        h_input*(v_input~=0 and d_half or d_full) or
         (v_input~=0 and 0 or flip.x and -1 or 1)
         ,v_input~=0 and v_input*(h_input~=0 and d_half or d_full) or 0)
         -- effects
@@ -252,13 +252,19 @@ player={
         dash_target_y=(spd.y>=0 and 2 or 1.5)*sign(spd.y)
         dash_accel_x=spd.y==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
         dash_accel_y=spd.x==0 and 1.5 or 1.06066017177
+
+        -- emulate soft dashes
+        if h_input~=0 and ph_input==-h_input and oob(ph_input,0) then
+          spd.x=0
+        end
+
       elseif djump<=0 and dash then
         -- failed dash smoke
         psfx(21)
         init_smoke()
       end
     end
-    
+
     -- animation
     spr_off+=0.25
     sprite = not on_ground and (is_solid(h_input,0) and 5 or 3) or  -- wall slide or mid air
@@ -266,22 +272,18 @@ player={
       btn(⬆️) and 7 or -- look up
       spd.x~=0 and h_input~=0 and 1+spr_off%4 or 1 -- walk or stand
     update_hair(_ENV)
-    -- exit level off the top (except summit)
-    if y<-4 and levels[lvl_id+1] then
+    -- exit level (except summit)
+    if (exit_right and left()>=lvl_pw or exit_top and y<-4 or exit_left and right()<0 or exit_bottom and top()>=lvl_ph) and levels[lvl_id+1] then
       next_level()
     end
-    
+
     -- was on the ground
     was_on_ground=on_ground
+    --previous horizontal input (for soft dashes)
+    ph_input=h_input
   end,
-  
+
   draw=function(_ENV)
-    -- clamp in screen
-    local clamped=mid(x,-1,lvl_pw-7)
-    if x~=clamped then
-      x=clamped
-      spd.x=0
-    end
     -- draw player hair and sprite
     set_hair_color(djump)
     draw_hair(_ENV)
@@ -391,15 +393,15 @@ player_spawn={
 --<camtrigger>--
 camera_trigger={
   update=function(_ENV)
-    if timer and timer>0 then 
+    if timer and timer>0 then
       timer-=1
-      if timer==0 then 
+      if timer==0 then
         _g.cam_offx=offx
         _g.cam_offy=offy
-      else 
+      else
         _g.cam_offx+=cam_gain*(offx-cam_offx)
         _g.cam_offy+=cam_gain*(offy-cam_offy)
-      end 
+      end
     elseif player_here() then
       timer=5
     end
@@ -447,13 +449,13 @@ side_spring={
 
 
 refill={
-  init=function(_ENV) 
+  init=function(_ENV)
     offset=rnd()
     timer=0
     hitbox=rectangle(-1,-1,10,10)
     active=true
   end,
-  update=function(_ENV) 
+  update=function(_ENV)
     if active then
       offset+=0.02
       local hit=player_here()
@@ -466,16 +468,16 @@ refill={
       end
     elseif timer>0 then
       timer-=1
-    else 
+    else
       psfx(12)
       init_smoke()
-      active=true 
+      active=true
     end
   end,
   draw=function(_ENV)
     if active then
       spr(15,x,y+sin(offset)+0.5)
-    else  
+    else
       -- color(7)
       -- line(x,y+4,x+3,y+7)
       -- line(x+4,y+7,x+7,y+4)
@@ -488,7 +490,7 @@ refill={
       3,0,0,3]],"\n"),function(t)
 	        local o1,o2,o3,o4=unpack(split(t))
 	        line(x+o1,y+o2,x+o3,y+o4,7)
-	      end 
+	      end
       )
     end
   end
@@ -503,7 +505,7 @@ fall_floor={
     -- idling
     if state==0 then
       for i=0,2 do
-        if check(player,i-1,-(i%2)) then 
+        if check(player,i-1,-(i%2)) then
           psfx(13)
           state,delay=1,15
           init_smoke()
@@ -530,7 +532,7 @@ fall_floor={
     end
   end,
   draw=function(_ENV)
-    spr(state==1 and 26-delay/5 or state==0 and 23,x,y) --add an if statement if you use sprite 0 
+    spr(state==1 and 26-delay/5 or state==0 and 23,x,y) --add an if statement if you use sprite 0
   end
 }
 
@@ -593,7 +595,7 @@ fruit={
 
 fly_fruit={
   check_fruit=true,
-  init=function(_ENV) 
+  init=function(_ENV)
     start=y
     step=0.5
     sfx_delay=8
@@ -624,7 +626,7 @@ fly_fruit={
       init_smoke(6)
 
       local f=init_object(fruit,x,y,10) --if this happens to be in the exact location of a different fruit that has already been collected, this'll cause a crash
-      --TODO: fix this if needed 
+      --TODO: fix this if needed
       f.fruit_id=fruit_id
       fruit.update(f)
       --- </fruitrain> ---
@@ -686,8 +688,8 @@ tiles={
 function init_object(type,sx,sy,tile)
   --generate and check berry id
   local id=sx..","..sy..","..lvl_id
-  if type.check_fruit and got_fruit[id] then 
-    return 
+  if type.check_fruit and got_fruit[id] then
+    return
   end
   --local _g=_g
   local _ENV={
@@ -711,15 +713,21 @@ function init_object(type,sx,sy,tile)
   function bottom() return top()+hitbox.h-1 end
 
   function is_solid(ox,oy)
-    for o in all(objects) do 
-      if o!=_ENV and (o.solid_obj or o.semisolid_obj and not objcollide(o,ox,0) and oy>0) and objcollide(o,ox,oy)  then 
-        return true 
-      end 
-    end 
+    for o in all(objects) do
+      if o!=_ENV and (o.solid_obj or o.semisolid_obj and not objcollide(o,ox,0) and oy>0) and objcollide(o,ox,oy)  then
+        return true
+      end
+    end
     return (oy>0 and not is_flag(ox,0,3) and is_flag(ox,oy,3)) or  -- one way platform or
             is_flag(ox,oy,0) -- solid terrain
   end
-  
+  function oob(ox,oy)
+    return not exit_left and left()+ox<0 or not exit_right and right()+ox>=lvl_pw or top()+oy<=-8
+  end
+  function place_free(ox,oy)
+    return not (is_solid(ox,oy) or oob(ox,oy))
+  end
+
   function is_flag(ox,oy,flag)
     for i=mid(0,lvl_w-1,(left()+ox)\8),mid(0,lvl_w-1,(right()+ox)/8) do
       for j=mid(0,lvl_h-1,(top()+oy)\8),mid(0,lvl_h-1,(bottom()+oy)/8) do
@@ -739,11 +747,11 @@ function init_object(type,sx,sy,tile)
       end
     end
   end
-  function objcollide(other,ox,oy) 
+  function objcollide(other,ox,oy)
     return other.collideable and
-    other.right()>=left()+ox and 
+    other.right()>=left()+ox and
     other.bottom()>=top()+oy and
-    other.left()<=right()+ox and 
+    other.left()<=right()+ox and
     other.top()<=bottom()+oy
   end
   function check(type,ox,oy)
@@ -757,7 +765,7 @@ function init_object(type,sx,sy,tile)
   function player_here()
     return check(player,0,0)
   end
-  
+
   function move(ox,oy,start)
     for axis in all{"x","y"} do
       rem[axis]+=axis=="x" and ox or oy
@@ -771,7 +779,7 @@ function init_object(type,sx,sy,tile)
         local d=axis=="x" and step or 0
         local p=_ENV[axis]
         for i=start,abs(amt) do
-          if not is_solid(d,step-d) then
+          if place_free(d,step-d) then
             _ENV[axis]+=step
           else
             spd[axis],rem[axis]=0,0
@@ -780,38 +788,38 @@ function init_object(type,sx,sy,tile)
         end
         movamt=_ENV[axis]-p --save how many px moved to use later for solids
       else
-        movamt=amt 
-        if (solid_obj or semisolid_obj) and upmoving and riding then 
+        movamt=amt
+        if (solid_obj or semisolid_obj) and upmoving and riding then
           movamt+=top()-bottom()-1
           local hamt=round(riding.spd.y+riding.rem.y)
           hamt+=sign(hamt)
-          if movamt<hamt then 
+          if movamt<hamt then
             riding.spd.y=max(riding.spd.y)--,0)
-          else 
+          else
             movamt=0
           end
         end
         _ENV[axis]+=amt
       end
       if (solid_obj or semisolid_obj) and collideable then
-        collideable=false 
+        collideable=false
         local hit=player_here()
-        if hit and solid_obj then 
-          hit.move(axis=="x" and (amt>0 and right()+1-hit.left() or amt<0 and left()-hit.right()-1) or 0, 
+        if hit and solid_obj then
+          hit.move(axis=="x" and (amt>0 and right()+1-hit.left() or amt<0 and left()-hit.right()-1) or 0,
                   axis=="y" and (amt>0 and bottom()+1-hit.top() or amt<0 and top()-hit.bottom()-1) or 0,
                   1)
-          if player_here() then 
+          if player_here() then
             kill_player(hit)
-          end 
-        elseif riding then 
+          end
+        elseif riding then
           riding.move(axis=="x" and movamt or 0, axis=="y" and movamt or 0,1)
         end
-        collideable=true 
+        collideable=true
       end
     end
   end
 
-  function init_smoke(ox,oy) 
+  function init_smoke(ox,oy)
     init_object(smoke,x+(ox or 0),y+(oy or 0),26)
   end
 
@@ -865,37 +873,39 @@ end
 
 function load_level(id)
   has_dashed=false
-  
+
   --remove existing objects
   foreach(objects,destroy_object)
-  
+
   --reset camera speed
   cam_spdx,cam_spdy=0,0
-		
+
   local diff_level=lvl_id~=id
-  
+
 		--set level index
   lvl_id=id
-  
+
   --set level globals
   local tbl=split(levels[lvl_id])
   lvl_x,lvl_y,lvl_w,lvl_h=tbl[1]*16,tbl[2]*16,tbl[3]*16,tbl[4]*16
   lvl_pw=lvl_w*8
   lvl_ph=lvl_h*8
-  
-  
+
+  local exits=tonum(tbl[5]) or 0b0001
+  exit_top,exit_right,exit_bottom,exit_left=exits&1!=0,exits&2!=0,exits&4!=0, exits&8!=0
+
   --drawing timer setup
   ui_timer=5
 
   --reload map
-  if diff_level then 
+  if diff_level then
     reload()
     --chcek for mapdata strings
     if mapdata[lvl_id] then
-      replace_mapdata(lvl_x,lvl_y,lvl_w,lvl_h,mapdata[lvl_id])
+      replace_mapdata(0,0,lvl_w,lvl_h,mapdata[lvl_id])
     end
-  end 
-  
+  end
+
   -- entities
   for tx=0,lvl_w-1 do
     for ty=0,lvl_h-1 do
@@ -930,24 +940,24 @@ function _update()
     seconds%=60
   end
   frames%=30
-  
+
   if music_timer>0 then
     music_timer-=1
     if music_timer<=0 then
       music(10,0,7)
     end
   end
-  
+
   if sfx_timer>0 then
     sfx_timer-=1
   end
-  
+
   -- cancel if freeze
-  if freeze>0 then 
+  if freeze>0 then
     freeze-=1
     return
   end
-  
+
   -- restart (soon)
   if delay_restart>0 then
   	cam_spdx,cam_spdy=0,0
@@ -960,7 +970,7 @@ function _update()
       -- </fruitrain> --
       else
         load_level(lvl_id)
-      end 
+      end
     end
   end
 
@@ -987,10 +997,10 @@ function _draw()
   if freeze>0 then
     return
   end
-  
+
   -- reset all palette values
   pal()
-  
+
 	--set cam draw position
   draw_x=round(cam_x)-64
   draw_y=round(cam_y)-64
@@ -1025,7 +1035,7 @@ function _draw()
   pal=_pal
   camera(draw_x,draw_y)
   pal()
-	
+
   --set draw layering
   --0: background layer
   --1: default layer
@@ -1041,7 +1051,7 @@ function _draw()
   end)
   -- draw terrain
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,2)
-  
+
   -- draw objects
   foreach(layers,function(l)
     foreach(l,draw_object)
@@ -1056,7 +1066,7 @@ function _draw()
     y%=128
     off+=_g.min(0.05,spd/32)
     _g.rectfill(x+_g.draw_x,y+_g.draw_y,x+s+_g.draw_x,y+s+_g.draw_y,c)
-    if x>132 then 
+    if x>132 then
       x=-4
       y=_g.rnd128()
    	elseif x<-4 then
@@ -1064,7 +1074,7 @@ function _draw()
      	y=_g.rnd128()
     end
   end)
-  
+
   -- dead particles
   foreach(dead_particles,function(_ENV)
     x+=dx
@@ -1174,11 +1184,13 @@ end
 -->8
 --[map metadata]
 
+--@begin
 --level table
---"x,y,w,h"
+--"x,y,w,h,exit_dirs"
+--exit directions "0b"+"exit_left"+"exit_bottom"+"exit_right"+"exit_top" (default top- 0b0001)
 levels={
 	"0,0,1,1",
-  "1,0,3,1"
+ "1,0,3,1"
 }
 
 --<camtrigger>--
@@ -1192,6 +1204,7 @@ camera_offsets={
 --assigned levels will load from here instead of the map
 mapdata={
 }
+--@end
 
 
 function move_camera(obj)
@@ -1251,9 +1264,9 @@ function get_mapdata(x,y,w,h)
 end
 
 --convert mapdata to memory data
-function num2hex(v) 
+function num2hex(v)
   return sub(tostr(v,true),5,6)
-end 
+end
 __gfx__
 000000000000000000000000088888800000000000000000000000000000000000000000000000000300b0b00a0aa0a000000000000000000000000000077000
 00000000088888800888888088888888088888800888880000000000088888800004000000000000003b33000aa88aa0000777770000000000000000007bb700
