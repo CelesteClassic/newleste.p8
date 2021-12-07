@@ -117,7 +117,7 @@ player={
                       mid(dash_target_y,-2,2))
       dash_time,dash_effect_time=0,0
       if spd.x~=0 then
-        grace=2
+        grace=4
       end
     end
     -- </dream_block> --
