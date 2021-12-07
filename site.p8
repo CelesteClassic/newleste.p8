@@ -1550,8 +1550,7 @@ function _draw()
   palt(0,false)
   palt(8,true)
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,2)
-  palt(0,false)
-  palt(8,true)
+  palt()
 
   -- draw objects
   foreach(layers,function(l)
