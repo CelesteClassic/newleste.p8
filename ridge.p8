@@ -218,7 +218,7 @@ player={
           	spd.y=-3
           else
           	spd.y=-2
-          	if cloudhit then 
+          	if cloudhit then
           		cloudhit.t=0.25
 							cloudhit.state=1
           	end
@@ -245,7 +245,7 @@ player={
       -- <green_bubble> --
       if djump>0 and dash or do_dash then
         do_dash=false
-      -- </green_bubble> -- 
+      -- </green_bubble> --
         init_smoke()
         djump-=1
         dash_time,_g.has_dashed,dash_effect_time=4, true, 10
@@ -672,25 +672,25 @@ bouncy_cloud = {
 				init_smoke(8)
 			end
 		end
-		
+
     local hit=check(player,0,-1)
     --idle position
 		if state==0 and break_timer==0 and hit and hit.spd.y>=0 then
 			state=1
 		end
-		
+
 		if state==1 then
 			--in animation
 			spd.y=-2*sin(t)
-			if hit and t>=0.85 then 
+			if hit and t>=0.85 then
         hit.spd.y=min(hit.spd.y,-1.5)
         hit.grace=0
 			end
-      
-			
+
+
 			t+=0.05
-			
-      
+
+
 			if t>=1 then
 				state=2
 			end
@@ -702,14 +702,14 @@ bouncy_cloud = {
 				init_smoke()
 				init_smoke(8)
 			end
-			
+
       spd.y=sign(start-y)
 			if y==start then
 				t=0.25
 				state=0
         rem=vector(0,0)
       end
-        
+
 		end
 	end,
 	draw=function(_ENV)
@@ -728,13 +728,13 @@ bouncy_cloud = {
 fake_wall={
   init=function(_ENV)
     solid_obj=true
-    local match 
-    for i=y,lvl_ph,8 do 
-      if tile_at(x/8,i/8)==83 then 
-        match=i 
-        break 
-      end 
-    end 
+    local match
+    for i=y,lvl_ph,8 do
+      if tile_at(x/8,i/8)==83 then
+        match=i
+        break
+      end
+    end
     ph=match-y+8
     x-=8
     has_fruit=check(fruit,0,0)
@@ -767,7 +767,7 @@ fake_wall={
 
 --- <snowball> ---
 snowball = {
-  init=function(_ENV) 
+  init=function(_ENV)
     spd.x=-3
     sproff=0
   end,
@@ -800,13 +800,13 @@ snowball_controller={
   end,
   update=function(_ENV)
     t=(t+1)%60
-    if t==0 then 
-      for o in all(objects) do 
-        if o.type==player then 
+    if t==0 then
+      for o in all(objects) do
+        if o.type==player then
           init_object(snowball,cam_x+128,o.y,68)
-        end 
+        end
       end
-    end 
+    end
   end
 }
 --- </snowball> ---
@@ -836,7 +836,7 @@ green_bubble={
       if timer>10 or btnp(❎) then
         hit.invisible=false
         hit.djump=max_djump+1
-        hit.do_dash=true        
+        hit.do_dash=true
         invisible=true
         timer=0
       end
@@ -847,8 +847,8 @@ green_bubble={
         invisible=false
         init_smoke()
       end
-    end 
-  end, 
+    end
+  end,
   draw=function(_ENV)
     t+=0.05
   	local x,y,t=x,y,t
@@ -868,53 +868,53 @@ green_bubble={
       rectfill(x+dx-bx,y+8-_t,x+dx-bx,y+8-_t,6)
   	end
   	rectfill(x+5+sx,y+1-sy,x+6+sx,y+2-sy,7)
-  end 
+  end
 }
 -- </green_bubble> --
 
 
--- requires <solids> 
+-- requires <solids>
 arrow_platform={
   init=function(_ENV)
     dir=sprite==71 and -1 or sprite==72 and 1 or 0
     solid_obj=true
     collides=true
 
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==73 do 
+    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==73 do
       hitbox.w+=8
-    end 
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==73 do 
+    end
+    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==73 do
       hitbox.h+=8
-    end 
+    end
     break_timer,death_timer=0,0
     start_x,start_y=x,y
     outline=false
   end,
   update=function(_ENV)
-    if death_timer>0 then 
+    if death_timer>0 then
       death_timer-=1
-      if death_timer==0 then 
+      if death_timer==0 then
         x,y,spd=start_x,start_y,vector(0,0)
-        if player_here() then 
+        if player_here() then
           death_timer=1
           return
-        else 
+        else
           init_smoke_hitbox()
           break_timer=0
           collideable=true
           active=false
         end
       else
-        return 
-      end 
-    end 
+        return
+      end
+    end
 
-    if (dir!=0 and spd.x==0 or dir==0 and spd.y==0) and active then 
+    if (dir!=0 and spd.x==0 or dir==0 and spd.y==0) and active then
       break_timer+=1
-    else 
+    else
       break_timer=0
-    end 
-    if break_timer==16 then 
+    end
+    if break_timer==16 then
       init_smoke_hitbox()
       death_timer=60
       collideable=false
@@ -922,18 +922,18 @@ arrow_platform={
 
     spd=vector(active and dir or 0,active and dir==0 and -1 or 0)
     local hit=check(player,0,-1)
-    if hit then 
+    if hit then
       spd=vector(dir,dir==0 and -1 or btn(⬇️) and 1 or btn(⬆️) and not hit.is_solid(0,-1) and -1 or 0)
       active=true
     end
   end,
   draw=function(_ENV)
-    if (death_timer>0) return 
+    if (death_timer>0) return
 
     local x,y=x,y
     pal(13,active and 11 or 13)
     local shake=break_timer>8
-    if shake then 
+    if shake then
       x+=rnd(2)-1
       y+=rnd(2)-1
       pal(13,8)
@@ -944,7 +944,7 @@ arrow_platform={
     line(x+3,y+2,r-3,y+2,1)
     local mx,my=x+hitbox.w/2,y+hitbox.h/2
     spr(shake and 72 or dir==0 and 87 or spd.y~=0 and 73 or 71,mx-4,my+(break_timer<=8 and spd.y<0 and dir!=0 and -3 or -4),1.0,1.0,dir==-1,spd.y>0)
-    if hitbox.h==8 and shake then 
+    if hitbox.h==8 and shake then
       rect(mx-3,my-3,mx+2,my+2,1)
     end
     if dir!=0 then
@@ -952,7 +952,7 @@ arrow_platform={
       if not check(player,0,-1) and not is_solid(0,-1) then
         line(x+2,y-1,r-2,y-1,13)
       end
-    end 
+    end
     pal()
   end
 
@@ -960,18 +960,18 @@ arrow_platform={
 
 bg_flag={
   layer=0,
-  init=function(_ENV) 
+  init=function(_ENV)
     t=0
     wind=prev_wind_spd
     wvel=0
     ph=8
-    while not is_solid(0,ph) and y+ph<lvl_ph do 
-      ph+=8 
-    end 
+    while not is_solid(0,ph) and y+ph<lvl_ph do
+      ph+=8
+    end
     h=1
     w=2
     --outline=false
-  end, 
+  end,
   update=function(_ENV)
 	  wvel+=0.01*(wind_spd+sgn(wind_spd)*0.4-wind)
 	  wind+=wvel
@@ -987,7 +987,7 @@ bg_flag={
       local yoff = cos(ang)*nx
       tline(x+xoff,y+off+yoff,x+xoff,y+h*8+off+yoff,lvl_x+x/8+nx/8,lvl_y+y/8,0,1/8)
     end
-    
+
   end
 }
 
@@ -1002,25 +1002,29 @@ psfx=function(num)
 end
 
 -- [tile dict]
-tiles={
-  [1]=player_spawn,
-  [8]=side_spring,
-  [9]=spring,
-  [10]=fruit,
-  [11]=fruit,
-  [12]=fly_fruit,
-  [15]=refill,
-  [23]=fall_floor,
-  [64] =bouncy_cloud,
-  [65] =bouncy_cloud,
-  [67] = fake_wall,
-  [68] = snowball_controller,
-  [70] = green_bubble,
-  [71] = arrow_platform,
-  [72] = arrow_platform,
-  [87] = arrow_platform,
-  [74] = bg_flag
-}
+tiles={}
+foreach(split([[
+1,player_spawn
+8,side_spring
+9,spring
+10,fruit
+11,fruit
+12,fly_fruit
+15,refill
+23,fall_floor
+64,bouncy_cloud
+65,bouncy_cloud
+67,fake_wall
+68,snowball_controller
+70,green_bubble
+71,arrow_platform
+72,arrow_platform
+87,arrow_platform
+74,bg_flag
+]],"\n"),function(t)
+ local tile,obj=unpack(split(t))
+ tiles[tile]=_ENV[obj]
+end)
 
 -- [object functions]
 
@@ -1169,12 +1173,12 @@ function init_object(type,sx,sy,tile)
   -- made into function because of repeated usage
   -- can be removed if doesn't save tokens
   function init_smoke_hitbox()
-    for ox=0,hitbox.w-8,8 do 
-      for oy=0,hitbox.h-8,8 do 
-        init_smoke(ox,oy) 
-      end 
-    end 
-  end 
+    for ox=0,hitbox.w-8,8 do
+      for oy=0,hitbox.h-8,8 do
+        init_smoke(ox,oy)
+      end
+    end
+  end
   -- </fake_wall> </arrow_platform>
 
 
@@ -1436,10 +1440,10 @@ function _draw()
     off+=_g.min(0.05,spd/32)
     -- <wind> --
     wspd=_g.appr(wspd,_g.wind_spd*12,0.5)
-    if _g.wind_spd!=0 then 
-      x += wspd - _g.cam_spdx 
-      _g.line(x+_g.draw_x,y+_g.draw_y,x+wspd*-1.5+_g.draw_x,y+_g.draw_y,c)  
-    else 
+    if _g.wind_spd!=0 then
+      x += wspd - _g.cam_spdx
+      _g.line(x+_g.draw_x,y+_g.draw_y,x+wspd*-1.5+_g.draw_x,y+_g.draw_y,c)
+    else
       x+=spd+wspd-_g.cam_spdx
       _g.rectfill(x+_g.draw_x,y+_g.draw_y,x+s+_g.draw_x+wspd*-1.5,y+s+_g.draw_y,c)
     end
@@ -1477,10 +1481,10 @@ end
 
 function draw_object(_ENV)
   -- <green_bubble> --
-  if not invisible then 
+  if not invisible then
     srand(draw_seed);
     (type.draw or draw_obj_sprite)(_ENV)
-  end 
+  end
   -- </green_bubble> --
 end
 

@@ -931,6 +931,8 @@ switch_block={
     spr(88,x+hitbox.w/2-4,y+hitbox.h/2-4)
   end
 }
+
+switch_target={}
 -- <touch_switch> --
 dream_block={
   init=function(_ENV)
@@ -1074,23 +1076,26 @@ psfx=function(num)
 end
 
 -- [tile dict]
-tiles={
-  [1]=player_spawn,
-  [8]=side_spring,
-  [9]=spring,
-  [10]=fruit,
-  [11]=fruit,
-  [12]=fly_fruit,
-  [15]=refill,
-  [23]=fall_floor,
-  [66]=fall_plat,
-  [68]=touch_switch,
-  [71]=switch_block,
-  -- <touch_switch> --
-  [88]={},
-  -- <touch_switch> --
-  [64]=dream_block
-}
+tiles={}
+foreach(split([[
+1,player_spawn
+8,side_spring
+9,spring
+10,fruit
+11,fruit
+12,fly_fruit
+15,refill
+23,fall_floor
+66,fall_plat
+68,touch_switch
+71,switch_block
+88,switch_target
+64,dream_block
+]],"\n"),function(t)
+ local tile,obj=unpack(split(t))
+ tiles[tile]=_ENV[obj]
+end)
+
 
 -- [object functions]
 

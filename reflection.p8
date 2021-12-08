@@ -122,15 +122,15 @@ player={
 	    kill_player(_ENV)
     end
 
-    if feather_state then 
+    if feather_state then
       local k=1
-      if h_input!=0 or v_input!=0 then 
+      if h_input!=0 or v_input!=0 then
         -- calculate direction and velocity
         movedir=appr_circ(movedir,atan2(h_input,v_input),0.04)
 
-        -- speed up if holding button 
+        -- speed up if holding button
         k=1.5
-      end 
+      end
       spd = vector(k*cos(movedir), k*sin(movedir))
 
       -- update tail
@@ -167,27 +167,27 @@ player={
 			add(feather_particles, particle)
 
       lifetime-=1
-      if lifetime==0 or btn(❎) then 
+      if lifetime==0 or btn(❎) then
         -- transform back to player
         p_dash=false
-        feather_state=false 
+        feather_state=false
         init_smoke()
         player.init(_ENV)
         spd.x/=2
         spd.y=spd.y<0 and -1.5 or 0
-      end 
+      end
     elseif feather_idle then
       spd.x*=0.8
       spd.y*=0.8
-      spawn_timer-=1 
-      if spawn_timer==0 then 
-        feather_idle=false 
-        feather_state=true 
-        if h_input==0 and v_input==0 then  
+      spawn_timer-=1
+      if spawn_timer==0 then
+        feather_idle=false
+        feather_state=true
+        if h_input==0 and v_input==0 then
           movedir=flip.x and 0.5 or 0
-        else 
+        else
           movedir=atan2(h_input,v_input)
-        end 
+        end
         lifetime=60
         bouncetimer=0
         tail={}
@@ -195,9 +195,9 @@ player={
         for i=0,15 do
           add(tail,{x=x+4,y=y+4,size=mid(1,2,9-i)})
         end
-      end 
-    end 
-    if not feather_state and not feather_idle then  
+      end
+    end
+    if not feather_state and not feather_idle then
       -- cursed token save: use else and goto here
 
       -- on ground checks
@@ -369,7 +369,7 @@ player={
 
     -- was on the ground, previous horizontal input (for soft dashes)
     was_on_ground,ph_input=on_ground, h_input
-    end 
+    end
   end,
 
   draw=function(_ENV)
@@ -380,7 +380,7 @@ player={
 			pset(p.x+4, p.y+4,10)
     end)
 
-    if feather_state then 
+    if feather_state then
       if lifetime%5==1 then pal(10, 7) end
 
 			if lifetime < 10 then
@@ -390,16 +390,16 @@ player={
       foreach(tail,function(h)
 				circfill(h.x,h.y,h.size,10)
 			end)
-    elseif feather_idle then 
+    elseif feather_idle then
       circfill(x+4, y+4, 4, spawn_timer%4<2 and 7 or 10)
     --</feather> --
-    else 
+    else
       -- draw player hair and sprite
     pal(8,djump==1 and 8 or 12)
     draw_hair(_ENV)
     draw_obj_sprite(_ENV)
       pal()
-    end 
+    end
   end
 }
 
@@ -744,12 +744,12 @@ lifeup={
 }
 kevin={
   init=function(_ENV)
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==65 do 
+    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==65 do
       hitbox.w+=8
-    end 
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==80 do 
+    end
+    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==80 do
       hitbox.h+=8
-    end 
+    end
     solid_obj=true
     collides=true
     retrace_list={}
@@ -758,16 +758,16 @@ kevin={
     shake=0
   end,
   update=function(_ENV)
-    if shake>0 then 
+    if shake>0 then
       shake-=1
     end
-    for xdir=-1,1 do 
-      for ydir=-1,1 do 
-        if (xdir+ydir)%2==1 then 
+    for xdir=-1,1 do
+      for ydir=-1,1 do
+        if (xdir+ydir)%2==1 then
           local hit=check(player,xdir,ydir)
-          if hit and hit.dash_effect_time>0 and 
-            (xdir!=0 and sign(hit.dash_target_x)==-xdir or ydir!=0 and sign(hit.dash_target_y)==-ydir) and 
-            (not active or xdir!=dirx and ydir!=diry) then 
+          if hit and hit.dash_effect_time>0 and
+            (xdir!=0 and sign(hit.dash_target_x)==-xdir or ydir!=0 and sign(hit.dash_target_y)==-ydir) and
+            (not active or xdir!=dirx and ydir!=diry) then
             hit.spd=vector(xdir*1.5,ydir==1 and 0.5 or -1.5)
             hit.dash_time=-1
             --hit.dash_effect_time=0
@@ -776,91 +776,91 @@ kevin={
             dirx,diry=xdir,ydir
             spd=vector(0,0)
             hit_timer=10
-            active=true 
+            active=true
             shake=4
-          end 
-        end 
-      end 
-    end 
+          end
+        end
+      end
+    end
 
-    if hit_timer>0 then 
+    if hit_timer>0 then
       hit_timer-=1
-      if hit_timer==0 then 
+      if hit_timer==0 then
         spd=vector(0.2*dirx,0.2*diry)
-      end 
-    elseif active  then 
-      if spd.x==0 and spd.y==0 then 
+      end
+    elseif active  then
+      if spd.x==0 and spd.y==0 then
         retrace_timer=10
-        active=false 
+        active=false
         shake=5
-        if dirx!=0 then 
+        if dirx!=0 then
           for oy=0,hitbox.h-1,8 do
             init_smoke(dirx==-1 and -8 or hitbox.w,oy)
-          end 
-        else 
+          end
+        else
           for ox=0,hitbox.w-1,8 do
             init_smoke(ox,diry==-1 and -8 or hitbox.h)
-          end 
-        end 
-      else 
+          end
+        end
+      else
         spd=vector(appr(spd.x,3*dirx,0.2),appr(spd.y,3*diry,0.2))
-      end 
-    elseif retrace_timer>0 then 
-      retrace_timer-=1 
-      if retrace_timer==0 then 
-        retrace=true 
-      end 
-    elseif retrace then 
+      end
+    elseif retrace_timer>0 then
+      retrace_timer-=1
+      if retrace_timer==0 then
+        retrace=true
+      end
+    elseif retrace then
       local last=retrace_list[#retrace_list]
-      if not last then 
-        retrace=false 
-      elseif last.x==x and last.y==y then 
+      if not last then
+        retrace=false
+      elseif last.x==x and last.y==y then
         del(retrace_list,last)
-        retrace_timer=5 
+        retrace_timer=5
         shake=4
         spd=vector(0,0)
         rem=vector(0,0)
-      else 
+      else
         spd=vector(appr(spd.x,sign(last.x-x),0.2),appr(spd.y,sign(last.y-y),0.2))
-      end 
-    end 
+      end
+    end
   end,
   draw=function(_ENV)
-    local x,y=x,y 
-    if shake>0 then 
+    local x,y=x,y
+    if shake>0 then
       x+=rnd(2)-1
       y+=rnd(2)-1
-    end 
+    end
     local r,b=x+hitbox.w-8,y+hitbox.h-8
     local up,down,left,right=active and diry==-1,active and diry==1,active and dirx==-1,active and dirx==1
-    for sx=x+8, r-8,8 do 
+    for sx=x+8, r-8,8 do
       pal(12, up and 7 or 12)
       spr(65,sx,y)
       pal(12, down and 7 or 12)
       spr(65,sx,b,1,1,false,true)
-    end 
-    for sy=y+8, b-8,8 do 
+    end
+    for sy=y+8, b-8,8 do
       pal(12, left and 7 or 12)
       spr(80,x,sy)
       pal(12, right and 7 or 12)
       spr(80,r,sy,1,1,true)
-    end 
+    end
     rectfill(x+8,y+8,r,b,4)
-    
+
     -- spr(64,x,y)
     -- spr(64,r-8,y,1,1,true)
     -- spr(64,x,b-8,1,1,false,true)
     -- spr(64,r-8,b-8,1,1,true,true)
     local lookup={down,left,up,right,down}
-    for i=0,3 do 
+    for i=0,3 do
       pal(12,(lookup[i+1] or lookup[i+2]) and 7 or 12)
       spr(64,i<=1 and x or r, (i-1)\2==0 and y or b,1,1,i>=2,(i-1)\2!=0)
     end
-    pal() 
+    pal()
     -- face
     spr(active and 67 or 66,x+hitbox.w/2-4,y+hitbox.h/2-4)
-  end 
-    
+  end
+
 }
 
 bumper={
@@ -870,25 +870,25 @@ bumper={
     outline=false
   end,
   update=function(_ENV)
-    if hittimer>0 then 
+    if hittimer>0 then
       hittimer-=1
-      if hittimer==0 then 
+      if hittimer==0 then
         init_smoke(4,4)
-      end 
-    else 
+      end
+    else
       local hit=player_here()
-      if hit then 
+      if hit then
         hit.init_smoke()
         local dx,dy=x+8-(hit.x+4),y+8-(hit.y+4)
         local angle=atan2(dx,dy)
         hit.spd = abs(dx) > abs(dy) and vector(sign(dx)*-2.8,-2) or --  -3.5*(cos(0.9),sin(0.9))
                  vector(-3*cos(angle),-3*sin(angle))
-        hit.dash_time,hit.djump=-1,max_djump 
-        hittimer=20 
-      end 
-    end 
+        hit.dash_time,hit.djump=-1,max_djump
+        hittimer=20
+      end
+    end
   end,
-  draw=function(_ENV) 
+  draw=function(_ENV)
     local rx,ry=x+8,y+8
 		if hittimer>0 then
 			pal(12, 1)
@@ -907,7 +907,7 @@ bumper={
 		if hittimer == 1 then
 			circfill(rx, ry, 4, 6)
 		end
-  end 
+  end
 }
 
 --<feather> --
@@ -923,34 +923,34 @@ feather={
     timer=0
   end,
   update=function(_ENV)
-    if timer>0 then 
-      timer-=1 
-      if timer==0 then 
+    if timer>0 then
+      timer-=1
+      if timer==0 then
         init_smoke()
-      end 
-    else 
+      end
+    else
       sprtimer+=0.2
       offset+=0.01
       y=starty+0.5+2*sin(offset)
-      local hit=player_here() 
-      if hit then 
-        init_smoke() 
-        timer=60 
-        if hit.feather_state then 
+      local hit=player_here()
+      if hit then
+        init_smoke()
+        timer=60
+        if hit.feather_state then
           hit.lifetime=60
-        else 
+        else
           hit.spawn_timer,hit.feather_idle,hit.dash_time,hit.dash_effect_time=10,true,0,0
           hit.spd=vector(mid(hit.spd.x,-1.5,1.5),mid(hit.spd.y,-1.5,1.5))
-        end 
-      end 
-    end 
+        end
+      end
+    end
   end,
   draw=function(_ENV)
     if timer==0 then
       local d=flr(sprtimer%6)
       spr(70+min(d,6-d),x,y, 1, 1,d>3)
-    end 
-  end 
+    end
+  end
 }
 
 -- </feather>
@@ -961,19 +961,23 @@ psfx=function(num)
 end
 
 -- [tile dict]
-tiles={
-  [1]=player_spawn,
-  [8]=side_spring,
-  [9]=spring,
-  [10]=fruit,
-  [11]=fruit,
-  [12]=fly_fruit,
-  [15]=refill,
-  [23]=fall_floor,
-  [64]=kevin,
-  [68]=bumper,
-  [70]=feather
-}
+tiles={}
+foreach(split([[
+1,player_spawn
+8,side_spring
+9,spring
+10,fruit
+11,fruit
+12,fly_fruit
+15,refill
+23,fall_floor
+64,kevin
+68,bumper
+70,feather
+]],"\n"),function(t)
+ local tile,obj=unpack(split(t))
+ tiles[tile]=_ENV[obj]
+end)
 
 
 -- [object functions]

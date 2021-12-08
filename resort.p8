@@ -432,9 +432,9 @@ sinking_platform = {
   update=function(_ENV)
     gy=y
     local hit=check(player,0,-1)
-    if shake>0 then 
+    if shake>0 then
       shake-=1
-    end 
+    end
     if hit then
       if hit.spd.y>=0 then
         spd.y = appr(spd.y, btn(3) and 1.5 or 0.75, 0.5)
@@ -442,10 +442,10 @@ sinking_platform = {
         if not phit then
           shake=3
           phit=true
-          
-        end 
+
+        end
         home=false
-      end 
+      end
     elseif rise_timer > 0 then
       rise_timer -= 1
       spd.y = appr(spd.y, 1, 0.5)
@@ -461,11 +461,11 @@ sinking_platform = {
   end,
 
   draw=function(_ENV)
-    local sx,sy=x,y 
-    if shake>0 then 
+    local sx,sy=x,y
+    if shake>0 then
       sx+=rnd(3)-1
       sy+=rnd(2)-1
-    end 
+    end
     rectfill(x+7,start+4,x+8,start+123,5) --tracks extending downwards from top position
     --visual issue to be fixed by porting to new base cart
     spr(29,sx,sy,2,1)
@@ -503,20 +503,20 @@ moving_platform = {
   end,
 
   update=function(_ENV)
-  
+
   --horizontal movement
-    
+
     local newx=round(middle+r*sin(t/tlen)*direction)
     spd.x=newx-x
-    if 4*flr(t)==tlen or 4*flr(t)==3*tlen then 
+    if 4*flr(t)==tlen or 4*flr(t)==3*tlen then
       t+=0.2
-    else 
+    else
       t+=1
-    end 
+    end
     t%=tlen
 
     --interaction with player
-    
+
     local hit=check(player,0,-1)
     if hit and y<start_y+2 then
       if hit.spd.y>=0 then
@@ -756,19 +756,23 @@ psfx=function(num)
 end
 
 -- [tile dict]
-tiles={
-  [1]=player_spawn,
-  [8]=side_spring,
-  [9]=spring,
-  [10]=fruit,
-  [11]=fruit,
-  [12]=fly_fruit,
-  [15]=refill,
-  [23]=fall_floor,
-  [29]=sinking_platform,
-  [45]=moving_platform,
-  [46]=moving_platform
-}
+tiles={}
+foreach(split([[
+1,player_spawn
+8,side_spring
+9,spring
+10,fruit
+11,fruit
+12,fly_fruit
+15,refill
+23,fall_floor
+29,sinking_platform
+45,moving_platform
+46,moving_platform
+]],"\n"),function(t)
+ local tile,obj=unpack(split(t))
+ tiles[tile]=_ENV[obj]
+end)
 
 -- [object functions]
 

@@ -229,24 +229,24 @@ player={
       local d_half=3.5355339059 -- 5 * sqrt(2)
 
       --<theo_crystal> --
-      if holding then 
-        if dash then 
+      if holding then
+        if dash then
           -- throw
-          if holding.is_solid(0,0) then -- can't throw 
+          if holding.is_solid(0,0) then -- can't throw
             psfx(21)
             init_smoke()
-          else 
+          else
             holding.spd=vector(flip.x and -4 or 4, -2)
             holding.pspdx,holding.pspdy=holding.spd.x,-2
             holding.cplayer=nil
             holding=nil
-          end 
-        end 
+          end
+        end
       -- <red_bubble> --
       elseif djump>0 and dash or do_dash then
       --</theo_crytal> --
         do_dash=false
-      -- </red_bubble> -- 
+      -- </red_bubble> --
         init_smoke()
         djump-=1
         dash_time,_g.has_dashed,dash_effect_time=4, true, 10
@@ -299,10 +299,10 @@ player={
     was_on_ground,ph_input=on_ground, h_input
 
     --<theo_crystal> --
-    if holding then 
+    if holding then
       holding.x=x-3
       holding.y=y-12
-    end 
+    end
     --</theo_crystal> --
   end,
 
@@ -358,9 +358,9 @@ player_spawn={
     --- <fruitrain> ---
     for i=1,#fruitrain do
       local f=init_object(fruitrain[i].type,x,y,fruitrain[i].sprite)
-      if fruitrain[i].type==key then 
+      if fruitrain[i].type==key then
         key_count+=1
-      end 
+      end
       f.target=i==1 and _ENV or fruitrain[i-1]
       f.r=fruitrain[i].r
       f.fruit_id=fruitrain[i].fruit_id
@@ -395,7 +395,7 @@ player_spawn={
         destroy_object(_ENV)
         local p=init_object(player,x,y)
         -- <keydoor> --
-        p.key_count=key_count 
+        p.key_count=key_count
         -- </keydoor> --
         --- <fruitrain> ---
         if (fruitrain[1]) fruitrain[1].target=p
@@ -666,8 +666,8 @@ key_door_used={}
 key={
   init=function(_ENV)
     if key_door_used[fruit_id] then
-      destroy_object(_ENV) 
-    end 
+      destroy_object(_ENV)
+    end
     y_=y
     off=0
     tx=x
@@ -675,13 +675,13 @@ key={
     timer=0
   end,
   update=function(_ENV)
-    if timer>0 then 
+    if timer>0 then
       timer-=1
-      if timer==0 then 
+      if timer==0 then
         target.timer=1
         init_smoke()
         destroy_object(_ENV)
-      end 
+      end
     elseif not target then
       local hit=player_here()
       if hit then
@@ -690,7 +690,7 @@ key={
         target=#fruitrain==0 and hit or fruitrain[#fruitrain]
         r=#fruitrain==0 and 12 or 8
         add(fruitrain,_ENV)
-        key_door_used[fruit_id]=true 
+        key_door_used[fruit_id]=true
       end
     else
       tx+=0.2*(target.x+target.hitbox.w/2-hitbox.w/2-tx)
@@ -715,61 +715,61 @@ key={
   draw=function(_ENV)
     if timer>10 then
       rectfill(x+3,y_+2,x+4,y_+5,10)
-    elseif timer>0 then 
+    elseif timer>0 then
       rectfill(x+2,y_+4,x+5,y_+5,10)
-    else 
+    else
       spr(sprite,x,y,0.875,1,flip.x,flip.y)
       if flr(sprite)==66 and flip.x then
         line(x+3,y+5,x+3,y+7,9)
-      end 
-    end 
+      end
+    end
   end
 }
 keydoor={
   layer=0, --might cause visual problems? idk lol
   init=function(_ENV)
-    if key_door_used[fruit_id] then 
+    if key_door_used[fruit_id] then
       destroy_object(_ENV)
-    end 
+    end
     hitbox=rectangle(0,0,16,16)
     solid_obj=true
     timer=0
   end,
   update=function(_ENV)
-    if timer>0 then 
+    if timer>0 then
       collideable=false
       timer+=1
-      if timer==12 then 
+      if timer==12 then
         init_smoke(-8,0)
         init_smoke(-8,8)
         init_smoke(16,0)
         init_smoke(16,8)
         destroy_object(_ENV)
-      end 
+      end
     elseif not has_key then
       hitbox=rectangle(-16,-16,48,48)
       local hit=player_here()
-      if hit and hit.key_count>0 then 
+      if hit and hit.key_count>0 then
         hit.key_count-=1
-        for i,f in ipairs(fruitrain) do 
-          if f.type==key then 
+        for i,f in ipairs(fruitrain) do
+          if f.type==key then
             local p=fruitrain[i+1] or {}
-            p.target,p.r=f.target,f.r 
+            p.target,p.r=f.target,f.r
             del(fruitrain,f)
             key_door_used[fruit_id]=true
-            f.target,f.r=_ENV,0 
+            f.target,f.r=_ENV,0
             has_key=true
             break
-          end 
-        end 
-      end 
+          end
+        end
+      end
       hitbox=rectangle(0,0,16,16)
     end
   end,
-  draw=function(_ENV) 
+  draw=function(_ENV)
     spr(80,x-timer\3,y,1,2)
     spr(81,x+8+timer\3,y,1,2)
-  end 
+  end
 }
 
 
@@ -780,11 +780,11 @@ sawblade={
     axis=sprite==112 and "x" or "y"
     r=_ENV[axis]
     while axis=="x" and r<lvl_pw and not fget(tile_at(r\8,y\8),0) or
-          axis=="y" and r<lvl_ph and not fget(tile_at(x\8,r\8),0) do 
+          axis=="y" and r<lvl_ph and not fget(tile_at(x\8,r\8),0) do
       r+=8
-    end 
+    end
     _ENV[axis]-=4
-    l=_ENV[axis] 
+    l=_ENV[axis]
     r-=12
   end,
   update=function(_ENV)
@@ -792,18 +792,18 @@ sawblade={
       dir=-1
     elseif _ENV[axis]<=l then
       dir=1
-    end 
+    end
     spd[axis]=appr(spd[axis],2*dir,0.4)
     local hit=player_here()
-    if hit then 
+    if hit then
       kill_player(hit)
-    end 
+    end
   end,
   draw=function(_ENV)
     for i=0,3 do
       spr(abs(2*_ENV[axis]-l-r)<10 and 113 or 112,x+(i%2)*8,y+i\2*8,1,1,i%2!=0,i>1)
     end
-  end 
+  end
 }
 --<red_bubble>--
 red_bubble_particle={
@@ -825,7 +825,7 @@ red_bubble_particle={
     pal(7,14)
     draw_obj_sprite(_ENV)
     pal()
-  end 
+  end
 }
 
 red_bubble={
@@ -852,15 +852,15 @@ red_bubble={
     local maxspd=3.5
     local hit=player_here()
     if hit and not invisible then
-      hit.move(-hit.x+x+1,-hit.y+y+1,1) 
-      if hit.x!=x+1 or hit.y!=y+1 then 
-        hit.invisible=false 
+      hit.move(-hit.x+x+1,-hit.y+y+1,1)
+      if hit.x!=x+1 or hit.y!=y+1 then
+        hit.invisible=false
         hit.init_smoke()
         hit.spd.x=sign(spd.x)
         hit.spd.y=sign(spd.y)
         hit.djump=max_djump
         red_bubble.hide(_ENV)
-      else 
+      else
         active=true
         hit.invisible=true
         hit.spd=vector(0,0)
@@ -870,29 +870,29 @@ red_bubble={
         if timer==0 then
           timer=1
           shake=5
-        elseif timer<15 then 
+        elseif timer<15 then
           timer+=1
-          if timer==15 then 
+          if timer==15 then
             init_smoke()
             local diry=btn(⬆️) and -1 or btn(⬇️) and 1 or 0
             local dirx=btn(➡️) and 1 or btn(⬅️) and -1 or diry==0 and (hit.flip.x and -1 or 1) or 0
             local k=maxspd/sqrt(dirx^2+diry^2)
             spd=vector(dirx*k,diry*k)
           end
-        else 
+        else
           init_object(red_bubble_particle,x,y,26)
-        end 
+        end
         if btnp(❎) then
-          if timer<15 then 
-            timer=14 
-          else 
+          if timer<15 then
+            timer=14
+          else
             hit.invisible=false
             hit.djump=max_djump
             hit.do_dash=true
             red_bubble.hide(_ENV)
           end
-        end 
-      end 
+        end
+      end
     elseif invisible then
       dead_timer+=1
       if dead_timer==60 then
@@ -902,8 +902,8 @@ red_bubble={
       end
     elseif active then
       red_bubble.hide(_ENV)
-    end 
-  end, 
+    end
+  end,
   draw=function(_ENV)
     t+=0.05
   	local x,y,t=x,y,t
@@ -926,12 +926,12 @@ red_bubble={
       pal(3,2)
       pal(7,8)
       local c=flr(st)
-      if abs(spd.x)+abs(spd.y)==0 then  
+      if abs(spd.x)+abs(spd.y)==0 then
         spr(1,x-1,y-1)
         st=-1
-      else 
+      else
         spr(1,x+(split"-1,0,1,1,1,0,-1,-1")[st+1],y+(split"-1,-1,-1,0,1,1,1,0")[st+1]) --spinny stuff
-      end 
+      end
       pal()
     end
   	for dx=2,5 do
@@ -940,7 +940,7 @@ red_bubble={
       rectfill(x+dx-bx,y+8-_t,x+dx-bx,y+8-_t,9)
   	end
   	rectfill(x+5+sx,y+1-sy,x+6+sx,y+2-sy,7)
-  end 
+  end
 }
 --</red_bubble>--
 
@@ -948,72 +948,72 @@ dash_switch={
   layer=0,
   init=function(_ENV)
     solid_obj=true
-    
+
     ogy=y
     ogx=x
     diry=sprite==68 and 1 or sprite==69 and -1 or 0
     dirx=sprite==83 and -1 or sprite==99 and 1 or 0
     hitbox=diry==0 and rectangle(dirx==1 and 3 or 0,0,5,10) or rectangle(0,3,10,5)
     t=0
-  end, 
+  end,
   update=function(_ENV)
-    if not active then 
+    if not active then
       local hit=check(player,-dirx,-diry) or check(theo_crystal,-dirx,-diry)
-      if hit then 
+      if hit then
         --<theo_crystal> --
-        if hit.type==theo_crystal or (hit.dash_effect_time>3 and 
-        (diry==0 or sign(hit.dash_target_y)==diry) and 
-        (dirx==0 or sign(hit.dash_target_x)==dirx)) then 
-          if hit.type==theo_crystal then 
+        if hit.type==theo_crystal or (hit.dash_effect_time>3 and
+        (diry==0 or sign(hit.dash_target_y)==diry) and
+        (dirx==0 or sign(hit.dash_target_x)==dirx)) then
+          if hit.type==theo_crystal then
             -- TODO: make theo not bounce off, after fixing solids system for theo
-          end 
+          end
           --</theo_crystal> --
           spd=vector(3*dirx,3*diry)
           active=true
           local closest
           for o in all(objects) do
-            if o.type==switch_door and o.delay==0 and not o.active and 
-            (not closest or (x-closest.x)^2+(y-closest.y)^2>(x-o.x)^2+(y-o.y)^2) then 
-              closest=o 
-            end 
-          end 
+            if o.type==switch_door and o.delay==0 and not o.active and
+            (not closest or (x-closest.x)^2+(y-closest.y)^2>(x-o.x)^2+(y-o.y)^2) then
+              closest=o
+            end
+          end
           (closest or {}).delay=10
         elseif diry==1 then
           spd.y=sign(ogy+2-y)
-        end 
+        end
       else
         spd.y=sign(ogy-y)
-      end 
-    else 
+      end
+    else
       spd=vector(mid(ogx+6*dirx-x,3,-3),mid(ogy+6*diry-y,3,-3))
-    end 
+    end
     t=(t+1)%45
   end,
   draw=function(_ENV)
     local l=t
     local x,y=x,y
-    if diry==0 then 
-      if dirx==1 then 
-        rectfill(x+3,y,x+7,y+9,6) 
+    if diry==0 then
+      if dirx==1 then
+        rectfill(x+3,y,x+7,y+9,6)
         rectfill(x+mid(3,l+1,8),y,x+mid(3,l+3,8),y+9,11)
       else
-        rectfill(x,y,x+4,y+9,6) 
+        rectfill(x,y,x+4,y+9,6)
         rectfill(x-mid(-4,l-6,1),y,x-mid(-4,l-4,1),y+9,11)
-      end 
+      end
       spr(83,x,y,1,1.25,dirx==1)
-    else 
-      
-      if diry==1 then 
-        rectfill(x,y+3,x+9,y+7,6) 
+    else
+
+      if diry==1 then
+        rectfill(x,y+3,x+9,y+7,6)
         rectfill(x,y+mid(3,l+1,8),x+9,y+mid(3,l+3,8),11)
       else
         rectfill(x,y,x+9,y+4,6)
         rectfill(x,y-mid(-4,l-6,1),x+9,y-mid(-4,l-4,1),11) --TODO: tokens
-      end 
-      
-      
+      end
+
+
       spr(68,x,y,1.25,1,false,diry==-1)
-    end 
+    end
     --rect(x,y,right(),bottom(),7)
   end
 }
@@ -1027,34 +1027,34 @@ switch_door={
     solid_obj=true
   end,
   update=function(_ENV)
-    if delay>0 then 
+    if delay>0 then
       delay-=1
-      if delay==0 then 
-        active=true 
-      end 
-    end 
-    if active then 
+      if delay==0 then
+        active=true
+      end
+    end
+    if active then
       spd.y=max(appr(spd.y,-3,1),ogy-22-y)
-    end 
+    end
   end,
   draw=function(_ENV)
-  
+
     local x,oy,y=x,ogy,y
-    if delay<5 and delay>2 then 
+    if delay<5 and delay>2 then
       x+=rnd(2)-1
-    end 
+    end
     rectfill(x+2,oy,x+5,y+23,6)
-    if delay>0 then 
+    if delay>0 then
       pal(6,11)
       rectfill(x+2,oy+max(delay-7,0)*3,x+5,y+23,11)
-    end 
+    end
     local o=(oy-y)
     local o2=max(o-8,0)
     sspr(16,40+o,8,8-o,x,y+o)
     sspr(16,40+o2,8,16-o2,x,y+8+o2)
     --spr(82,x,y+8+o,1,2-max((oy-y-8)/8,0),0)
     pal()
-  end 
+  end
 }
 
 
@@ -1069,56 +1069,56 @@ theo_crystal={
     hitbox=rectangle(2,6,10,8)
     y-=6
   end,
-  update=function(_ENV) 
-    if delay>0 then 
+  update=function(_ENV)
+    if delay>0 then
       delay-=1
-      if delay==0 then 
-        _g.pause_player=false 
-      end 
+      if delay==0 then
+        _g.pause_player=false
+      end
       y=appr(y,cplayer.y-12,4)
-    end 
+    end
 
-    if not cplayer then 
+    if not cplayer then
       hitbox=rectangle(0,0,16,16)
       local hit=player_here()
       hitbox=rectangle(2,6,10,8)
-      if hit and hit.dash_effect_time>0 then 
-        cplayer=hit 
+      if hit and hit.dash_effect_time>0 then
+        cplayer=hit
         hit.holding=_ENV
-        
+
         _g.pause_player=true
         delay=2
-      end 
-      
+      end
+
 
 
       --physics
-      
+
       local on_ground=is_solid(0,1)
-      if on_ground and not was_on_ground then 
+      if on_ground and not was_on_ground then
         init_smoke(2,8)
-      end 
-      if not on_ground then 
+      end
+      if not on_ground then
         spd.y=appr(spd.y,3,spd.y<=0 and 0.21 or 0.42)
-      elseif on_ground and spd.y==0 and pspdy>2.5 then 
+      elseif on_ground and spd.y==0 and pspdy>2.5 then
         spd.y=pspdy/-2.5
-      end 
+      end
 
       spd.x=appr(spd.x,0,0.2)
-      if pspdx!=0 and spd.x==0 and is_solid(sign(pspdx),0) then 
+      if pspdx!=0 and spd.x==0 and is_solid(sign(pspdx),0) then
         spd.x=-pspdx/1.7
-      end 
+      end
       pspdy=spd.y
       pspdx=spd.x
-      
+
       was_on_ground=on_ground
-    end 
-    if cplayer then flipx=cplayer.flip.x end 
+    end
+    if cplayer then flipx=cplayer.flip.x end
 
   end,
   draw=function(_ENV)
     spr(70,x,y,1.75,1.75,flipx)
-  end 
+  end
 }
 
 theo_door={
@@ -1132,26 +1132,26 @@ theo_door={
   end,
   update=function(_ENV)
     local theo_dist=10000
-    for o in all(objects) do 
-      if o.type==theo_crystal then 
-        theo_dist=(o.x-x)^2+(o.y-y)^2 
-      end 
-    end 
+    for o in all(objects) do
+      if o.type==theo_crystal then
+        theo_dist=(o.x-x)^2+(o.y-y)^2
+      end
+    end
     if state==0 then -- closing/closed
       spd.y=min(appr(spd.y,4,1.5),ogy-y)
-      if theo_dist<2300 then 
-        state=1 
-      end 
+      if theo_dist<2300 then
+        state=1
+      end
       if ogy-y<4 and r_height>=0 then
         r_height-=5
       end
-    else 
+    else
       spd.y=max(appr(spd.y,-4,1.5),ogy-22-y)
-      if theo_dist>3500 then 
+      if theo_dist>3500 then
         state=0
         r_height=23
-      end 
-    end 
+      end
+    end
   end,
   draw=function(_ENV)
 
@@ -1159,20 +1159,20 @@ theo_door={
     pal(6,4)
     local x,oy,y=x,ogy,y
     rectfill(x+2,oy,x+5,y+23,4)
-    if state==1 and y+23>oy+8 then 
+    if state==1 and y+23>oy+8 then
       pal(6,11)
       rectfill(x+2,oy+max((oy-y)/2-4,0),x+5,max(y+23,oy+8),11)
-    elseif state==0 and r_height>=0 then 
+    elseif state==0 and r_height>=0 then
       pal(6,8)
       rectfill(x+2,y,x+5,y+r_height,8)
-    end 
+    end
     local o=oy-y
     local o2=max(o-8,0)
     sspr(16,40+o,8,8-o,x,y+o)
     sspr(16,40+o2,8,16-o2,x,y+8+o2)
     --spr(82,x,y+8+o,1,2-max((oy-y-8)/8,0),0)
     pal()
-  end 
+  end
 }
 
 psfx=function(num)
@@ -1182,28 +1182,32 @@ psfx=function(num)
 end
 
 -- [tile dict]
-tiles={
-  [1]=player_spawn,
-  [8]=side_spring,
-  [9]=spring,
-  [10]=fruit,
-  [11]=fruit,
-  [12]=fly_fruit,
-  [15]=refill,
-  [23]=fall_floor,
-  [64]=key,
-  [80]=keydoor,
-  [112]=sawblade,
-  [113]=sawblade,
-  [67]=red_bubble,
-  [68]=dash_switch,
-  [69]=dash_switch,
-  [83]=dash_switch,
-  [99]=dash_switch,
-  [82]=switch_door,
-  [70]=theo_crystal,
-  [98]=theo_door
-}
+tiles={}
+foreach(split([[
+1,player_spawn
+8,side_spring
+9,spring
+10,fruit
+11,fruit
+12,fly_fruit
+15,refill
+23,fall_floor
+64,key
+80,keydoor
+112,sawblade
+113,sawblade
+67,red_bubble
+68,dash_switch
+69,dash_switch
+83,dash_switch
+99,dash_switch
+82,switch_door
+70,theo_crystal
+98,theo_door
+]],"\n"),function(t)
+ local tile,obj=unpack(split(t))
+ tiles[tile]=_ENV[obj]
+end)
 
 -- [object functions]
 
@@ -1290,9 +1294,9 @@ function init_object(type,sx,sy,tile)
 
   function move(ox,oy,start)
     -- <theo_crystal> --
-    if pause_player and type==player then 
-      return 
-    end 
+    if pause_player and type==player then
+      return
+    end
     -- </theo_crystal> --
     for axis in all{"x","y"} do
       rem[axis]+=axis=="x" and ox or oy
@@ -1380,9 +1384,9 @@ function kill_player(obj)
   for f in all(fruitrain) do
     if (f.golden) full_restart=true
     -- <keydoor> --
-    if f.type==fruit then 
+    if f.type==fruit then
       del(fruitrain,f)
-    end 
+    end
     -- </keydoor> --
   end
   --- </fruitrain> ---
@@ -1656,10 +1660,10 @@ end
 
 function draw_object(_ENV)
   -- <red_bubble> --
-  if not invisible then 
+  if not invisible then
     srand(draw_seed);
     (type.draw or draw_obj_sprite)(_ENV)
-  end 
+  end
   -- </red_bubble> --
 end
 
