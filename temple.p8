@@ -1133,68 +1133,68 @@ switch_door={
 }
 
 
-theo_crystal={
-  init=function(_ENV)
-    collides=true
-    pspdy=0
-    pspdx=0
-    was_on_ground=true
+--theo_crystal={
+--  init=function(_ENV)
+--    collides=true
+--    pspdy=0
+--    pspdx=0
+--    was_on_ground=true
 
-    delay=0
-    hitbox=rectangle(2,6,10,8)
-    y-=6
-  end,
-  update=function(_ENV)
-    if delay>0 then
-      delay-=1
-      if delay==0 then
-        _g.pause_player=false
-      end
-      y=appr(y,cplayer.y-12,4)
-    end
+--    delay=0
+--    hitbox=rectangle(2,6,10,8)
+--    y-=6
+--  end,
+--  update=function(_ENV)
+--    if delay>0 then
+--      delay-=1
+--      if delay==0 then
+--        _g.pause_player=false
+--      end
+--      y=appr(y,cplayer.y-12,4)
+--    end
 
-    if not cplayer then
-      hitbox=rectangle(0,0,16,16)
-      local hit=player_here()
-      hitbox=rectangle(2,6,10,8)
-      if hit and hit.dash_effect_time>0 then
-        cplayer=hit
-        hit.holding=_ENV
+--    if not cplayer then
+--      hitbox=rectangle(0,0,16,16)
+--      local hit=player_here()
+--      hitbox=rectangle(2,6,10,8)
+--      if hit and hit.dash_effect_time>0 then
+--        cplayer=hit
+--        hit.holding=_ENV
 
-        _g.pause_player=true
-        delay=2
-      end
+--        _g.pause_player=true
+--        delay=2
+--      end
 
 
 
-      --physics
+--      --physics
 
-      local on_ground=is_solid(0,1)
-      if on_ground and not was_on_ground then
-        init_smoke(2,8)
-      end
-      if not on_ground then
-        spd.y=appr(spd.y,3,spd.y<=0 and 0.21 or 0.42)
-      elseif on_ground and spd.y==0 and pspdy>2.5 then
-        spd.y=pspdy/-2.5
-      end
+--      local on_ground=is_solid(0,1)
+--      if on_ground and not was_on_ground then
+--        init_smoke(2,8)
+--      end
+--      if not on_ground then
+--        spd.y=appr(spd.y,3,spd.y<=0 and 0.21 or 0.42)
+--      elseif on_ground and spd.y==0 and pspdy>2.5 then
+--        spd.y=pspdy/-2.5
+--      end
 
-      spd.x=appr(spd.x,0,0.2)
-      if pspdx!=0 and spd.x==0 and is_solid(sign(pspdx),0) then
-        spd.x=-pspdx/1.7
-      end
-      pspdy=spd.y
-      pspdx=spd.x
+--      spd.x=appr(spd.x,0,0.2)
+--      if pspdx!=0 and spd.x==0 and is_solid(sign(pspdx),0) then
+--        spd.x=-pspdx/1.7
+--      end
+--      pspdy=spd.y
+--      pspdx=spd.x
 
-      was_on_ground=on_ground
-    end
-    if cplayer then flipx=cplayer.flip.x end
+--      was_on_ground=on_ground
+--    end
+--    if cplayer then flipx=cplayer.flip.x end
 
-  end,
-  draw=function(_ENV)
-    spr(70,x,y,1.75,1.75,flipx)
-  end
-}
+--  end,
+--  draw=function(_ENV)
+--    spr(70,x,y,1.75,1.75,flipx)
+--  end
+--}
 
 theo_door={
   layer=0,
@@ -1258,6 +1258,7 @@ swap_block={
     timer=-1
     animation_timer=0
     arrivaltime=-100
+    particles={}
     hitbox=sprite==72 and rectangle(0,0,24,16) or rectangle(0,0,16,24)
     for ox=-1,1 do
       for oy=-1,1 do
@@ -1286,6 +1287,17 @@ swap_block={
       timer+=1
       if spd.x!=0 or spd.y!=0 then
         arrivaltime=timer --once detination is reached, arrivaltime will not change anymore
+
+        for i=1, 1+rnd(3) do
+          add(particles,{
+            x=spd.x==0 and x+rnd(hitbox.w) or spd.x<0 and right() or left(),
+            y=spd.y==0 and y+rnd(hitbox.h) or spd.y<0 and bottom() or top(),
+            c=10+rnd(2),
+            t=12,
+            dx=-sign(spd.x),
+            dy=-sign(spd.y)
+          })
+        end
       end
       if timer==30 then
         timer=-1
@@ -1295,9 +1307,18 @@ swap_block={
       spd.x=mid(appr(spd.x,-2*dirx,0.25),startx-x,x-startx)
       spd.y=mid(appr(spd.y,-2*diry,0.25),starty-y,y-starty)
     end
+    foreach(particles, function(p)
+      p.x+=rnd(0.5)*(p.dx~=0 and p.dx or rnd(2)-1)
+      p.y+=rnd(0.5)*(p.dy~=0 and p.dy or rnd(2)-1)
+      p.c=rnd()<0.2 and p.c or 10+rnd(2)
+      p.t-=1
+      if p.t==0 then
+        del(particles,p)
+      end
+    end)
   end,
   draw=function(_ENV)
-    if pal==_pal then --don't draw track outline
+    if pal==_pal then --don't draw track and particle outline
       local l,r=min(startx,targetx),max(startx,targetx)+hitbox.w-8
       local u,d=min(starty,targety),max(starty,targety)+hitbox.h-8
       for i=l,r,r-l do
@@ -1313,6 +1334,9 @@ swap_block={
         spr(90,l,i)
         spr(90,r,i,1,1,true,false)
       end
+      foreach(particles, function(p)
+        pset(p.x,p.y,p.c)
+      end)
     end
     if timer!=-1 then
       pal(8,11)
