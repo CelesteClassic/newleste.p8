@@ -637,13 +637,13 @@ end
 -- [tile dict]
 tiles={}
 foreach(split([[
-1,player_spawn,
-8,side_spring,
-9,spring,
-10,fruit,
-11,fruit,
-12,fly_fruit,
-15,refill,
+1,player_spawn
+8,side_spring
+9,spring
+10,fruit
+11,fruit
+12,fly_fruit
+15,refill
 23,fall_floor
 ]],"\n"),function(t)
   local tile,obj=unpack(split(t))
