@@ -262,7 +262,7 @@ player={
     sprite = on_ground and (
       btn(⬇️) and 6 or -- crouch
       btn(⬆️) and 7 or -- look up
-      spd.x~=0 and h_input~=0 and 1+spr_off%4 or 1) -- walk or stand
+      spd.x*h_input~=0 and 1+spr_off%4 or 1) -- walk or stand
       or is_solid(h_input,0) and 5 or 3 -- wall slide or mid air
 
     update_hair(_ENV)
@@ -396,24 +396,30 @@ camera_trigger={
 }
 --</camtrigger>--
 
+
 spring={
   init=function(_ENV)
-    dy,delay=0,0
+    delta,dir=0,sprite==9 and 0 or is_solid(-1,0) and 1 or -1
   end,
   update=function(_ENV)
+    delta*=0.75
     local hit=player_here()
-    if delay>0 then
-      delay-=1
-    elseif hit then
-      hit.move(0,y-hit.y-4,1)
-      hit.spd.y,hit.dash_time,hit.dash_effect_time,dy,delay,hit.djump=-3,0,0,4,10,max_djump
-      hit.spd.x*=0.2
-      psfx(14)
+    if hit then
+      hit.move(dir==0 and 0 or x+dir*4-hit.x,dir==0 and y-hit.y-4 or 0,1)
+      hit.spd=vector(
+      dir==0 and hit.spd.x*0.2 or dir*3,
+      dir==0 and -3 or -1.5
+      )
+      hit.dash_time,hit.dash_effect_time,delta,hit.djump=0,0,4,max_djump
     end
-    dy*=0.75
   end,
   draw=function(_ENV)
-    sspr(72,0,8,8-flr(dy),x,y+dy)
+    local delta=flr(delta)
+    if dir==0 then
+      sspr(72,0,8,8-flr(delta),x,y+delta)
+    else
+      sspr(64,0,8-delta,8,dir==-1 and x+delta or x,y,8-delta,8,dir==1)
+    end
   end
 }
 
@@ -536,25 +542,30 @@ moving_platform = {
 
 -- </moving platform> --
 
-side_spring={
   init=function(_ENV)
-    dx,dir=0,is_solid(-1,0) and 1 or -1
+    delta,dir=0,sprite==9 and 0 or is_solid(-1,0) and 1 or -1
   end,
   update=function(_ENV)
+    delta*=0.75
     local hit=player_here()
     if hit then
-      hit.move(x+dir*4-hit.x,0,1)
-      hit.spd.x,hit.spd.y,hit.dash_time,hit.dash_effect_time,dx,hit.djump=dir*3,-1.5,0,0,4,max_djump
-      psfx(14)
+      hit.move(dir==0 and 0 or x+dir*4-hit.x,dir==0 and y-hit.y-4 or 0,1)
+      hit.spd=vector(
+      dir==0 and hit.spd.x*0.2 or dir*3,
+      dir==0 and -3 or -1.5
+      )
+      hit.dash_time,hit.dash_effect_time,delta,hit.djump=0,0,4,max_djump
     end
-    dx*=0.75
   end,
   draw=function(_ENV)
-    local dx=flr(dx)
-    sspr(64,0,8-dx,8,x+dx*(dir-1)/-2,y,8-dx,8,dir==1)
+    local delta=flr(delta)
+    if dir==0 then
+      sspr(72,0,8,8-flr(delta),x,y+delta)
+    else
+      sspr(64,0,8-delta,8,dir==-1 and x+delta or x,y,8-delta,8,dir==1)
+    end
   end
 }
-
 
 refill={
   init=function(_ENV)
@@ -759,7 +770,7 @@ end
 tiles={}
 foreach(split([[
 1,player_spawn
-8,side_spring
+8,spring
 9,spring
 10,fruit
 11,fruit
@@ -815,9 +826,6 @@ function init_object(type,sx,sy,tile)
   function oob(ox,oy)
     return not exit_left and left()+ox<0 or not exit_right and right()+ox>=lvl_pw or top()+oy<=-8
   end
-  function place_free(ox,oy)
-    return not (is_solid(ox,oy) or oob(ox,oy))
-  end
 
   function is_flag(ox,oy,flag)
     for i=mid(0,lvl_w-1,(left()+ox)\8),mid(0,lvl_w-1,(right()+ox)/8) do
@@ -870,7 +878,7 @@ function init_object(type,sx,sy,tile)
         local step,p=sign(amt),_ENV[axis]
         local d=axis=="x" and step or 0
         for i=start,abs(amt) do
-          if place_free(d,step-d) then
+          if not (is_solid(d,step-d) or oob(d,step-d)) then
             _ENV[axis]+=step
           else
             spd[axis],rem[axis]=0,0
