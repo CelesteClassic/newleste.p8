@@ -630,7 +630,7 @@ fall_floor={
     elseif state==1 then
       delay-=1
       if delay<=0 then
-        state,delay,collideable=2,60,false
+        state,delay,collideable=2,60--,false
       end
     -- invisible, waiting to reset
     elseif state==2 then
@@ -742,7 +742,7 @@ fly_fruit={
 
 lifeup={
   init=function(_ENV)
-    spd.y,duration,flash,outline,_g.sfx_timer=-0.25,30,0,false,20
+    spd.y,duration,flash,_g.sfx_timer,outline=-0.25,30,0,20--,false
     sfx(9)
   end,
   update=function(_ENV)
