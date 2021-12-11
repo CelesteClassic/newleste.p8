@@ -81,7 +81,8 @@ for i=0,10 do
   add(stars,{
     x=rnd128(),
     y=rnd128(),
-    off=rnd(1)
+    off=rnd(1),
+    spdy=rnd(0.5)+0.5
   })
 end
 stars_active=true
@@ -1419,11 +1420,16 @@ function _draw()
   -- bg stars effect
   if stars_active then --stars_active is star condition, should probably set it somewhere
     foreach(stars, function(c)
+      if stars_falling then
+        pal(7,6)
+        pal(6,12)
+        pal(13,12)
+      end
       local x=c.x+draw_x
       local y=c.y+draw_y
       local s=flr(sin(c.off)*2)
       if s==-2 then
-        pset(x,y,7)
+        pset(x,y,stars_falling and 12 or 7)
       elseif s==-1 then
         spr(73,x-3,y-3)
       elseif s==0 then
@@ -1434,6 +1440,7 @@ function _draw()
         sspr(72,40,16,16,x-7,y-7)
       end
       c.x+=-cam_spdx/4
+      c.y+=-cam_spdy/4
       c.off+=0.01
       if c.x>128 then
         c.x=-8
@@ -1441,6 +1448,15 @@ function _draw()
       elseif c.x<-8 then
         c.x=128
         c.y=rnd(120)
+      end
+      if stars_falling then
+        c.y+=c.spdy
+        if c.y>128 then
+          c.y=-8
+          c.x=rnd(120)
+          c.spdy=rnd(0.5)+0.5
+        end
+        pal()
       end
     end)
   end
