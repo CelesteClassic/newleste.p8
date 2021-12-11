@@ -88,8 +88,7 @@ player={
     collides=true
     create_hair(_ENV)
     -- <fruitrain> --
-    berry_timer=0
-    berry_count=0
+    berry_timer,berry_count=0,0
     -- </fruitrain> --
   end,
   update=function(_ENV)
@@ -123,15 +122,15 @@ player={
 	    kill_player(_ENV)
     end
 
-    if feather_state then 
+    if feather_state then
       local k=1
-      if h_input!=0 or v_input!=0 then 
+      if h_input!=0 or v_input!=0 then
         -- calculate direction and velocity
         movedir=appr_circ(movedir,atan2(h_input,v_input),0.04)
 
-        -- speed up if holding button 
+        -- speed up if holding button
         k=1.5
-      end 
+      end
       spd = vector(k*cos(movedir), k*sin(movedir))
 
       -- update tail
@@ -168,27 +167,27 @@ player={
 			add(feather_particles, particle)
 
       lifetime-=1
-      if lifetime==0 or btn(❎) then 
+      if lifetime==0 or btn(❎) then
         -- transform back to player
         p_dash=false
-        feather_state=false 
+        feather_state=false
         init_smoke()
         player.init(_ENV)
         spd.x/=2
         spd.y=spd.y<0 and -1.5 or 0
-      end 
+      end
     elseif feather_idle then
       spd.x*=0.8
       spd.y*=0.8
-      spawn_timer-=1 
-      if spawn_timer==0 then 
-        feather_idle=false 
-        feather_state=true 
-        if h_input==0 and v_input==0 then  
+      spawn_timer-=1
+      if spawn_timer==0 then
+        feather_idle=false
+        feather_state=true
+        if h_input==0 and v_input==0 then
           movedir=flip.x and 0.5 or 0
-        else 
+        else
           movedir=atan2(h_input,v_input)
-        end 
+        end
         lifetime=60
         bouncetimer=0
         tail={}
@@ -196,9 +195,9 @@ player={
         for i=0,15 do
           add(tail,{x=x+4,y=y+4,size=mid(1,2,9-i)})
         end
-      end 
-    end 
-    if not feather_state and not feather_idle then  
+      end
+    end
+    if not feather_state and not feather_idle then
       -- cursed token save: use else and goto here
 
       -- on ground checks
@@ -269,14 +268,12 @@ player={
         )
       else
         -- x movement
-        local maxrun=1
         local accel=on_ground and 0.6 or 0.4
-        local deccel=0.15
 
         -- set x speed
       spd.x=abs(spd.x)<=1 and
-        appr(spd.x,h_input*maxrun,accel) or
-        appr(spd.x,sign(spd.x)*maxrun,deccel)
+        appr(spd.x,h_input,accel) or
+        appr(spd.x,sign(spd.x),0.15)
 
         -- facing direction
       if spd.x~=0 then
@@ -287,10 +284,10 @@ player={
         local maxfall=2
 
         -- wall slide
-      if h_input~=0 and is_solid(h_input,0) then
+      if is_solid(h_input,0) then
           maxfall=0.4
           -- wall slide smoke
-          if rnd(10)<2 then
+        if rnd()<0.2 then
           init_smoke(h_input*6)
           end
         end
@@ -305,17 +302,14 @@ player={
         if grace>0 then
             -- normal jump
             psfx(18)
-          jbuffer=0
-          grace=0
-          spd.y=-2
+          jbuffer,grace,spd.y=0,0,-2
           init_smoke(0,4)
           else
             -- wall jump
           local wall_dir=(is_solid(-3,0) and -1 or is_solid(3,0) and 1 or 0)
             if wall_dir~=0 then
               psfx(19)
-            jbuffer=0
-            spd=vector(wall_dir*(-1-maxrun),-2)
+            jbuffer,spd=0,vector(wall_dir*-2,-2)
               -- wall jump smoke
             init_smoke(wall_dir*6)
             end
@@ -329,9 +323,7 @@ player={
       if djump>0 and dash then
         init_smoke()
         djump-=1
-        dash_time=4
-        _g.has_dashed=true
-        dash_effect_time=10
+        dash_time,_g.has_dashed,dash_effect_time=4, true, 10
           -- calculate dash speeds
         spd=vector(h_input~=0 and
         h_input*(v_input~=0 and d_half or d_full) or
@@ -341,10 +333,9 @@ player={
           psfx(20)
         _g.freeze=2
           -- dash target speeds and accels
-        dash_target_x=2*sign(spd.x)
-        dash_target_y=(spd.y>=0 and 2 or 1.5)*sign(spd.y)
-        dash_accel_x=spd.y==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
-        dash_accel_y=spd.x==0 and 1.5 or 1.06066017177
+        dash_target_x,dash_target_y,dash_accel_x,dash_accel_y=
+        2*sign(spd.x), (spd.y>=0 and 2 or 1.5)*sign(spd.y),
+        spd.y==0 and 1.5 or 1.06066017177 , spd.x==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
 
         -- emulate soft dashes
         if h_input~=0 and ph_input==-h_input and oob(ph_input,0) then
@@ -360,21 +351,25 @@ player={
 
       -- animation
     spr_off+=0.25
-    sprite = not on_ground and (is_solid(h_input,0) and 5 or 3) or  -- wall slide or mid air
+    sprite = on_ground and (
         btn(⬇️) and 6 or -- crouch
         btn(⬆️) and 7 or -- look up
-      spd.x~=0 and h_input~=0 and 1+spr_off%4 or 1 -- walk or stand
+      spd.x*h_input~=0 and 1+spr_off%4 or 1) -- walk or stand
+      or is_solid(h_input,0) and 5 or 3 -- wall slide or mid air
+
     update_hair(_ENV)
+
     -- exit level (except summit)
-    if (exit_right and left()>=lvl_pw or exit_top and y<-4 or exit_left and right()<0 or exit_bottom and top()>=lvl_ph) and levels[lvl_id+1] then
+    if (exit_right and left()>=lvl_pw or
+        exit_top and y<-4 or
+        exit_left and right()<0 or
+        exit_bottom and top()>=lvl_ph) and levels[lvl_id+1] then
         next_level()
       end
 
-      -- was on the ground
-    was_on_ground=on_ground
-    --previous horizontal input (for soft dashes)
-    ph_input=h_input
-    end 
+    -- was on the ground, previous horizontal input (for soft dashes)
+    was_on_ground,ph_input=on_ground, h_input
+    end
   end,
 
   draw=function(_ENV)
@@ -385,7 +380,7 @@ player={
 			pset(p.x+4, p.y+4,10)
     end)
 
-    if feather_state then 
+    if feather_state then
       if lifetime%5==1 then pal(10, 7) end
 
 			if lifetime < 10 then
@@ -395,16 +390,16 @@ player={
       foreach(tail,function(h)
 				circfill(h.x,h.y,h.size,10)
 			end)
-    elseif feather_idle then 
+    elseif feather_idle then
       circfill(x+4, y+4, 4, spawn_timer%4<2 and 7 or 10)
     --</feather> --
-    else 
+    else
       -- draw player hair and sprite
-    set_hair_color(djump)
+    pal(8,djump==1 and 8 or 12)
     draw_hair(_ENV)
     draw_obj_sprite(_ENV)
       pal()
-    end 
+    end
   end
 }
 
@@ -415,12 +410,9 @@ function create_hair(_ENV)
   end
 end
 
-function set_hair_color(djump)
-  pal(8,djump==1 and 8 or 12)
-end
 
 function update_hair(_ENV)
-  local last=vector(x+4-(flip.x and-2 or 3),y+(btn(⬇️) and 4 or 2.9))
+  local last=vector(x+(flip.x and 6 or 1),y+(btn(⬇️) and 4 or 2.9))
   for h in all(hair) do
     h.x+=(last.x-h.x)/1.5
     h.y+=(last.y+0.5-h.y)/1.5
@@ -429,7 +421,7 @@ function update_hair(_ENV)
 end
 
 function draw_hair(_ENV)
-  for i,h in pairs(hair) do
+  for i,h in ipairs(hair) do
     circfill(round(h.x),round(h.y),mid(4-i,1,2),8)
   end
 end
@@ -443,7 +435,7 @@ player_spawn={
     sprite=3
     target=y
     y=min(y+48,lvl_ph)
-		_g.cam_x,_g.cam_y=mid(x,64,lvl_pw-64),mid(y,64,lvl_ph-64)
+    _g.cam_x,_g.cam_y=mid(x,64,lvl_pw-64),mid(y,64,lvl_ph-64)
     spd.y=-4
     state=0
     delay=0
@@ -452,7 +444,6 @@ player_spawn={
     --- <fruitrain> ---
     for i=1,#fruitrain do
       local f=init_object(fruit,x,y,fruitrain[i].sprite)
-      f.follow=true
       f.target=i==1 and _ENV or fruitrain[i-1]
       f.r=fruitrain[i].r
       f.fruit_id=fruitrain[i].fruit_id
@@ -463,8 +454,7 @@ player_spawn={
   update=function(_ENV)
     -- jumping up
     if state==0 and y<target+16 then
-        state=1
-        delay=3
+        state,delay=1, 3
     -- falling
     elseif state==1 then
       spd.y+=0.5
@@ -475,10 +465,7 @@ player_spawn={
           delay-=1
         elseif y>target then
           -- clamp at target y
-          y=target
-          spd=vector(0,0)
-          state=2
-          delay=5
+          y,spd,state,delay=target,vector(0,0),2,5
           init_smoke(0,4)
           sfx(16)
         end
@@ -512,8 +499,7 @@ camera_trigger={
     if timer and timer>0 then
       timer-=1
       if timer==0 then
-        _g.cam_offx=offx
-        _g.cam_offy=offy
+        _g.cam_offx,_g.cam_offy=offx,offy
       else
         _g.cam_offx+=cam_gain*(offx-cam_offx)
         _g.cam_offy+=cam_gain*(offy-cam_offy)
@@ -525,73 +511,56 @@ camera_trigger={
 }
 --</camtrigger>--
 
+
 spring={
-	init=function(_ENV)
-		dy,delay=0,0
-	end,
-	update=function(_ENV)
-		local hit=player_here()
-		if delay>0 then
-			delay-=1
-		elseif hit then
-			hit.y,hit.spd.y,hit.dash_time,hit.dash_effect_time,dy,delay,hit.djump=y-4,-3,0,0,4,10,max_djump
-			hit.spd.x*=0.2
-			psfx(14)
-		end
-	  dy*=0.75
-	end,
-	draw=function(_ENV)
-		sspr(72,0,8,8-flr(dy),x,y+dy)
-	end
+  init=function(_ENV)
+    delta,dir=0,sprite==9 and 0 or is_solid(-1,0) and 1 or -1
+  end,
+  update=function(_ENV)
+    delta*=0.75
+    local hit=player_here()
+    if hit then
+      hit.move(dir==0 and 0 or x+dir*4-hit.x,dir==0 and y-hit.y-4 or 0,1)
+      hit.spd=vector(
+      dir==0 and hit.spd.x*0.2 or dir*3,
+      dir==0 and -3 or -1.5
+      )
+      hit.dash_time,hit.dash_effect_time,delta,hit.djump=0,0,4,max_djump
+    end
+  end,
+  draw=function(_ENV)
+    local delta=flr(delta)
+    if dir==0 then
+      sspr(72,0,8,8-flr(delta),x,y+delta)
+    else
+      sspr(64,0,8-delta,8,dir==-1 and x+delta or x,y,8-delta,8,dir==1)
+    end
+  end
 }
-
-side_spring={
-	init=function(_ENV)
-		dx,dir=0,is_solid(-1,0) and 1 or -1
-	end,
-	update=function(_ENV)
-		local hit=player_here()
-		if hit then
-			hit.x,hit.spd.x,hit.spd.y,hit.dash_time,hit.dash_effect_time,dx,hit.djump=x+dir*4,dir*3,-1.5,0,0,4,max_djump
-			psfx(14)
-		end
-		dx*=0.75
-	end,
-	draw=function(_ENV)
-		local dx=flr(dx)
-		sspr(64,0,8-dx,8,x+dx*(dir-1)/-2,y,8-dx,8,dir==1)
-	end
-}
-
 
 refill={
   init=function(_ENV)
-    offset=rnd()
-    timer=0
-    hitbox=rectangle(-1,-1,10,10)
-    active=true
+    offset,timer,hitbox=rnd(),0,rectangle(-1,-1,10,10)
   end,
   update=function(_ENV)
-    if active then
+    if timer>0 then
+      timer-=1
+      if timer==0 then
+        psfx(12)
+        init_smoke()
+      end
+    else
       offset+=0.02
       local hit=player_here()
       if hit and hit.djump<max_djump then
         psfx(11)
         init_smoke()
-        hit.djump=max_djump
-        active=false
-        timer=60
+        hit.djump,timer=max_djump,60
       end
-    elseif timer>0 then
-      timer-=1
-    else
-      psfx(12)
-      init_smoke()
-      active=true
     end
   end,
   draw=function(_ENV)
-    if active then
+    if timer==0 then
       spr(15,x,y+sin(offset)+0.5)
     else
       -- color(7)
@@ -604,9 +573,9 @@ refill={
       4,7,7,4
       7,3,4,0
       3,0,0,3]],"\n"),function(t)
-	        local o1,o2,o3,o4=unpack(split(t))
-	        line(x+o1,y+o2,x+o3,y+o4,7)
-	      end
+        local o1,o2,o3,o4=unpack(split(t))
+        line(x+o1,y+o2,x+o3,y+o4,7)
+      end
       )
     end
   end
@@ -614,8 +583,7 @@ refill={
 
 fall_floor={
   init=function(_ENV)
-    solid_obj=true
-    state=0
+    solid_obj,state=true,0
   end,
   update=function(_ENV)
     -- idling
@@ -632,17 +600,14 @@ fall_floor={
     elseif state==1 then
       delay-=1
       if delay<=0 then
-        state=2
-        delay=60--how long it hides for
-        collideable=false
+        state,delay,collideable=2,60--,false
       end
     -- invisible, waiting to reset
     elseif state==2 then
       delay-=1
       if delay<=0 and not player_here() then
         psfx(12)
-        state=0
-        collideable=true
+        state,collideable=0,true
         init_smoke()
       end
     end
@@ -655,10 +620,9 @@ fall_floor={
 smoke={
   layer=3,
   init=function(_ENV)
-    spd=vector(0.3+rnd(0.2),-0.1)
+    spd,flip=vector(0.3+rnd(0.2),-0.1),vector(maybe(),maybe())
     x+=-1+rnd(2)
     y+=-1+rnd(2)
-    flip=vector(maybe(),maybe())
   end,
   update=function(_ENV)
     sprite+=0.2
@@ -673,35 +637,26 @@ fruitrain={}
 fruit={
   check_fruit=true,
   init=function(_ENV)
-    y_=y
-    off=0
-    follow=false
-    tx=x
-    ty=y
-    golden=sprite==11
+    y_,off,tx,ty,golden=y,0,x,y,sprite==11
     if golden and deaths>0 then
       destroy_object(_ENV)
     end
   end,
   update=function(_ENV)
-    if not follow then
+    if not target then
       local hit=player_here()
       if hit then
-        hit.berry_timer=0
-        follow=true
-        target=#fruitrain==0 and hit or fruitrain[#fruitrain]
-        r=#fruitrain==0 and 12 or 8
+        hit.berry_timer,target,r=
+        0,#fruitrain==0 and hit or fruitrain[#fruitrain],#fruitrain==0 and 12 or 8
         add(fruitrain,_ENV)
       end
-    else
-      if target then
-        tx+=0.2*(target.x-tx)
-        ty+=0.2*(target.y-ty)
-        local a=atan2(x-tx,y_-ty)
-        local k=(x-tx)^2+(y_-ty)^2 > r^2 and 0.2 or 0.1
-        x+=k*(tx+r*cos(a)-x)
-        y_+=k*(ty+r*sin(a)-y_)
-      end
+    elseif target then
+      tx+=0.2*(target.x-tx)
+      ty+=0.2*(target.y-ty)
+      local dtx,dty=x-tx,y_-ty
+      local a,k=atan2(dtx,dty),dtx^2+dty^2 > r^2 and 0.2 or 0.1
+      x+=k*(r*cos(a)-dtx)
+      y_+=k*(r*sin(a)-dty)
     end
     off+=0.025
     y=y_+sin(off)*2.5
@@ -712,9 +667,7 @@ fruit={
 fly_fruit={
   check_fruit=true,
   init=function(_ENV)
-    start=y
-    step=0.5
-    sfx_delay=8
+    start,step,sfx_delay=y,0.5,8
   end,
   update=function(_ENV)
     --fly away
@@ -759,11 +712,7 @@ fly_fruit={
 
 lifeup={
   init=function(_ENV)
-    spd.y=-0.25
-    duration=30
-    flash=0
-    outline=false
-    _g.sfx_timer=20
+    spd.y,duration,flash,_g.sfx_timer,outline=-0.25,30,0,20--,false
     sfx(9)
   end,
   update=function(_ENV)
@@ -771,9 +720,9 @@ lifeup={
     if duration<=0 then
       destroy_object(_ENV)
     end
+    flash+=0.5
   end,
   draw=function(_ENV)
-    flash+=0.5
     --<fruitrain>--
     ?sprite<=5 and sprite.."000" or "1UP",x-4,y-4,7+flash%2
     --<fruitrain>--
@@ -781,12 +730,12 @@ lifeup={
 }
 kevin={
   init=function(_ENV)
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==65 do 
+    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==65 do
       hitbox.w+=8
-    end 
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==80 do 
+    end
+    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==80 do
       hitbox.h+=8
-    end 
+    end
     solid_obj=true
     collides=true
     retrace_list={}
@@ -795,16 +744,16 @@ kevin={
     shake=0
   end,
   update=function(_ENV)
-    if shake>0 then 
+    if shake>0 then
       shake-=1
     end
-    for xdir=-1,1 do 
-      for ydir=-1,1 do 
-        if (xdir+ydir)%2==1 then 
+    for xdir=-1,1 do
+      for ydir=-1,1 do
+        if (xdir+ydir)%2==1 then
           local hit=check(player,xdir,ydir)
-          if hit and hit.dash_effect_time>0 and 
-            (xdir!=0 and sign(hit.dash_target_x)==-xdir or ydir!=0 and sign(hit.dash_target_y)==-ydir) and 
-            (not active or xdir!=dirx and ydir!=diry) then 
+          if hit and hit.dash_effect_time>0 and
+            (xdir!=0 and sign(hit.dash_target_x)==-xdir or ydir!=0 and sign(hit.dash_target_y)==-ydir) and
+            (not active or xdir!=dirx and ydir!=diry) then
             hit.spd=vector(xdir*1.5,ydir==1 and 0.5 or -1.5)
             hit.dash_time=-1
             --hit.dash_effect_time=0
@@ -813,91 +762,91 @@ kevin={
             dirx,diry=xdir,ydir
             spd=vector(0,0)
             hit_timer=10
-            active=true 
+            active=true
             shake=4
-          end 
-        end 
-      end 
-    end 
+          end
+        end
+      end
+    end
 
-    if hit_timer>0 then 
+    if hit_timer>0 then
       hit_timer-=1
-      if hit_timer==0 then 
+      if hit_timer==0 then
         spd=vector(0.2*dirx,0.2*diry)
-      end 
-    elseif active  then 
-      if spd.x==0 and spd.y==0 then 
+      end
+    elseif active  then
+      if spd.x==0 and spd.y==0 then
         retrace_timer=10
-        active=false 
+        active=false
         shake=5
-        if dirx!=0 then 
+        if dirx!=0 then
           for oy=0,hitbox.h-1,8 do
             init_smoke(dirx==-1 and -8 or hitbox.w,oy)
-          end 
-        else 
+          end
+        else
           for ox=0,hitbox.w-1,8 do
             init_smoke(ox,diry==-1 and -8 or hitbox.h)
-          end 
-        end 
-      else 
+          end
+        end
+      else
         spd=vector(appr(spd.x,3*dirx,0.2),appr(spd.y,3*diry,0.2))
-      end 
-    elseif retrace_timer>0 then 
-      retrace_timer-=1 
-      if retrace_timer==0 then 
-        retrace=true 
-      end 
-    elseif retrace then 
+      end
+    elseif retrace_timer>0 then
+      retrace_timer-=1
+      if retrace_timer==0 then
+        retrace=true
+      end
+    elseif retrace then
       local last=retrace_list[#retrace_list]
-      if not last then 
-        retrace=false 
-      elseif last.x==x and last.y==y then 
+      if not last then
+        retrace=false
+      elseif last.x==x and last.y==y then
         del(retrace_list,last)
-        retrace_timer=5 
+        retrace_timer=5
         shake=4
         spd=vector(0,0)
         rem=vector(0,0)
-      else 
+      else
         spd=vector(appr(spd.x,sign(last.x-x),0.2),appr(spd.y,sign(last.y-y),0.2))
-      end 
-    end 
+      end
+    end
   end,
   draw=function(_ENV)
-    local x,y=x,y 
-    if shake>0 then 
+    local x,y=x,y
+    if shake>0 then
       x+=rnd(2)-1
       y+=rnd(2)-1
-    end 
+    end
     local r,b=x+hitbox.w-8,y+hitbox.h-8
     local up,down,left,right=active and diry==-1,active and diry==1,active and dirx==-1,active and dirx==1
-    for sx=x+8, r-8,8 do 
+    for sx=x+8, r-8,8 do
       pal(12, up and 7 or 12)
       spr(65,sx,y)
       pal(12, down and 7 or 12)
       spr(65,sx,b,1,1,false,true)
-    end 
-    for sy=y+8, b-8,8 do 
+    end
+    for sy=y+8, b-8,8 do
       pal(12, left and 7 or 12)
       spr(80,x,sy)
       pal(12, right and 7 or 12)
       spr(80,r,sy,1,1,true)
-    end 
+    end
     rectfill(x+8,y+8,r,b,4)
-    
+
     -- spr(64,x,y)
     -- spr(64,r-8,y,1,1,true)
     -- spr(64,x,b-8,1,1,false,true)
     -- spr(64,r-8,b-8,1,1,true,true)
     local lookup={down,left,up,right,down}
-    for i=0,3 do 
+    for i=0,3 do
       pal(12,(lookup[i+1] or lookup[i+2]) and 7 or 12)
       spr(64,i<=1 and x or r, (i-1)\2==0 and y or b,1,1,i>=2,(i-1)\2!=0)
     end
-    pal() 
+    pal()
     -- face
     spr(active and 67 or 66,x+hitbox.w/2-4,y+hitbox.h/2-4)
-  end 
-    
+  end
+
 }
 
 bumper={
@@ -907,25 +856,25 @@ bumper={
     outline=false
   end,
   update=function(_ENV)
-    if hittimer>0 then 
+    if hittimer>0 then
       hittimer-=1
-      if hittimer==0 then 
+      if hittimer==0 then
         init_smoke(4,4)
-      end 
-    else 
+      end
+    else
       local hit=player_here()
-      if hit then 
+      if hit then
         hit.init_smoke()
         local dx,dy=x+8-(hit.x+4),y+8-(hit.y+4)
         local angle=atan2(dx,dy)
         hit.spd = abs(dx) > abs(dy) and vector(sign(dx)*-2.8,-2) or --  -3.5*(cos(0.9),sin(0.9))
                  vector(-3*cos(angle),-3*sin(angle))
-        hit.dash_time,hit.djump=-1,max_djump 
-        hittimer=20 
-      end 
-    end 
+        hit.dash_time,hit.djump=-1,max_djump
+        hittimer=20
+      end
+    end
   end,
-  draw=function(_ENV) 
+  draw=function(_ENV)
     local rx,ry=x+8,y+8
 		if hittimer>0 then
 			pal(12, 1)
@@ -944,7 +893,7 @@ bumper={
 		if hittimer == 1 then
 			circfill(rx, ry, 4, 6)
 		end
-  end 
+  end
 }
 
 --<feather> --
@@ -960,34 +909,34 @@ feather={
     timer=0
   end,
   update=function(_ENV)
-    if timer>0 then 
-      timer-=1 
-      if timer==0 then 
+    if timer>0 then
+      timer-=1
+      if timer==0 then
         init_smoke()
-      end 
-    else 
+      end
+    else
       sprtimer+=0.2
       offset+=0.01
       y=starty+0.5+2*sin(offset)
-      local hit=player_here() 
-      if hit then 
-        init_smoke() 
-        timer=60 
-        if hit.feather_state then 
+      local hit=player_here()
+      if hit then
+        init_smoke()
+        timer=60
+        if hit.feather_state then
           hit.lifetime=60
-        else 
+        else
           hit.spawn_timer,hit.feather_idle,hit.dash_time,hit.dash_effect_time=10,true,0,0
           hit.spd=vector(mid(hit.spd.x,-1.5,1.5),mid(hit.spd.y,-1.5,1.5))
-        end 
-      end 
-    end 
+        end
+      end
+    end
   end,
   draw=function(_ENV)
     if timer==0 then
       local d=flr(sprtimer%6)
       spr(70+min(d,6-d),x,y, 1, 1,d>3)
-    end 
-  end 
+    end
+  end
 }
 
 -- </feather>
@@ -998,19 +947,23 @@ psfx=function(num)
 end
 
 -- [tile dict]
-tiles={
-  [1]=player_spawn,
-  [8]=side_spring,
-  [9]=spring,
-  [10]=fruit,
-  [11]=fruit,
-  [12]=fly_fruit,
-  [15]=refill,
-  [23]=fall_floor,
-  [64]=kevin,
-  [68]=bumper,
-  [70]=feather
-}
+tiles={}
+foreach(split([[
+1,player_spawn
+8,spring
+9,spring
+10,fruit
+11,fruit
+12,fly_fruit
+15,refill
+23,fall_floor
+64,kevin
+68,bumper
+70,feather
+]],"\n"),function(t)
+ local tile,obj=unpack(split(t))
+ tiles[tile]=_ENV[obj]
+end)
 
 
 -- [object functions]
@@ -1054,9 +1007,6 @@ function init_object(type,sx,sy,tile)
   function oob(ox,oy)
     return not exit_left and left()+ox<0 or not exit_right and right()+ox>=lvl_pw or top()+oy<=-8
   end
-  function place_free(ox,oy)
-    return not (is_solid(ox,oy) or oob(ox,oy))
-  end
 
   function is_flag(ox,oy,flag)
     for i=mid(0,lvl_w-1,(left()+ox)\8),mid(0,lvl_w-1,(right()+ox)/8) do
@@ -1086,7 +1036,7 @@ function init_object(type,sx,sy,tile)
   end
   function check(type,ox,oy)
     for other in all(objects) do
-      if other and other.type==type and other~=_ENV and objcollide(other,ox,oy) then
+      if other.type==type and other~=_ENV and objcollide(other,ox,oy) then
         return other
       end
     end
@@ -1101,15 +1051,13 @@ function init_object(type,sx,sy,tile)
       rem[axis]+=axis=="x" and ox or oy
       local amt=round(rem[axis])
       rem[axis]-=amt
-      local upmoving=axis=="y" and amt<0
-      local riding=not player_here() and check(player,0,upmoving and amt or -1)
-      local movamt
+      local upmoving,riding,movamt=
+      axis=="y" and amt<0,not player_here() and check(player,0,upmoving and amt or -1)
       if collides then
-        local step=sign(amt)
+        local step,p=sign(amt),_ENV[axis]
         local d=axis=="x" and step or 0
-        local p=_ENV[axis]
         for i=start,abs(amt) do
-          if place_free(d,step-d) then
+          if not (is_solid(d,step-d) or oob(d,step-d)) then
             _ENV[axis]+=step
           else
             spd[axis],rem[axis]=0,0
@@ -1135,8 +1083,8 @@ function init_object(type,sx,sy,tile)
         collideable=false
         local hit=player_here()
         if hit and solid_obj then
-          hit.move(axis=="x" and (amt>0 and right()+1-hit.left() or amt<0 and left()-hit.right()-1) or 0,
-                  axis=="y" and (amt>0 and bottom()+1-hit.top() or amt<0 and top()-hit.bottom()-1) or 0,
+          hit.move(axis~="x" and 0 or amt>0 and right()+1-hit.left() or amt<0 and left()-hit.right()-1,
+                  axis~="y" and 0 or amt>0 and bottom()+1-hit.top() or amt<0 and top()-hit.bottom()-1,
                   1)
           if player_here() then
             kill_player(hit)
@@ -1197,29 +1145,28 @@ end
 
 
 function next_level()
-  local next_lvl=lvl_id+1
-  load_level(next_lvl)
+  load_level(lvl_id+1)
 end
 
 function load_level(id)
-  has_dashed=false
-
   --remove existing objects
   foreach(objects,destroy_object)
+
+  has_dashed=false
+
 
   --reset camera speed
   cam_spdx,cam_spdy=0,0
 
   local diff_level=lvl_id~=id
 
-		--set level index
+  --set level index
   lvl_id=id
 
   --set level globals
   local tbl=split(levels[lvl_id])
   lvl_x,lvl_y,lvl_w,lvl_h=tbl[1]*16,tbl[2]*16,tbl[3]*16,tbl[4]*16
-  lvl_pw=lvl_w*8
-  lvl_ph=lvl_h*8
+  lvl_pw,lvl_ph=lvl_w*8,lvl_h*8
 
   local exits=tonum(tbl[5]) or 0b0001
   exit_top,exit_right,exit_bottom,exit_left=exits&1!=0,exits&2!=0,exits&4!=0, exits&8!=0
@@ -1230,9 +1177,20 @@ function load_level(id)
   --reload map
   if diff_level then
     reload()
+  end
     --chcek for mapdata strings
-    if mapdata[lvl_id] then
-      replace_mapdata(0,0,lvl_w,lvl_h,mapdata[lvl_id])
+  if mapdata[lvl_id] then
+    --hex loaded levels go at (0,0), despite what the levels table says (to make everhorn nicer)
+    lvl_x,lvl_y=0,0
+    if diff_level then
+      --replace mapdata with hex
+      for y_=0,lvl_h*2-1,2 do
+        local offset=y_<64 and 8192 or 0
+        for x_=1,lvl_w*2,2 do
+          local i=x_+y_*lvl_w
+          poke(offset+y_*64+x_/2,"0x"..sub(mapdata[lvl_id],i,i+1))
+        end
+      end
     end
   end
 
@@ -1245,6 +1203,7 @@ function load_level(id)
       end
     end
   end
+
   foreach(objects,function(_ENV)
     (type.end_init or time)(_ENV)
   end)
@@ -1253,9 +1212,9 @@ function load_level(id)
   --generate camera triggers
   cam_offx,cam_offy=0,0
   for s in all(camera_offsets[lvl_id]) do
-    local tx,ty,tw,th,offx,offy=unpack(split(s))
-    local t=init_object(camera_trigger,tx*8,ty*8)
-    t.hitbox,t.offx,t.offy=rectangle(0,0,tw*8,th*8),offx,offy
+    local tx,ty,tw,th,offx_,offy_=unpack(split(s))
+    local _ENV=init_object(camera_trigger,tx*8,ty*8)
+    hitbox.w,hitbox.h,offx,offy=tw*8,th*8,offx_,offy_
   end
   --</camtrigger>--
 end
@@ -1290,10 +1249,10 @@ function _update()
 
   -- restart (soon)
   if delay_restart>0 then
-  	cam_spdx,cam_spdy=0,0
+    cam_spdx,cam_spdy=0,0
     delay_restart-=1
     if delay_restart==0 then
-    -- <fruitrain> --
+      -- <fruitrain> --
       if full_restart then
         full_restart=false
         _init()
@@ -1331,21 +1290,19 @@ function _draw()
   -- reset all palette values
   pal()
 
-	--set cam draw position
-  draw_x=round(cam_x)-64
-  draw_y=round(cam_y)-64
+  --set cam draw position
+  draw_x,draw_y=round(cam_x)-64,round(cam_y)-64
   camera(draw_x,draw_y)
 
   -- draw bg color
   cls()
 
   -- bg clouds effect
-  foreach(clouds,function(c)
-    c.x+=c.spd-cam_spdx
-    rectfill(c.x+draw_x,c.y+draw_y,c.x+c.w+draw_x,c.y+16-c.w*0.1875+draw_y,1)
-    if c.x>128 then
-      c.x=-c.w
-      c.y=rnd(120)
+  foreach(clouds,function(_ENV)
+    x+=spd-_g.cam_spdx
+    _g.rectfill(x+_g.draw_x,y+_g.draw_y,x+w+_g.draw_x,y+16-w*0.1875+_g.draw_y,1)
+    if x>128 then
+      x,y=-w,_g.rnd(120)
     end
   end)
 
@@ -1397,11 +1354,9 @@ function _draw()
     off+=_g.min(0.05,spd/32)
     _g.rectfill(x+_g.draw_x,y+_g.draw_y,x+s+_g.draw_x,y+s+_g.draw_y,c)
     if x>132 then
-      x=-4
-      y=_g.rnd128()
-   	elseif x<-4 then
-     	x=128
-     	y=_g.rnd128()
+      x,y=-4,_g.rnd128()
+    elseif x<-4 then
+      x,y=128,_g.rnd128()
     end
   end)
 
@@ -1417,10 +1372,10 @@ function _draw()
   end)
   -- draw time
   if ui_timer>=-30 then
-  	if ui_timer<0 then
-  		draw_time(draw_x+4,draw_y+4)
-  	end
-  	ui_timer-=1
+    if ui_timer<0 then
+      draw_time(draw_x+4,draw_y+4)
+    end
+    ui_timer-=1
   end
 
   -- <transition>
@@ -1474,7 +1429,7 @@ function round(x)
 end
 
 function appr(val,target,amount)
-  return val>target and max(val-amount,target) or min(val+amount,target)
+  return mid(val-amount,val+amount,target)
 end
 
 function sign(v)
@@ -1539,37 +1494,23 @@ mapdata={
 
 function move_camera(obj)
   --<camtrigger>--
-  cam_spdx=cam_gain*(4+obj.x-cam_x+cam_offx)
-  cam_spdy=cam_gain*(4+obj.y-cam_y+cam_offy)
+  cam_spdx,cam_spdy=cam_gain*(4+obj.x-cam_x+cam_offx),cam_gain*(4+obj.y-cam_y+cam_offy)
   --</camtrigger>--
 
   cam_x+=cam_spdx
   cam_y+=cam_spdy
 
   --clamp camera to level boundaries
-  local clamped=mid(cam_x,64,lvl_pw-64)
-  if cam_x~=clamped then
-    cam_spdx=0
-    cam_x=clamped
+  local clampx,clampy=mid(cam_x,64,lvl_pw-64),mid(cam_y,64,lvl_ph-64)
+  if cam_x~=clampx then
+    cam_spdx,cam_x=0,clampx
   end
-  clamped=mid(cam_y,64,lvl_ph-64)
-  if cam_y~=clamped then
-    cam_spdy=0
-    cam_y=clamped
+  if cam_y~=clampy then
+    cam_spdy,cam_y=0,clampy
   end
 end
 
 
---replace mapdata with hex
-function replace_mapdata(x,y,w,h,data)
-  for y_=0,h*2-1,2 do
-    local offset=y*2+y_<64 and 8192 or 0
-    for x_=1,w*2,2 do
-      local i=x_+y_*w
-      poke(offset+x+y*128+y_*64+x_/2,"0x"..sub(data,i,i+1))
-    end
-  end
-end
 
 --[[
 
