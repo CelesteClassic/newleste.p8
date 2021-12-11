@@ -22,15 +22,17 @@ end
 
 -- [globals]
 
---tables
-objects,got_fruit={},{}
---timers
-freeze,delay_restart,sfx_timer,music_timer,ui_timer=0,0,0,0,-99
---camera values
---<camtrigger>--
-cam_x,cam_y,cam_spdx,cam_spdy,cam_gain,cam_offx,cam_offy=0,0,0,0,0.25,0,0
---</camtrigger>--
-_pal=pal --for outlining
+
+objects,got_fruit, --tables
+freeze,delay_restart,sfx_timer,music_timer,ui_timer, --timers
+cam_x,cam_y,cam_spdx,cam_spdy,cam_gain,cam_offx,cam_offy, --camera values <camtrigger>
+_pal --for outlining
+=
+{},{},
+0,0,0,0,-99,
+0,0,0,0,0.25,0,0,
+pal
+
 
 local _g=_ENV --for writing to global vars
 
@@ -91,18 +93,16 @@ stars_active=true
 player={
   layer=2,
   init=function(_ENV)
-    grace,jbuffer=0,0
-    djump=max_djump
-    dash_time,dash_effect_time=0,0
-    dash_target_x,dash_target_y=0,0
-    dash_accel_x,dash_accel_y=0,0
-    hitbox=rectangle(1,3,6,5)
-    spr_off=0
-    collides=true
+    djump, hitbox, collides = max_djump, rectangle(1,3,6,5), true
+
+    --<fruitrain>--
+    -- ^ refers to setting berry_timer and berry_count to 0
+    for var in all(split"grace,jbuffer,dash_time,dash_effect_time,\z
+                         dash_target_x,dash_target_y,dash_accel_x,dash_accel_y,\z
+                         spr_off,berry_timer,berry_count") do
+      _ENV[var]=0
+    end
     create_hair(_ENV)
-    -- <fruitrain> --
-    berry_timer,berry_count=0,0
-    -- </fruitrain> --
   end,
   update=function(_ENV)
     if pause_player then
@@ -137,8 +137,7 @@ player={
     if on_ground then
       berry_timer+=1
     else
-      berry_timer=0
-      berry_count=0
+      berry_timer, berry_count=0, 0
     end
 
     for f in all(fruitrain) do
@@ -146,15 +145,14 @@ player={
         -- to be implemented:
         -- save berry
         -- save golden
-        berry_timer=-5
 
         berry_count+=1
         _g.berry_count+=1
-        got_fruit[f.fruit_id]=true
+        berry_timer, got_fruit[f.fruit_id]=-5, true
         init_object(lifeup, f.x, f.y,berry_count)
         del(fruitrain, f)
-        destroy_object(f)
-        if (fruitrain[1]) fruitrain[1].target=_ENV
+        destroy_object(f);
+        (fruitrain[1] or {}).target=_ENV
       end
     end
     -- </fruitrain> --
@@ -248,8 +246,7 @@ player={
       end
 
       -- dash
-      local d_full=5
-      local d_half=3.5355339059 -- 5 * sqrt(2)
+      local d_full, d_half = 5, 3.5355339059 -- 5 * sqrt(2)
 
       if djump>0 and dash then
         init_smoke()
@@ -441,7 +438,7 @@ spring={
   draw=function(_ENV)
     local delta=flr(delta)
     if dir==0 then
-      sspr(72,0,8,8-flr(delta),x,y+delta)
+      sspr(72,0,8,8-delta,x,y+delta)
     else
       sspr(64,0,8-delta,8,dir==-1 and x+delta or x,y,8-delta,8,dir==1)
     end
@@ -514,7 +511,7 @@ fall_floor={
         state,delay,collideable=2,60--,false
       end
     -- invisible, waiting to reset
-    elseif state==2 then
+    else
       delay-=1
       if delay<=0 and not player_here() then
         psfx(12)
@@ -554,20 +551,20 @@ fruit={
     end
   end,
   update=function(_ENV)
-    if not target then
-      local hit=player_here()
-      if hit then
-        hit.berry_timer,target,r=
-        0,#fruitrain==0 and hit or fruitrain[#fruitrain],#fruitrain==0 and 12 or 8
-        add(fruitrain,_ENV)
-      end
-    elseif target then
+    if target then
       tx+=0.2*(target.x-tx)
       ty+=0.2*(target.y-ty)
       local dtx,dty=x-tx,y_-ty
       local a,k=atan2(dtx,dty),dtx^2+dty^2 > r^2 and 0.2 or 0.1
       x+=k*(r*cos(a)-dtx)
       y_+=k*(r*sin(a)-dty)
+    else
+      local hit=player_here()
+      if hit then
+        hit.berry_timer,target,r=
+        0,#fruitrain==0 and hit or fruitrain[#fruitrain],#fruitrain==0 and 12 or 8
+        add(fruitrain,_ENV)
+      end
     end
     off+=0.025
     y=y_+sin(off)*2.5
@@ -583,13 +580,11 @@ fly_fruit={
   update=function(_ENV)
     --fly away
     if has_dashed then
-     if sfx_delay>0 then
       sfx_delay-=1
-      if sfx_delay<=0 then
+      if sfx_delay==0 then
        _g.sfx_timer=20
        sfx(10)
       end
-     end
       spd.y=appr(spd.y,-3.5,0.25)
       if y<-16 then
         destroy_object(_ENV)
@@ -1085,27 +1080,17 @@ end)
 
 -- [object functions]
 
-function init_object(type,sx,sy,tile)
+function init_object(_type,sx,sy,tile)
   --generate and check berry id
   local id=sx..","..sy..","..lvl_id
-  if type.check_fruit and got_fruit[id] then
+  if _type.check_fruit and got_fruit[id] then
     return
   end
   --local _g=_g
-  local _ENV={
-    type=type,
-    collideable=true,
-    sprite=tile,
-    flip=vector(),
-    x=sx,
-    y=sy,
-    hitbox=rectangle(0,0,8,8),
-    spd=vector(0,0),
-    rem=vector(0,0),
-    fruit_id=id,
-    outline=true,
-    draw_seed=rnd()
-  }
+  local _ENV={}
+  type, collideable, sprite, flip, x, y, hitbox, spd, rem, fruit_id, outline, draw_seed=
+  _type, true, tile, _g.vector(), sx, sy, _g.rectangle(0,0,8,8), _g.vector(0,0), _g.vector(0,0), id, true, _g.rnd()
+
   _g.setmetatable(_ENV,{__index=_g})
   function left() return x+hitbox.x end
   function right() return left()+hitbox.w-1 end
@@ -1118,7 +1103,7 @@ function init_object(type,sx,sy,tile)
         return true
       end
     end
-    return (oy>0 and not is_flag(ox,0,3) and is_flag(ox,oy,3)) or  -- one way platform or
+    return oy>0 and not is_flag(ox,0,3) and is_flag(ox,oy,3) or  -- one way platform or
             is_flag(ox,oy,0) -- solid terrain
             -- <dream_block> --
            or check(dream_block,ox,oy) and (dash_effect_time<=2 or
@@ -1139,13 +1124,11 @@ function init_object(type,sx,sy,tile)
           if fget(tile,flag) and (flag~=3 or j*8>bottom()) then
             return true
           end
-        else
-          if ({spd.y>=0 and bottom()%8>=6,
-            spd.y<=0 and top()%8<=2,
-            spd.x<=0 and left()%8<=2,
-            spd.x>=0 and right()%8>=6})[tile-15] then
+        elseif ({spd.y>=0 and bottom()%8>=6,
+          spd.y<=0 and top()%8<=2,
+          spd.x<=0 and left()%8<=2,
+          spd.x>=0 and right()%8>=6})[tile-15] then
             return true
-          end
         end
       end
     end
@@ -1175,8 +1158,9 @@ function init_object(type,sx,sy,tile)
       rem[axis]+=axis=="x" and ox or oy
       local amt=round(rem[axis])
       rem[axis]-=amt
-      local upmoving,riding,movamt=
-      axis=="y" and amt<0,not player_here() and check(player,0,upmoving and amt or -1)
+
+      local upmoving=axis=="y" and amt<0
+      local riding,movamt=not player_here() and check(player,0,upmoving and amt or -1)--,nil
       if collides then
         local step,p=sign(amt),_ENV[axis]
         local d=axis=="x" and step or 0
@@ -1276,11 +1260,8 @@ function load_level(id)
   --remove existing objects
   foreach(objects,destroy_object)
 
-  has_dashed=false
-
-
-  --reset camera speed
-  cam_spdx,cam_spdy=0,0
+  --reset camera speed, drawing timer setup
+  ui_timer,cam_spdx,cam_spdy,has_dashed=5,0,0--,false
 
   local diff_level=lvl_id~=id
 
@@ -1289,17 +1270,22 @@ function load_level(id)
 
   --set level globals
   local tbl=split(levels[lvl_id])
-  --<badeline>--
-  lvl_x,lvl_y,lvl_w,lvl_h,bad_num=tbl[1]*16,tbl[2]*16,tbl[3]*16,tbl[4]*16,tbl[6] or 0
-  --</badeline>--
-  lvl_pw,lvl_ph=lvl_w*8,lvl_h*8
+  for i=1,4 do
+    _ENV[split"lvl_x,lvl_y,lvl_w,lvl_h"[i]]=tbl[i]*16
+  end
 
+  lvl_pw,lvl_ph=lvl_w*8,lvl_h*8
+  --<badeline>--
+  bad_num=tbl[6] or 0
+  --</badeline>--
 
   local exits=tonum(tbl[5]) or 0b0001
-  exit_top,exit_right,exit_bottom,exit_left=exits&1!=0,exits&2!=0,exits&4!=0, exits&8!=0
 
-  --drawing timer setup
-  ui_timer=5
+  -- exit_top,exit_right,exit_bottom,exit_left=exits&1!=0,exits&2!=0,exits&4!=0, exits&8!=0
+  for i,v in ipairs(split"exit_top,exit_right,exit_bottom,exit_left") do
+    _ENV[v]=exits&(0.5<<i)~=0
+  end
+
 
   --reload map
   if diff_level then
@@ -1311,12 +1297,8 @@ function load_level(id)
     lvl_x,lvl_y=0,0
     if diff_level then
       --replace mapdata with hex
-      for y_=0,lvl_h*2-1,2 do
-        local offset=y_<64 and 8192 or 0
-        for x_=1,lvl_w*2,2 do
-          local i=x_+y_*lvl_w
-          poke(offset+y_*64+x_/2,"0x"..sub(mapdata[lvl_id],i,i+1))
-        end
+      for i=1,#mapdata[lvl_id],2 do
+        mset(i\2%lvl_w,i\2\lvl_w,"0x"..sub(mapdata[lvl_id],i,i+1))
       end
     end
   end
@@ -1597,8 +1579,17 @@ function vec_len_sqr(a)
   return a.x^2 + a.y^2
 end
 
+-- function vec_len(a)
+--   return sqrt(vec_len_sqr(a))
+-- end
+
 function vec_len(a)
-  return sqrt(vec_len_sqr(a))
+ local maskx,masky=a.x>>31,a.y>>31
+ local a0,b0=(a.x+maskx)^^maskx,(a.y+masky)^^masky
+ if a0>b0 then
+  return a0*0.9609+b0*0.3984
+ end
+ return b0*0.9609+a0*0.3984
 end
 
 function vec_sub(a,b)
@@ -1754,11 +1745,8 @@ and can be safely removed!
 --copy mapdata string to clipboard
 function get_mapdata(x,y,w,h)
   local reserve=""
-  for y_=0,h*2-1,2 do
-    local offset=y*2+y_<64 and 8192 or 0
-    for x_=1,w*2,2 do
-      reserve=reserve..num2hex(peek(offset+x+y*128+y_*64+x_/2))
-    end
+  for i=0,w*h-1 do
+    reserve..=num2hex(mget(i%w,i\w))
   end
   printh(reserve,"@clip")
 end
@@ -2046,7 +2034,6 @@ __map__
 0001000000000000000010000000102d2f1010101d1e2e2e1f000000000000002e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2f41000000000000001d1e1e1f00000000000000000000001d1415162d00000041000000002d2f0000000001000000000000000000000000000000000000000000000000000000000000000000
 1e1e1e1f1010101010101d0000001d2e2e1e1e1e2e2e2e2e2f101010101d1e1e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2f00000000000000002d2e2e2f00000000000000000000002d0000002d00000000000000002d2f10101e1e1e1e0000000000000000000000000000000000000000000000000000000000000000
 2e2e2e2e1e1e1e1e1e1e2f0000002d2e2e2e2e2e2e2e2e2e2e1e1e1e1e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e1e1e1e1e1e1e1e1e2e2e2e2f00000000000000000000002d0000002d00000000000000002d2e1e1e2e2e2e2e0000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
