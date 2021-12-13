@@ -539,30 +539,6 @@ moving_platform = {
 
 -- </moving platform> --
 
-  init=function(_ENV)
-    delta,dir=0,sprite==9 and 0 or is_solid(-1,0) and 1 or -1
-  end,
-  update=function(_ENV)
-    delta*=0.75
-    local hit=player_here()
-    if hit then
-      hit.move(dir==0 and 0 or x+dir*4-hit.x,dir==0 and y-hit.y-4 or 0,1)
-      hit.spd=vector(
-      dir==0 and hit.spd.x*0.2 or dir*3,
-      dir==0 and -3 or -1.5
-      )
-      hit.dash_time,hit.dash_effect_time,delta,hit.djump=0,0,4,max_djump
-    end
-  end,
-  draw=function(_ENV)
-    local delta=flr(delta)
-    if dir==0 then
-      sspr(72,0,8,8-flr(delta),x,y+delta)
-    else
-      sspr(64,0,8-delta,8,dir==-1 and x+delta or x,y,8-delta,8,dir==1)
-    end
-  end
-}
 
 refill={
   init=function(_ENV)
