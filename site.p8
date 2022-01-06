@@ -1000,8 +1000,40 @@ dream_block={
         line(i, y+1, i,bottom()-1)
       end
     else
-      for x_=x,right() do
-        for y_=y,bottom(),(x_==x or x_==right()) and 1 or bottom()-y do
+      local first,last=disp_shapes[1],disp_shapes[#disp_shapes]
+
+      minx=min(first.pos.x-first.r-4,last.pos.x-last.r-4)
+      maxx=max(first.pos.x+first.r+4,last.pos.x+last.r+4)
+      miny=min(first.pos.y-first.r-4,last.pos.y-last.r-4)
+      maxy=max(first.pos.y+first.r+4,last.pos.y+last.r+4)
+
+      if minx>x then
+        line(x,y,minx-1,y)
+        line(x,bottom(),minx-1,bottom())
+      end
+      if maxx<right() then
+        line(maxx+1,y,right(),y)
+        line(maxx+1,bottom(),right(),bottom())
+      end
+
+      if miny>y then
+        line(x,y,x,miny-1)
+        line(right(),y,right(),miny-1)
+      end
+      if maxy<bottom() then
+        line(x,maxy,x,bottom())
+        line(right(),maxy,right(),bottom())
+      end
+
+      for x_=max(minx,x),min(maxx,right()) do
+        for y_=y,bottom(),bottom()-y do
+          local d,dx,dy,ds=displace(disp_shapes,vector(x_,y_))
+          d=max((4-d), 0)
+          rectfill(x_+dx*d*ds,y_+dy*d*ds,x_+dx*d*ds,y_+dy*d*ds)
+        end
+      end
+      for x_=x,right(),right()-x do
+        for y_=max(miny,y),min(maxy,bottom()) do
           local d,dx,dy,ds=displace(disp_shapes,vector(x_,y_))
           d=max((4-d), 0)
           rectfill(x_+dx*d*ds,y_+dy*d*ds,x_+dx*d*ds,y_+dy*d*ds)
