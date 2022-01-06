@@ -104,6 +104,10 @@ player={
       _ENV[var]=0
     end
     create_hair(_ENV)
+
+    --<dream_block>--
+    _init_smoke=init_smoke
+    --</dream_block>--
   end,
   update=function(_ENV)
     if pause_player then
@@ -113,6 +117,7 @@ player={
     -- <dream_block> --
     if dreaming and not check(dream_block,0,0) then
       dreaming=false
+      init_smoke=_init_smoke
       spd=vector(mid(dash_target_x,-2,2),
                       mid(dash_target_y,-2,2))
       dash_time,dash_effect_time=0,0
@@ -963,6 +968,9 @@ dream_block={
         end
       end
       hit.dreaming=true
+      --<dream_block>--
+      hit.init_smoke=function() end
+      --</dream_block>--
       hit.djump=max_djump
       if dtimer>0 then
         dtimer-=1
