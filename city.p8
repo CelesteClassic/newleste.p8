@@ -802,9 +802,9 @@ zip_mover={
 
       --ox,oy=(r+1.5)*cos(0.25+cang),(r+1.5)*sin(0.25+cang)
       if abs(c1x-c2x)>abs(c1y-c2y) then
-        oy+=1
+        oy+=sign(c2x-c1x)
       else
-        ox+=1
+        ox+=sign(c1y-c2y)
       end
       poke(0x5f38,1)
       poke(0x5f3a,start.x/8+lvl_x+1)
