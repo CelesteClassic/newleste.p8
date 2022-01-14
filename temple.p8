@@ -86,6 +86,7 @@ player={
     -- ^ refers to setting berry_timer and berry_count to 0
     for var in all(split"grace,jbuffer,dash_time,dash_effect_time,\z
                          dash_target_x,dash_target_y,dash_accel_x,dash_accel_y,\z
+                         spr_off,berry_timer,berry_count") do
       _ENV[var]=0
     end
     -- <keydoor> --
