@@ -938,7 +938,9 @@ dream_block={
       {x=rnd(hitbox.w-1)+x,
       y=rnd(hitbox.h-1)+y,
       z=rnd(1),
-      c=split"3, 8, 9, 10, 12, 14"[flr(rnd(7))]})
+      c=split"3, 8, 9, 10, 12, 14"[flr(rnd(6))+1],
+      s=rnd(),
+      t=flr(rnd(10))})
     end
     dtimer=1
     disp_shapes={}
@@ -1018,19 +1020,36 @@ dream_block={
     --[[hitbox.w-=2
     hitbox.h-=2]]--
     update_disp_shapes(disp_shapes)
+
+    foreach(particles, function(p)
+      p.t=(p.t+1)%16
+    end)
   end,
   draw=function(_ENV)
     rectfill(x+1,y+1,right()-1,bottom()-1,0)
+
+    local big_particles={}
     foreach(particles, function(p)
       local px,py = (p.x+cam_x*p.z-65)%(hitbox.w-2)+1+x, (p.y+cam_y*p.z-65)%(hitbox.h-2)+1+y
-      if #disp_shapes==0 then
-        rectfill(px,py,px,py,p.c)
-      else
+      if #disp_shapes!=0 then
         local d,dx,dy,ds=displace(disp_shapes, vector(px,py))
         d=max((6-d), 0)
-        rectfill(px+dx*d*ds,py+dy*d*ds,px+dx*d*ds,py+dy*d*ds,p.c)
+        px+=dx*ds
+        py+=dy*ds
+      end
+
+      if p.s<0.2 and p.t<=8 then
+        add(big_particles,{px,py,p.c})
+      else
+        pset(px,py,p.c)
       end
     end)
+    foreach(big_particles,function(p)
+      local px,py,pc=unpack(p)
+      line(px-1,py,px+1,py,pc)
+      line(px,py-1,px,py+1,pc)
+    end)
+
     color(7)
     -- draw outline pixel by pixel
     -- divide into segments of 8 pixels
