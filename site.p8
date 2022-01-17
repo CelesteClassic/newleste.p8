@@ -916,6 +916,12 @@ switch_block={
 
 switch_target={}
 -- <touch_switch> --
+
+
+function calc_seg(seg)
+  if (seg[2]) return (sin(time()/seg[2]+seg[2])+sin(time()/seg[3]+seg[3])+2)/2
+  return 0
+end
 dream_block={
   layer=3,
   init=function(_ENV)
@@ -937,9 +943,39 @@ dream_block={
     dtimer=1
     disp_shapes={}
     outline=false
-    seeds={}
-    for i=1,hitbox.w*hitbox.h do
-      add(seeds,rnd(3)+2)
+    xsegs={}
+    ysegs={}
+    for i=1,2 do
+      local seg={{x},{x+4}}
+      local x_=x+10+flr(rnd(6))
+      while x_<right()-4 do
+        add(seg,{x_,rnd(3)+2,rnd(3)+2})
+        x_+=flr(rnd(6))+6
+      end
+      if seg[#seg][1]>right()-8 then
+        seg[#seg][1]=right()-4
+        seg[#seg][2]=nil
+      else
+        add(seg,{right()-4})
+      end
+      add(seg,{right()})
+      add(xsegs,seg)
+    end
+    for i=1,2 do
+      local seg={{y},{y+4}}
+      local y_=y+10+flr(rnd(6))
+      while y_<bottom()-4 do
+        add(seg,{y_,rnd(3)+2,rnd(3)+2})
+        y_+=flr(rnd(6))+6
+      end
+      if seg[#seg][1]>bottom()-8 then
+        seg[#seg][1]=bottom()-4
+        seg[#seg][2]=nil
+      else
+        add(seg,{bottom()-4})
+      end
+      add(seg,{bottom()})
+      add(ysegs,seg)
     end
   end,
   update=function(_ENV)
@@ -996,91 +1032,142 @@ dream_block={
       end
     end)
     color(7)
-    if #disp_shapes==0 then
-      -- draw outline pixel by pixel
-      -- divide into segments of 8 pixels
-      -- at the boundaries of each segment, set the position to be a sum of sines
-      -- lerp between the boundaries
-      -- fill the dream block in
-      for i=y,bottom(),hitbox.h-1 do
-        -- line(x+1, i, right()-1,i)
-        local ry,ly=i
-        for j=x,right() do
-          if j%8==0 then
-            ly=ry
-            ry=j==right()-7 and i or
-                  i+(i==y and -1 or 1)*((sin(time()/seeds[i+j-x-y+1]+seeds[i+j-x-y+1])+sin(time()/seeds[i+j+2-x-y]+seeds[i+j+2-x-y])+2)/2)
+    -- draw outline pixel by pixel
+    -- divide into segments of 8 pixels
+    -- at the boundaries of each segment, set the position to be a sum of sines
+    -- lerp between the boundaries
+    -- fill the dream block in
+    --
+    --
+
+    -- local minx,maxx,miny,maxy
+    -- if #disp_shapes!=0 then
+    --   local first,last=disp_shapes[1],disp_shapes[#disp_shapes]
+    --   minx=min(first.pos.x-first.r-4,last.pos.x-last.r-4)
+    --   maxx=max(first.pos.x+first.r+4,last.pos.x+last.r+4)
+    --   miny=min(first.pos.y-first.r-4,last.pos.y-last.r-4)
+    --   maxy=max(first.pos.y+first.r+4,last.pos.y+last.r+4)
+    -- end
+
+    for i=y,bottom(),hitbox.h-1 do
+      -- line(x+1, i, right()-1,i)
+
+      local segs=xsegs[i==y and 1 or 2]
+      for idx,seg in ipairs(segs) do
+        if idx==#segs then
+          break
+        end
+        lx,rx=seg[1],segs[idx+1][1]
+        local ly,ry=i+(i==y and -1 or 1)*calc_seg(seg), i+(i==y and -1 or 1)*calc_seg(segs[idx+1])
+        local m=(ry-ly)/(rx-lx)
+        for j=lx,rx do
+          local py=round(m*(j-lx)+ly)
+          if #disp_shapes==0 then
+            pset(j,py,7)
+          else
+            local d,dx,dy,ds=displace(disp_shapes,vector(j,py))
+            d=max((4-d), 0)
+            pset(j+dx*d*ds,py+dy*d*ds,7)
           end
-          local m=(ry-ly)/8
-          local py=round(m*(j-(j-j%8))+ly)
-          pset(j,py,7)
           if py!=i then
             line(j,py+sign(i-py),j,i,0)
           end
         end
       end
-      for i=x,right(),hitbox.w-1 do
-        local rx,lx=i
-        for j=y,bottom() do
-          if j%8==0 then
-            lx=rx
-            rx=j==bottom()-7 and i or
-                  i+(i==x and -1 or 1)*((sin(time()/seeds[i+j-x-y+1])+sin(time()/seeds[i+j+2-x-y])+2)/2)
+    end
+
+    for i=x,right(),hitbox.w-1 do
+      -- line(x+1, i, right()-1,i)
+
+      local segs=ysegs[i==x and 1 or 2]
+      for idx,seg in ipairs(segs) do
+        if idx==#segs then
+          break
+        end
+        ly,ry=seg[1],segs[idx+1][1]
+        local lx,rx=i+(i==x and -1 or 1)*calc_seg(seg), i+(i==x and -1 or 1)*calc_seg(segs[idx+1])
+        local m=(rx-lx)/(ry-ly)
+        for j=ly,ry do
+          local px=round(m*(j-ly)+lx)
+          if #disp_shapes==0 then
+            pset(px,j,7)
+          else
+            local d,dx,dy,ds=displace(disp_shapes,vector(px,j))
+            d=max((4-d), 0)
+            pset(px+dx*d*ds,j+dy*d*ds,7)
           end
-          local m=(rx-lx)/8
-          local px=round(m*(j-(j-j%8))+lx)
-          pset(px,j,7)
           if px!=i then
             line(px+sign(i-px),j,i,j,0)
           end
         end
       end
+    end
+
+
+      -- line(x,y,x,bottom(),7)
+      -- line(right(),y,right(),bottom(),7)
+      -- for i=x,right(),hitbox.w-1 do
+      --   local rx,lx=i
+      --   for j=y,bottom() do
+      --     if j%8==0 then
+      --       lx=rx
+      --       rx=j==bottom()-7 and i or
+      --             i+(i==x and -1 or 1)*((sin(time()/seeds[i+j-x-y+1])+sin(time()/seeds[i+j+2-x-y])+2)/2)
+      --     end
+      --     local m=(rx-lx)/8
+      --     local px=round(m*(j-(j-j%8))+lx)
+      --     pset(px,j,7)
+      --     if px!=i then
+      --       line(px+sign(i-px),j,i,j,0)
+      --     end
+      --   end
+      -- end
       for i=x+1,right()-1,hitbox.w-3 do
         for j=y+1,bottom()-1,hitbox.h-3 do
           pset(i,j,7)
         end
       end
-    else
-      local first,last=disp_shapes[1],disp_shapes[#disp_shapes]
+    -- else
+    --   local first,last=disp_shapes[1],disp_shapes[#disp_shapes]
 
-      minx=min(first.pos.x-first.r-4,last.pos.x-last.r-4)
-      maxx=max(first.pos.x+first.r+4,last.pos.x+last.r+4)
-      miny=min(first.pos.y-first.r-4,last.pos.y-last.r-4)
-      maxy=max(first.pos.y+first.r+4,last.pos.y+last.r+4)
+    --   minx=min(first.pos.x-first.r-4,last.pos.x-last.r-4)
+    --   maxx=max(first.pos.x+first.r+4,last.pos.x+last.r+4)
+    --   miny=min(first.pos.y-first.r-4,last.pos.y-last.r-4)
+    --   maxy=max(first.pos.y+first.r+4,last.pos.y+last.r+4)
 
-      if minx>x then
-        line(x,y,minx-1,y)
-        line(x,bottom(),minx-1,bottom())
-      end
-      if maxx<right() then
-        line(maxx+1,y,right(),y)
-        line(maxx+1,bottom(),right(),bottom())
-      end
+    --   if minx>x then
+    --     line(x,y,minx-1,y)
+    --     line(x,bottom(),minx-1,bottom())
+    --   end
+    --   if maxx<right() then
+    --     line(maxx+1,y,right(),y)
+    --     line(maxx+1,bottom(),right(),bottom())
+    --   end
 
-      if miny>y then
-        line(x,y,x,miny-1)
-        line(right(),y,right(),miny-1)
-      end
-      if maxy<bottom() then
-        line(x,maxy,x,bottom())
-        line(right(),maxy,right(),bottom())
-      end
+    --   if miny>y then
+    --     line(x,y,x,miny-1)
+    --     line(right(),y,right(),miny-1)
+    --   end
+    --   if maxy<bottom() then
+    --     line(x,maxy,x,bottom())
+    --     line(right(),maxy,right(),bottom())
+    --   end
 
-      for x_=max(minx,x),min(maxx,right()) do
-        for y_=y,bottom(),bottom()-y do
-          local d,dx,dy,ds=displace(disp_shapes,vector(x_,y_))
-          d=max((4-d), 0)
-          rectfill(x_+dx*d*ds,y_+dy*d*ds,x_+dx*d*ds,y_+dy*d*ds)
-        end
-      end
-      for x_=x,right(),right()-x do
-        for y_=max(miny,y),min(maxy,bottom()) do
-          local d,dx,dy,ds=displace(disp_shapes,vector(x_,y_))
-          d=max((4-d), 0)
-          rectfill(x_+dx*d*ds,y_+dy*d*ds,x_+dx*d*ds,y_+dy*d*ds)
-        end
-      end
-    end
+    --   for x_=max(minx,x),min(maxx,right()) do
+    --     for y_=y,bottom(),bottom()-y do
+    --       local d,dx,dy,ds=displace(disp_shapes,vector(x_,y_))
+    --       d=max((4-d), 0)
+    --       rectfill(x_+dx*d*ds,y_+dy*d*ds,x_+dx*d*ds,y_+dy*d*ds)
+    --     end
+    --   end
+    --   for x_=x,right(),right()-x do
+    --     for y_=max(miny,y),min(maxy,bottom()) do
+    --       local d,dx,dy,ds=displace(disp_shapes,vector(x_,y_))
+    --       d=max((4-d), 0)
+    --       rectfill(x_+dx*d*ds,y_+dy*d*ds,x_+dx*d*ds,y_+dy*d*ds)
+    --     end
+    --   end
+    -- end
     --[[pset(x, y, 0)
     pset(x, bottom(), 0)
     pset(right(), y, 0)
