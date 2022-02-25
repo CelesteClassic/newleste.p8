@@ -217,6 +217,7 @@ player={
           elseif hit and hit.timer-hit.arrivaltime<=3 then
             spd.x=hit.dirx*4
             spd.y=-2+min(hit.diry)--,0
+          end
           -- </swap_block> --
           init_smoke(0,4)
         else
@@ -1075,68 +1076,68 @@ switch_door={
 }
 
 
---theo_crystal={
---  init=function(_ENV)
---    collides=true
---    pspdy=0
---    pspdx=0
---    was_on_ground=true
+theo_crystal={
+  init=function(_ENV)
+    collides=true
+    pspdy=0
+    pspdx=0
+    was_on_ground=true
 
---    delay=0
---    hitbox=rectangle(2,6,10,8)
---    y-=6
---  end,
---  update=function(_ENV)
---    if delay>0 then
---      delay-=1
---      if delay==0 then
---        _g.pause_player=false
---      end
---      y=appr(y,cplayer.y-12,4)
---    end
+    delay=0
+    hitbox=rectangle(2,6,10,8)
+    y-=6
+  end,
+  update=function(_ENV)
+    if delay>0 then
+      delay-=1
+      if delay==0 then
+        _g.pause_player=false
+      end
+      y=appr(y,cplayer.y-12,4)
+    end
 
---    if not cplayer then
---      hitbox=rectangle(0,0,16,16)
---      local hit=player_here()
---      hitbox=rectangle(2,6,10,8)
---      if hit and hit.dash_effect_time>0 then
---        cplayer=hit
---        hit.holding=_ENV
+    if not cplayer then
+      hitbox=rectangle(0,0,16,16)
+      local hit=player_here()
+      hitbox=rectangle(2,6,10,8)
+      if hit and hit.dash_effect_time>0 then
+        cplayer=hit
+        hit.holding=_ENV
 
---        _g.pause_player=true
---        delay=2
---      end
+        _g.pause_player=true
+        delay=2
+      end
 
 
 
---      --physics
+      --physics
 
---      local on_ground=is_solid(0,1)
---      if on_ground and not was_on_ground then
---        init_smoke(2,8)
---      end
---      if not on_ground then
---        spd.y=appr(spd.y,3,spd.y<=0 and 0.21 or 0.42)
---      elseif on_ground and spd.y==0 and pspdy>2.5 then
---        spd.y=pspdy/-2.5
---      end
+      local on_ground=is_solid(0,1)
+      if on_ground and not was_on_ground then
+        init_smoke(2,8)
+      end
+      if not on_ground then
+        spd.y=appr(spd.y,3,spd.y<=0 and 0.21 or 0.42)
+      elseif on_ground and spd.y==0 and pspdy>2.5 then
+        spd.y=pspdy/-2.5
+      end
 
---      spd.x=appr(spd.x,0,0.2)
---      if pspdx!=0 and spd.x==0 and is_solid(sign(pspdx),0) then
---        spd.x=-pspdx/1.7
---      end
---      pspdy=spd.y
---      pspdx=spd.x
+      spd.x=appr(spd.x,0,0.2)
+      if pspdx!=0 and spd.x==0 and is_solid(sign(pspdx),0) then
+        spd.x=-pspdx/1.7
+      end
+      pspdy=spd.y
+      pspdx=spd.x
 
---      was_on_ground=on_ground
---    end
---    if cplayer then flipx=cplayer.flip.x end
+      was_on_ground=on_ground
+    end
+    if cplayer then flipx=cplayer.flip.x end
 
---  end,
---  draw=function(_ENV)
---    spr(70,x,y,1.75,1.75,flipx)
---  end
---}
+  end,
+  draw=function(_ENV)
+    spr(70,x,y,1.75,1.75,flipx)
+  end
+}
 
 theo_door={
   layer=0,
