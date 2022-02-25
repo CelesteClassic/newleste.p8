@@ -919,9 +919,13 @@ switch_target={}
 
 
 function calc_seg(seg)
-  if (seg[2]) return (sin(time()/seg[2]+seg[2])+sin(time()/seg[3]+seg[3])+2)/2
+  local t=dream_blocks_active and time() or 0
+  if (seg[2]) return (sin(t/seg[2]+seg[2])+sin(t/seg[3]+seg[3])+2)/2
   return 0
 end
+
+--<dream_block>--
+dream_blocks_active=true
 dream_block={
   layer=3,
   init=function(_ENV)
@@ -1022,12 +1026,15 @@ dream_block={
     update_disp_shapes(disp_shapes)
 
     foreach(particles, function(p)
-      p.t=(p.t+1)%16
+      if dream_blocks_active then
+        p.t=(p.t+1)%16
+      end
     end)
   end,
   draw=function(_ENV)
     rectfill(x+1,y+1,right()-1,bottom()-1,0)
 
+    local color_mapping={[3]=5,[8]=5,[9]=6,[10]=6,[12]=13,[14]=13}
     local big_particles={}
     foreach(particles, function(p)
       local px,py = (p.x+cam_x*p.z-65)%(hitbox.w-2)+1+x, (p.y+cam_y*p.z-65)%(hitbox.h-2)+1+y
@@ -1039,9 +1046,9 @@ dream_block={
       end
 
       if p.s<0.2 and p.t<=8 then
-        add(big_particles,{px,py,p.c})
+        add(big_particles,{px,py,dream_blocks_active and p.c or color_mapping[p.c]})
       else
-        pset(px,py,p.c)
+        pset(px,py,dream_blocks_active and p.c or color_mapping[p.c])
       end
     end)
     foreach(big_particles,function(p)
@@ -1082,11 +1089,11 @@ dream_block={
         for j=lx,rx do
           local py=round(m*(j-lx)+ly)
           if #disp_shapes==0 then
-            pset(j,py,7)
+            pset(j,py,dream_blocks_active and 7 or 5)
           else
             local d,dx,dy,ds=displace(disp_shapes,vector(j,py))
             d=max((4-d), 0)
-            pset(j+dx*d*ds,py+dy*d*ds,7)
+            pset(j+dx*d*ds,py+dy*d*ds,dream_blocks_active and 7 or 5)
           end
           if py!=i then
             line(j,py+sign(i-py),j,i,0)
@@ -1109,11 +1116,11 @@ dream_block={
         for j=ly,ry do
           local px=round(m*(j-ly)+lx)
           if #disp_shapes==0 then
-            pset(px,j,7)
+            pset(px,j,dream_blocks_active and 7 or 5)
           else
             local d,dx,dy,ds=displace(disp_shapes,vector(px,j))
             d=max((4-d), 0)
-            pset(px+dx*d*ds,j+dy*d*ds,7)
+            pset(px+dx*d*ds,j+dy*d*ds,dream_blocks_active and 7 or 5)
           end
           if px!=i then
             line(px+sign(i-px),j,i,j,0)
@@ -1143,7 +1150,7 @@ dream_block={
       -- end
       for i=x+1,right()-1,hitbox.w-3 do
         for j=y+1,bottom()-1,hitbox.h-3 do
-          pset(i,j,7)
+          pset(i,j,dream_blocks_active and 7 or 5)
         end
       end
     -- else
@@ -1193,6 +1200,7 @@ dream_block={
     pset(right(), bottom(), 0)]]--
   end
 }
+--</dream_block>--
 
 
 function create_disp_shape(tbl,x,y)
@@ -1286,9 +1294,9 @@ function init_object(_type,sx,sy,tile)
     return oy>0 and not is_flag(ox,0,3) and is_flag(ox,oy,3) or  -- one way platform or
             is_flag(ox,oy,0) -- solid terrain
             -- <dream_block> --
-           or check(dream_block,ox,oy) and (dash_effect_time<=2 or
-           not check(dream_block,sign(dash_target_x),sign(dash_target_y))
-           and not dreaming)
+           or check(dream_block,ox,oy) and (not dream_blocks_active
+           or dash_effect_time<=2
+           or not check(dream_block,sign(dash_target_x),sign(dash_target_y)) and not dreaming)
            -- </dream_block> --
   end
   function oob(ox,oy)
