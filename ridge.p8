@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 32
+version 34
 __lua__
 --newleste.p8 base cart
 
@@ -22,15 +22,17 @@ end
 
 -- [globals]
 
---tables
-objects,got_fruit={},{}
---timers
-freeze,delay_restart,sfx_timer,music_timer,ui_timer=0,0,0,0,-99
---camera values
---<camtrigger>--
-cam_x,cam_y,cam_spdx,cam_spdy,cam_gain,cam_offx,cam_offy=0,0,0,0,0.25,0,0
---</camtrigger>--
-_pal=pal --for outlining
+
+objects,got_fruit, --tables
+freeze,delay_restart,sfx_timer,music_timer,ui_timer, --timers
+cam_x,cam_y,cam_spdx,cam_spdy,cam_gain,cam_offx,cam_offy, --camera values <camtrigger>
+_pal --for outlining
+=
+{},{},
+0,0,0,0,-99,
+0,0,0,0,0.1,0,0,
+pal
+
 
 local _g=_ENV --for writing to global vars
 
@@ -80,31 +82,28 @@ dead_particles={}
 
 player={
   layer=2,
-  init=function(_ENV) 
-    grace,jbuffer=0,0
-    djump=max_djump
-    dash_time,dash_effect_time=0,0
-    dash_target_x,dash_target_y=0,0
-    dash_accel_x,dash_accel_y=0,0
-    hitbox=rectangle(1,3,6,5)
-    spr_off=0
-    collides=true
+  init=function(_ENV)
+    djump, hitbox, collides = max_djump, rectangle(1,3,6,5), true
+
+    --<fruitrain>--
+    -- ^ refers to setting berry_timer and berry_count to 0
+    for var in all(split"grace,jbuffer,dash_time,dash_effect_time,\z
+                         dash_target_x,dash_target_y,dash_accel_x,dash_accel_y,\z
+                         spr_off,berry_timer,berry_count") do
+      _ENV[var]=0
+    end
     create_hair(_ENV)
-    -- <fruitrain> --
-    berry_timer=0
-    berry_count=0
-    -- </fruitrain> --
   end,
   update=function(_ENV)
     if pause_player then
       return
     end
-    
+
     -- horizontal input
     local h_input=btn(➡️) and 1 or btn(⬅️) and -1 or 0
-    
+
     -- spike collision / bottom death
-    if is_flag(0,0,-1) or 
+    if is_flag(0,0,-1) or
 	    y>lvl_ph and not exit_bottom then
 	    kill_player(_ENV)
     end
@@ -116,8 +115,7 @@ player={
     if on_ground then
       berry_timer+=1
     else
-      berry_timer=0
-      berry_count=0
+      berry_timer, berry_count=0, 0
     end
 
     for f in all(fruitrain) do
@@ -125,19 +123,18 @@ player={
         -- to be implemented:
         -- save berry
         -- save golden
-        berry_timer=-5
 
         berry_count+=1
         _g.berry_count+=1
-        got_fruit[f.fruit_id]=true
+        berry_timer, got_fruit[f.fruit_id]=-5, true
         init_object(lifeup, f.x, f.y,berry_count)
         del(fruitrain, f)
-        destroy_object(f)
-        if (fruitrain[1]) fruitrain[1].target=_ENV
+        destroy_object(f);
+        (fruitrain[1] or {}).target=_ENV
       end
     end
     -- </fruitrain> --
-    
+
     -- landing smoke
     if on_ground and not was_on_ground then
       init_smoke(0,4)
@@ -153,7 +150,7 @@ player={
     elseif jbuffer>0 then
       jbuffer-=1
     end
-    
+
     -- grace frames and dash restoration
     if on_ground then
       grace=6
@@ -178,15 +175,13 @@ player={
       )
     else
       -- x movement
-      local maxrun=1
       local accel=on_ground and 0.6 or 0.4
-      local deccel=0.15
-    
+
       -- set x speed
-      spd.x=abs(spd.x)<=1 and 
-        appr(spd.x,h_input*maxrun,accel) or 
-        appr(spd.x,sign(spd.x)*maxrun,deccel)
-      
+      spd.x=abs(spd.x)<=1 and
+        appr(spd.x,h_input,accel) or
+        appr(spd.x,sign(spd.x),0.15)
+
       -- facing direction
       if spd.x~=0 then
         flip.x=spd.x<0
@@ -194,12 +189,12 @@ player={
 
       -- y movement
       local maxfall=2
-    
+
       -- wall slide
-      if h_input~=0 and is_solid(h_input,0) then
+      if is_solid(h_input,0) then
         maxfall=0.4
         -- wall slide smoke
-        if rnd(10)<2 then
+        if rnd()<0.2 then
           init_smoke(h_input*6)
         end
       end
@@ -214,15 +209,14 @@ player={
         if grace>0 then
           -- normal jump
           psfx(18)
-          jbuffer=0
-          grace=0
+          jbuffer,grace,spd.y=0,0,-2
           -- <cloud> --
           local cloudhit=check(bouncy_cloud,0,1)
           if cloudhit and cloudhit.t>0.5 then
           	spd.y=-3
           else
           	spd.y=-2
-          	if cloudhit then 
+          	if cloudhit then
           		cloudhit.t=0.25
 							cloudhit.state=1
           	end
@@ -235,48 +229,43 @@ player={
           local wall_dir=(is_solid(-3,0) and -1 or is_solid(3,0) and 1 or 0)
           if wall_dir~=0 then
             psfx(19)
-            jbuffer=0
-            spd=vector(wall_dir*(-1-maxrun),-2)
+            jbuffer,spd=0,vector(wall_dir*-2,-2)
             -- wall jump smoke
             init_smoke(wall_dir*6)
           end
         end
       end
-    
+
       -- dash
-      local d_full=5
-      local d_half=3.5355339059 -- 5 * sqrt(2)
+      local d_full, d_half = 5, 3.5355339059 -- 5 * sqrt(2)
 
       -- <green_bubble> --
       if djump>0 and dash or do_dash then
         do_dash=false
-      -- </green_bubble> -- 
+      -- </green_bubble> --
         init_smoke()
-        djump-=1   
-        dash_time=4
-        _g.has_dashed=true
-        dash_effect_time=10
+        djump-=1
+        dash_time,_g.has_dashed,dash_effect_time=4, true, 10
 
         -- vertical input
         local v_input=btn(⬆️) and -1 or btn(⬇️) and 1 or 0
         -- calculate dash speeds
-        spd=vector(h_input~=0 and 
-        h_input*(v_input~=0 and d_half or d_full) or 
+        spd=vector(h_input~=0 and
+        h_input*(v_input~=0 and d_half or d_full) or
         (v_input~=0 and 0 or flip.x and -1 or 1)
         ,v_input~=0 and v_input*(h_input~=0 and d_half or d_full) or 0)
         -- effects
         psfx(20)
         _g.freeze=2
         -- dash target speeds and accels
-        dash_target_x=2*sign(spd.x)
-        dash_target_y=(spd.y>=0 and 2 or 1.5)*sign(spd.y)
-        dash_accel_x=spd.y==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
-        dash_accel_y=spd.x==0 and 1.5 or 1.06066017177
-        
+        dash_target_x,dash_target_y,dash_accel_x,dash_accel_y=
+        2*sign(spd.x), (spd.y>=0 and 2 or 1.5)*sign(spd.y),
+        spd.y==0 and 1.5 or 1.06066017177 , spd.x==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
+
         -- emulate soft dashes
-        if h_input~=0 and ph_input==-h_input and oob(ph_input,0) then 
+        if h_input~=0 and ph_input==-h_input and oob(ph_input,0) then
           spd.x=0
-        end 
+        end
 
       elseif djump<=0 and dash then
         -- failed dash smoke
@@ -284,28 +273,32 @@ player={
         init_smoke()
       end
     end
-    
+
     -- animation
     spr_off+=0.25
-    sprite = not on_ground and (is_solid(h_input,0) and 5 or 3) or  -- wall slide or mid air
+    sprite = on_ground and (
       btn(⬇️) and 6 or -- crouch
       btn(⬆️) and 7 or -- look up
-      spd.x~=0 and h_input~=0 and 1+spr_off%4 or 1 -- walk or stand
+      spd.x*h_input~=0 and 1+spr_off%4 or 1) -- walk or stand
+      or is_solid(h_input,0) and 5 or 3 -- wall slide or mid air
+
     update_hair(_ENV)
+
     -- exit level (except summit)
-    if (exit_right and left()>=lvl_pw or exit_top and y<-4 or exit_left and right()<0 or exit_bottom and top()>=lvl_ph) and levels[lvl_id+1] then
+    if (exit_right and left()>=lvl_pw or
+        exit_top and y<-4 or
+        exit_left and right()<0 or
+        exit_bottom and top()>=lvl_ph) and levels[lvl_id+1] then
       next_level()
     end
-    
-    -- was on the ground
-    was_on_ground=on_ground
-    --previous horizontal input (for soft dashes)
-    ph_input=h_input
+
+    -- was on the ground, previous horizontal input (for soft dashes)
+    was_on_ground,ph_input=on_ground, h_input
   end,
-  
+
   draw=function(_ENV)
     -- draw player hair and sprite
-    set_hair_color(djump)
+    pal(8,djump==1 and 8 or 12)
     draw_hair(_ENV)
     draw_obj_sprite(_ENV)
     pal()
@@ -319,12 +312,9 @@ function create_hair(_ENV)
   end
 end
 
-function set_hair_color(djump)
-  pal(8,djump==1 and 8 or 12)
-end
 
 function update_hair(_ENV)
-  local last=vector(x+4-(flip.x and-2 or 3),y+(btn(⬇️) and 4 or 2.9))
+  local last=vector(x+(flip.x and 6 or 1),y+(btn(⬇️) and 4 or 2.9))
   for h in all(hair) do
     h.x+=(last.x-h.x)/1.5
     h.y+=(last.y+0.5-h.y)/1.5
@@ -333,7 +323,7 @@ function update_hair(_ENV)
 end
 
 function draw_hair(_ENV)
-  for i,h in pairs(hair) do
+  for i,h in ipairs(hair) do
     circfill(round(h.x),round(h.y),mid(4-i,1,2),8)
   end
 end
@@ -347,7 +337,7 @@ player_spawn={
     sprite=3
     target=y
     y=min(y+48,lvl_ph)
-		_g.cam_x,_g.cam_y=mid(x,64,lvl_pw-64),mid(y,64,lvl_ph-64)
+    _g.cam_x,_g.cam_y=mid(x,64,lvl_pw-64),mid(y,64,lvl_ph-64)
     spd.y=-4
     state=0
     delay=0
@@ -356,7 +346,6 @@ player_spawn={
     --- <fruitrain> ---
     for i=1,#fruitrain do
       local f=init_object(fruit,x,y,fruitrain[i].sprite)
-      f.follow=true
       f.target=i==1 and _ENV or fruitrain[i-1]
       f.r=fruitrain[i].r
       f.fruit_id=fruitrain[i].fruit_id
@@ -367,8 +356,7 @@ player_spawn={
   update=function(_ENV)
     -- jumping up
     if state==0 and y<target+16 then
-        state=1
-        delay=3
+        state,delay=1, 3
     -- falling
     elseif state==1 then
       spd.y+=0.5
@@ -379,10 +367,7 @@ player_spawn={
           delay-=1
         elseif y>target then
           -- clamp at target y
-          y=target
-          spd=vector(0,0)
-          state=2
-          delay=5
+          y,spd,state,delay=target,vector(0,0),2,5
           init_smoke(0,4)
           sfx(16)
         end
@@ -413,15 +398,14 @@ player_spawn={
 --<camtrigger>--
 camera_trigger={
   update=function(_ENV)
-    if timer and timer>0 then 
+    if timer and timer>0 then
       timer-=1
-      if timer==0 then 
-        _g.cam_offx=offx
-        _g.cam_offy=offy
-      else 
+      if timer==0 then
+        _g.cam_offx,_g.cam_offy=offx,offy
+      else
         _g.cam_offx+=cam_gain*(offx-cam_offx)
         _g.cam_offy+=cam_gain*(offy-cam_offy)
-      end 
+      end
     elseif player_here() then
       timer=5
     end
@@ -429,78 +413,59 @@ camera_trigger={
 }
 --</camtrigger>--
 
+
 spring={
-	init=function(_ENV)
-		dy,delay=0,0
-	end,
-	update=function(_ENV)
-		local hit=player_here()
-		if delay>0 then
-			delay-=1
-		elseif hit then
-			hit.y,hit.spd.y,hit.dash_time,hit.dash_effect_time,dy,delay,hit.djump=y-4,-3,0,0,4,10,max_djump
-			hit.spd.x*=0.2
-			psfx(14)
-		end
-	  dy*=0.75
-	end,
-	draw=function(_ENV)
-		sspr(72,0,8,8-flr(dy),x,y+dy)
-	end
+  init=function(_ENV)
+    delta,dir=0,sprite==9 and 0 or is_solid(-1,0) and 1 or -1
+  end,
+  update=function(_ENV)
+    delta*=0.75
+    local hit=player_here()
+    if hit then
+      hit.move(dir==0 and 0 or x+dir*4-hit.x,dir==0 and y-hit.y-4 or 0,1)
+      hit.spd=vector(
+      dir==0 and hit.spd.x*0.2 or dir*3,
+      dir==0 and -3 or -1.5
+      )
+      hit.dash_time,hit.dash_effect_time,delta,hit.djump=0,0,4,max_djump
+    end
+  end,
+  draw=function(_ENV)
+    local delta=flr(delta)
+    if dir==0 then
+      sspr(72,0,8,8-delta,x,y+delta)
+    else
+      sspr(64,0,8-delta,8,dir==-1 and x+delta or x,y,8-delta,8,dir==1)
+    end
+  end
 }
-
-side_spring={
-	init=function(_ENV)
-		dx,dir=0,is_solid(-1,0) and 1 or -1
-	end,
-	update=function(_ENV)
-		local hit=player_here()
-		if hit then
-			hit.x,hit.spd.x,hit.spd.y,hit.dash_time,hit.dash_effect_time,dx,hit.djump=x+dir*4,dir*3,-1.5,0,0,4,max_djump
-			psfx(14)
-		end
-		dx*=0.75
-	end,
-	draw=function(_ENV)
-    -- _g.printh(_g._spr==_g.spr)
-    -- _g.printh(_ENV)
-		local dx=flr(dx)
-		sspr(64,0,8-dx,8,x+dx*(dir-1)/-2,y,8-dx,8,dir==1)
-	end
-}
-
 
 refill={
-  init=function(_ENV) 
-    offset=rnd()
-    timer=0
-    hitbox=rectangle(-1,-1,10,10)
-    active=true
+  init=function(_ENV)
+    offset,timer,hitbox=rnd(),0,rectangle(-1,-1,10,10)
   end,
-  update=function(_ENV) 
-    if active then
+  update=function(_ENV)
+    if timer>0 then
+      timer-=1
+      if timer==0 then
+        psfx(12)
+        init_smoke()
+      end
+    else
       offset+=0.02
       local hit=player_here()
       if hit and hit.djump<max_djump then
         psfx(11)
         init_smoke()
-        hit.djump=max_djump
-        active=false
-        timer=60
+        hit.djump,timer=max_djump,60
       end
-    elseif timer>0 then
-      timer-=1
-    else 
-      psfx(12)
-      init_smoke()
-      active=true 
     end
   end,
   draw=function(_ENV)
-    if active then
+    if timer==0 then
       spr(15,x,y+sin(offset)+0.5)
 
-    else  
+    else
       -- color(7)
       -- line(x,y+4,x+3,y+7)
       -- line(x+4,y+7,x+7,y+4)
@@ -511,9 +476,9 @@ refill={
       4,7,7,4
       7,3,4,0
       3,0,0,3]],"\n"),function(t)
-	        local o1,o2,o3,o4=unpack(split(t))
-	        line(x+o1,y+o2,x+o3,y+o4,7)
-	      end 
+        local o1,o2,o3,o4=unpack(split(t))
+        line(x+o1,y+o2,x+o3,y+o4,7)
+      end
       )
     end
   end
@@ -521,14 +486,13 @@ refill={
 
 fall_floor={
   init=function(_ENV)
-    solid_obj=true
-    state=0
+    solid_obj,state=true,0
   end,
   update=function(_ENV)
     -- idling
     if state==0 then
       for i=0,2 do
-        if check(player,i-1,-(i%2)) then 
+        if check(player,i-1,-(i%2)) then
           psfx(13)
           state,delay=1,15
           init_smoke()
@@ -539,33 +503,29 @@ fall_floor={
     elseif state==1 then
       delay-=1
       if delay<=0 then
-        state=2
-        delay=60--how long it hides for
-        collideable=false
+        state,delay,collideable=2,60--,false
       end
     -- invisible, waiting to reset
-    elseif state==2 then
+    else
       delay-=1
       if delay<=0 and not player_here() then
         psfx(12)
-        state=0
-        collideable=true
+        state,collideable=0,true
         init_smoke()
       end
     end
   end,
   draw=function(_ENV)
-    spr(state==1 and 26-delay/5 or state==0 and 23,x,y) --add an if statement if you use sprite 0 
+    spr(state==1 and 26-delay/5 or state==0 and 23,x,y) --add an if statement if you use sprite 0
   end
 }
 
 smoke={
   layer=3,
   init=function(_ENV)
-    spd=vector(0.3+rnd(0.2),-0.1)
+    spd,flip=vector(0.3+rnd(0.2),-0.1),vector(maybe(),maybe())
     x+=-1+rnd(2)
     y+=-1+rnd(2)
-    flip=vector(maybe(),maybe())
   end,
   update=function(_ENV)
     sprite+=0.2
@@ -580,34 +540,25 @@ fruitrain={}
 fruit={
   check_fruit=true,
   init=function(_ENV)
-    y_=y
-    off=0
-    follow=false
-    tx=x
-    ty=y
-    golden=sprite==11
+    y_,off,tx,ty,golden=y,0,x,y,sprite==11
     if golden and deaths>0 then
       destroy_object(_ENV)
     end
   end,
   update=function(_ENV)
-    if not follow then
+    if target then
+      tx+=0.2*(target.x-tx)
+      ty+=0.2*(target.y-ty)
+      local dtx,dty=x-tx,y_-ty
+      local a,k=atan2(dtx,dty),dtx^2+dty^2 > r^2 and 0.2 or 0.1
+      x+=k*(r*cos(a)-dtx)
+      y_+=k*(r*sin(a)-dty)
+    else
       local hit=player_here()
       if hit then
-        hit.berry_timer=0
-        follow=true
-        target=#fruitrain==0 and hit or fruitrain[#fruitrain]
-        r=#fruitrain==0 and 12 or 8
+        hit.berry_timer,target,r=
+        0,#fruitrain==0 and hit or fruitrain[#fruitrain],#fruitrain==0 and 12 or 8
         add(fruitrain,_ENV)
-      end
-    else
-      if target then
-        tx+=0.2*(target.x-tx)
-        ty+=0.2*(target.y-ty)
-        local a=atan2(x-tx,y_-ty)
-        local k=(x-tx)^2+(y_-ty)^2 > r^2 and 0.2 or 0.1
-        x+=k*(tx+r*cos(a)-x)
-        y_+=k*(ty+r*sin(a)-y_)
       end
     end
     off+=0.025
@@ -618,21 +569,17 @@ fruit={
 
 fly_fruit={
   check_fruit=true,
-  init=function(_ENV) 
-    start=y
-    step=0.5
-    sfx_delay=8
+  init=function(_ENV)
+    start,step,sfx_delay=y,0.5,8
   end,
   update=function(_ENV)
     --fly away
     if has_dashed then
-     if sfx_delay>0 then
       sfx_delay-=1
-      if sfx_delay<=0 then
+      if sfx_delay==0 then
        _g.sfx_timer=20
        sfx(10)
       end
-     end
       spd.y=appr(spd.y,-3.5,0.25)
       if y<-16 then
         destroy_object(_ENV)
@@ -649,7 +596,7 @@ fly_fruit={
       init_smoke(6)
 
       local f=init_object(fruit,x,y,10) --if this happens to be in the exact location of a different fruit that has already been collected, this'll cause a crash
-      --TODO: fix this if needed 
+      --TODO: fix this if needed
       f.fruit_id=fruit_id
       fruit.update(f)
       --- </fruitrain> ---
@@ -666,11 +613,7 @@ fly_fruit={
 
 lifeup={
   init=function(_ENV)
-    spd.y=-0.25
-    duration=30
-    flash=0
-    outline=false
-    _g.sfx_timer=20
+    spd.y,duration,flash,_g.sfx_timer,outline=-0.25,30,0,20--,false
     sfx(9)
   end,
   update=function(_ENV)
@@ -678,9 +621,9 @@ lifeup={
     if duration<=0 then
       destroy_object(_ENV)
     end
+    flash+=0.5
   end,
   draw=function(_ENV)
-    flash+=0.5
     --<fruitrain>--
     ?sprite<=5 and sprite.."000" or "1UP",x-4,y-4,7+flash%2
     --<fruitrain>--
@@ -689,88 +632,111 @@ lifeup={
 
 -- <cloud> --
 bouncy_cloud = {
-	init=function(_ENV)
-		break_timer=0
-		t=0.25
-		state=0
-		start=y
+  init=function(_ENV)
+    break_timer=0
+    t=0.25
+    state=0
+    start=y
     hitbox=rectangle(0,0,16,0)
-		semisolid_obj=true
-	end,
-	update=function(_ENV)
-		--fragile cloud override
-		if break_timer==0 then
-			collideable=true
-		else
-			break_timer-=1
-			if break_timer==0 then
-				init_smoke()
-				init_smoke(8)
-			end
-		end
-		
+    semisolid_obj=true
+    particles={}
+  end,
+  update=function(_ENV)
+    --fragile cloud override
+    if break_timer==0 then
+      collideable=true
+    else
+      break_timer-=1
+      if break_timer==0 then
+        init_smoke()
+        init_smoke(8)
+      end
+    end
+
     local hit=check(player,0,-1)
     --idle position
-		if state==0 and break_timer==0 and hit and hit.spd.y>=0 then
-			state=1
-		end
-		
-		if state==1 then
-			--in animation
-			spd.y=-2*sin(t)
-			if hit and t>=0.85 then 
+    if state==0 and break_timer==0 and hit and hit.spd.y>=0 then
+      state=1
+    end
+
+    if state==1 then
+      --in animation
+      spd.y=-2*sin(t)
+      if hit and t>=0.85 then
         hit.spd.y=min(hit.spd.y,-1.5)
         hit.grace=0
-			end
-      
-			
-			t+=0.05
-			
-      
-			if t>=1 then
-				state=2
-			end
-		elseif state==2 then
-			--returning to idle position
+      end
+
+
+      t+=0.05
+
+      if y-start > 7 and #particles==0 then
+        make_cloud_particles(this)
+      end
+
+      if t>=1 then
+        state=2
+      end
+    elseif state==2 then
+      --returning to idle position
       if sprite==65 and break_timer==0 then
-				collideable=false
-				break_timer=60
-				init_smoke()
-				init_smoke(8)
-			end
-			
+        collideable=false
+        break_timer=60
+        init_smoke()
+        init_smoke(8)
+      end
+
       spd.y=sign(start-y)
-			if y==start then
-				t=0.25
-				state=0
+      if y==start then
+        t=0.25
+        state=0
         rem=vector(0,0)
       end
-        
-		end
-	end,
-	draw=function(_ENV)
-		if break_timer==0 then
-			if sprite==65 then
-				pal(7,14)
-				pal(6,2)
-			end
-      spr(64,x,y-1,2.0,1.0)
-			pal()
-		end
-	end
+
+    end
+  end,
+  draw=function(_ENV)
+    if break_timer==0 then
+      if sprite==65 then
+        pal(7,14)
+        pal(6,2)
+      end
+      for p in all(particles) do
+        pset(p.x,p.y,6)
+        p.t-=0.25
+        p.y+=0.3
+        if p.t <=0 then del(particles, p) end
+      end
+      local w = (y-start)/2
+      sspr(0, 32, 16, 8, x-w/2,y-1,16+w,8)
+      pal()
+    end
+  end
 }
+
+
+function make_cloud_particles(_ENV)
+  particles={}
+  for i=0,rnd(5)+5 do
+    add(particles, {
+      x=x+rnd(14)+1,
+      y=y+rnd(6)+1,
+      t=1+rnd(1)
+    })
+  end
+end
 -- </cloud> --
 
 fake_wall={
   init=function(_ENV)
     solid_obj=true
-    local match 
-    for i=y,lvl_ph,8 do 
-      if tile_at(x/8,i/8)==83 then 
-        match=i 
-        break 
-      end 
-    end 
+    local match
+    for i=y,lvl_ph,8 do
+      if tile_at(x/8,i/8)==83 then
+        match=i
+        break
+      end
+    end
     ph=match-y+8
     x-=8
     has_fruit=check(fruit,0,0)
@@ -803,7 +769,7 @@ fake_wall={
 
 --- <snowball> ---
 snowball = {
-  init=function(_ENV) 
+  init=function(_ENV)
     spd.x=-3
     sproff=0
   end,
@@ -836,13 +802,13 @@ snowball_controller={
   end,
   update=function(_ENV)
     t=(t+1)%60
-    if t==0 then 
-      for o in all(objects) do 
-        if o.type==player then 
+    if t==0 then
+      for o in all(objects) do
+        if o.type==player then
           init_object(snowball,cam_x+128,o.y,68)
-        end 
+        end
       end
-    end 
+    end
   end
 }
 --- </snowball> ---
@@ -853,12 +819,14 @@ green_bubble={
     timer=0
     shake=0
     dead_timer=0
+    movetimer=0
     hitbox=rectangle(0,0,12,12)
     outline=false --maybe add an extra black outline, or remove this?
+    start=vector(x,y)
   end,
   update=function(_ENV)
     local hit=player_here()
-    if hit and not invisible then
+    if hit and movetimer==0 and not invisible then
       hit.invisible=true
       hit.spd=vector(0,0)
       hit.rem=vector(0,0)
@@ -870,12 +838,31 @@ green_bubble={
       hit.x,hit.y=x+1,y+1
       timer+=1
       if timer>10 or btnp(❎) then
-        hit.invisible=false
         hit.djump=max_djump+1
-        hit.do_dash=true        
-        invisible=true
+        hit.do_dash=true
+        movetimer=6
         timer=0
       end
+    elseif hit and movetimer>0 then
+      x=hit.x
+      y=hit.y
+      movetimer-=1
+      if movetimer==0 then
+        for i=-4,4,8 do
+          for j=-4,4,8 do
+            init_smoke(i, -j)
+          end
+        end
+
+        hit.invisible=false
+        invisible=true
+        x=start.x
+        y=start.y
+      end
+    elseif movetimer>0 then
+      invisible=true
+      x=start.x
+      y=start.y
     elseif invisible then
       dead_timer+=1
       if dead_timer==60 then
@@ -883,8 +870,8 @@ green_bubble={
         invisible=false
         init_smoke()
       end
-    end 
-  end, 
+    end
+  end,
   draw=function(_ENV)
     t+=0.05
   	local x,y,t=x,y,t
@@ -898,59 +885,65 @@ green_bubble={
     for f in all({ovalfill,oval}) do
       f(x-2-sx,y-2-sy,x+9+sx,y+9+sy,f==oval and 11 or 3)
     end
-  	for dx=2,5 do
+    if timer>0 or movetimer>0 then
+      pal(8,1)
+      pal(15,1)
+      spr(1,x,y)
+      pal()
+    end
+    for dx=2,5 do
       local _t=(5*t+3*dx)%8
       local bx=sgn(dx-4)*round(sin(_t/16))
       rectfill(x+dx-bx,y+8-_t,x+dx-bx,y+8-_t,6)
-  	end
-  	rectfill(x+5+sx,y+1-sy,x+6+sx,y+2-sy,7)
-  end 
+    end
+    rectfill(x+5+sx,y+1-sy,x+6+sx,y+2-sy,7)
+  end
 }
 -- </green_bubble> --
 
 
--- requires <solids> 
+-- requires <solids>
 arrow_platform={
   init=function(_ENV)
     dir=sprite==71 and -1 or sprite==72 and 1 or 0
     solid_obj=true
     collides=true
 
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==73 do 
+    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==73 do
       hitbox.w+=8
-    end 
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==73 do 
+    end
+    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==73 do
       hitbox.h+=8
-    end 
+    end
     break_timer,death_timer=0,0
     start_x,start_y=x,y
     outline=false
   end,
   update=function(_ENV)
-    if death_timer>0 then 
+    if death_timer>0 then
       death_timer-=1
-      if death_timer==0 then 
+      if death_timer==0 then
         x,y,spd=start_x,start_y,vector(0,0)
-        if player_here() then 
+        if player_here() then
           death_timer=1
           return
-        else 
+        else
           init_smoke_hitbox()
           break_timer=0
           collideable=true
           active=false
         end
       else
-        return 
-      end 
-    end 
+        return
+      end
+    end
 
-    if (dir!=0 and spd.x==0 or dir==0 and spd.y==0) and active then 
+    if (dir!=0 and spd.x==0 or dir==0 and spd.y==0) and active then
       break_timer+=1
-    else 
+    else
       break_timer=0
-    end 
-    if break_timer==16 then 
+    end
+    if break_timer==16 then
       init_smoke_hitbox()
       death_timer=60
       collideable=false
@@ -958,18 +951,18 @@ arrow_platform={
 
     spd=vector(active and dir or 0,active and dir==0 and -1 or 0)
     local hit=check(player,0,-1)
-    if hit then 
+    if hit then
       spd=vector(dir,dir==0 and -1 or btn(⬇️) and 1 or btn(⬆️) and not hit.is_solid(0,-1) and -1 or 0)
       active=true
     end
   end,
   draw=function(_ENV)
-    if (death_timer>0) return 
+    if (death_timer>0) return
 
     local x,y=x,y
     pal(13,active and 11 or 13)
     local shake=break_timer>8
-    if shake then 
+    if shake then
       x+=rnd(2)-1
       y+=rnd(2)-1
       pal(13,8)
@@ -980,7 +973,7 @@ arrow_platform={
     line(x+3,y+2,r-3,y+2,1)
     local mx,my=x+hitbox.w/2,y+hitbox.h/2
     spr(shake and 72 or dir==0 and 87 or spd.y~=0 and 73 or 71,mx-4,my+(break_timer<=8 and spd.y<0 and dir!=0 and -3 or -4),1.0,1.0,dir==-1,spd.y>0)
-    if hitbox.h==8 and shake then 
+    if hitbox.h==8 and shake then
       rect(mx-3,my-3,mx+2,my+2,1)
     end
     if dir!=0 then
@@ -988,7 +981,7 @@ arrow_platform={
       if not check(player,0,-1) and not is_solid(0,-1) then
         line(x+2,y-1,r-2,y-1,13)
       end
-    end 
+    end
     pal()
   end
 
@@ -996,18 +989,18 @@ arrow_platform={
 
 bg_flag={
   layer=0,
-  init=function(_ENV) 
+  init=function(_ENV)
     t=0
     wind=prev_wind_spd
     wvel=0
     ph=8
-    while not is_solid(0,ph) and y+ph<lvl_ph do 
-      ph+=8 
-    end 
-    h=1
-    w=2
+    while not is_solid(0,ph) and y+ph<lvl_ph do
+      ph+=8
+    end
+    h=sprite==78 and 2 or 1
+    w=sprite==78 and 1 or 2
     --outline=false
-  end, 
+  end,
   update=function(_ENV)
 	  wvel+=0.01*(wind_spd+sgn(wind_spd)*0.4-wind)
 	  wind+=wvel
@@ -1023,7 +1016,7 @@ bg_flag={
       local yoff = cos(ang)*nx
       tline(x+xoff,y+off+yoff,x+xoff,y+h*8+off+yoff,lvl_x+x/8+nx/8,lvl_y+y/8,0,1/8)
     end
-    
+
   end
 }
 
@@ -1038,49 +1031,45 @@ psfx=function(num)
 end
 
 -- [tile dict]
-tiles={
-  [1]=player_spawn,
-  [8]=side_spring,
-  [9]=spring,
-  [10]=fruit,
-  [11]=fruit,
-  [12]=fly_fruit,
-  [15]=refill,
-  [23]=fall_floor,
-  [64] =bouncy_cloud,
-  [65] =bouncy_cloud,
-  [67] = fake_wall,
-  [68] = snowball_controller,
-  [70] = green_bubble,
-  [71] = arrow_platform,
-  [72] = arrow_platform,
-  [87] = arrow_platform,
-  [74] = bg_flag
-}
+tiles={}
+foreach(split([[
+1,player_spawn
+8,spring
+9,spring
+10,fruit
+11,fruit
+12,fly_fruit
+15,refill
+23,fall_floor
+64,bouncy_cloud
+65,bouncy_cloud
+67,fake_wall
+68,snowball_controller
+70,green_bubble
+71,arrow_platform
+72,arrow_platform
+87,arrow_platform
+74,bg_flag
+76,bg_flag
+78,bg_flag
+]],"\n"),function(t)
+ local tile,obj=unpack(split(t))
+ tiles[tile]=_ENV[obj]
+end)
 
 -- [object functions]
 
-function init_object(type,sx,sy,tile)
+function init_object(_type,sx,sy,tile)
   --generate and check berry id
   local id=sx..","..sy..","..lvl_id
-  if type.check_fruit and got_fruit[id] then 
-    return 
+  if _type.check_fruit and got_fruit[id] then
+    return
   end
   --local _g=_g
-  local _ENV={
-    type=type,
-    collideable=true,
-    sprite=tile,
-    flip=vector(),
-    x=sx,
-    y=sy,
-    hitbox=rectangle(0,0,8,8),
-    spd=vector(0,0),
-    rem=vector(0,0),
-    fruit_id=id,
-    outline=true,
-    draw_seed=rnd()
-  }
+  local _ENV={}
+  type, collideable, sprite, flip, x, y, hitbox, spd, rem, fruit_id, outline, draw_seed=
+  _type, true, tile, _g.vector(), sx, sy, _g.rectangle(0,0,8,8), _g.vector(0,0), _g.vector(0,0), id, true, _g.rnd()
+
   _g.setmetatable(_ENV,{__index=_g})
   function left() return x+hitbox.x end
   function right() return left()+hitbox.w-1 end
@@ -1088,19 +1077,16 @@ function init_object(type,sx,sy,tile)
   function bottom() return top()+hitbox.h-1 end
 
   function is_solid(ox,oy)
-    for o in all(objects) do 
-      if o!=_ENV and (o.solid_obj or o.semisolid_obj and not objcollide(o,ox,0) and oy>0) and objcollide(o,ox,oy)  then 
-        return true 
-      end 
-    end 
-    return (oy>0 and not is_flag(ox,0,3) and is_flag(ox,oy,3)) or  -- one way platform or
+    for o in all(objects) do
+      if o!=_ENV and (o.solid_obj or o.semisolid_obj and not objcollide(o,ox,0) and oy>0) and objcollide(o,ox,oy)  then
+        return true
+      end
+    end
+    return oy>0 and not is_flag(ox,0,3) and is_flag(ox,oy,3) or  -- one way platform or
             is_flag(ox,oy,0) -- solid terrain
   end
   function oob(ox,oy)
     return not exit_left and left()+ox<0 or not exit_right and right()+ox>=lvl_pw or top()+oy<=-8
-  end
-  function place_free(ox,oy)
-    return not (is_solid(ox,oy) or oob(ox,oy))
   end
 
   function is_flag(ox,oy,flag)
@@ -1112,28 +1098,26 @@ function init_object(type,sx,sy,tile)
           if fget(tile,flag) and (flag~=3 or j*8>bottom()) then
             return true
           end
-        else
-          if ({spd.y>=0 and bottom()%8>=6,
-            spd.y<=0 and top()%8<=2,
-            spd.x<=0 and left()%8<=2,
-            spd.x>=0 and right()%8>=6})[tile-15] then
+        elseif ({spd.y>=0 and bottom()%8>=6,
+          spd.y<=0 and top()%8<=2,
+          spd.x<=0 and left()%8<=2,
+          spd.x>=0 and right()%8>=6})[tile-15] then
             return true
-          end
         end
       end
     end
   end
-  function objcollide(other,ox,oy) 
+  function objcollide(other,ox,oy)
 
     return other.collideable and
-    other.right()>=left()+ox and 
+    other.right()>=left()+ox and
     other.bottom()>=top()+oy and
-    other.left()<=right()+ox and 
+    other.left()<=right()+ox and
     other.top()<=bottom()+oy
   end
   function check(type,ox,oy)
     for other in all(objects) do
-      if other and other.type==type and other~=_ENV and objcollide(other,ox,oy) then
+      if other.type==type and other~=_ENV and objcollide(other,ox,oy) then
         return other
       end
     end
@@ -1142,7 +1126,7 @@ function init_object(type,sx,sy,tile)
   function player_here()
     return check(player,0,0)
   end
-  
+
   function move(ox,oy,start)
     for axis in all{"x","y"} do
       -- <wind> --
@@ -1152,14 +1136,12 @@ function init_object(type,sx,sy,tile)
       rem[axis]-=amt
 
       local upmoving=axis=="y" and amt<0
-      local riding=not player_here() and check(player,0,upmoving and amt or -1)
-      local movamt
+      local riding,movamt=not player_here() and check(player,0,upmoving and amt or -1)--,nil
       if collides then
-        local step=sign(amt)
+        local step,p=sign(amt),_ENV[axis]
         local d=axis=="x" and step or 0
-        local p=_ENV[axis]
         for i=start,abs(amt) do
-          if place_free(d,step-d) then
+          if not (is_solid(d,step-d) or oob(d,step-d)) then
             _ENV[axis]+=step
           else
             spd[axis],rem[axis]=0,0
@@ -1168,38 +1150,38 @@ function init_object(type,sx,sy,tile)
         end
         movamt=_ENV[axis]-p --save how many px moved to use later for solids
       else
-        movamt=amt 
-        if (solid_obj or semisolid_obj) and upmoving and riding then 
+        movamt=amt
+        if (solid_obj or semisolid_obj) and upmoving and riding then
           movamt+=top()-bottom()-1
           local hamt=round(riding.spd.y+riding.rem.y)
           hamt+=sign(hamt)
-          if movamt<hamt then 
+          if movamt<hamt then
             riding.spd.y=max(riding.spd.y)--,0)
-          else 
+          else
             movamt=0
           end
         end
         _ENV[axis]+=amt
       end
       if (solid_obj or semisolid_obj) and collideable then
-        collideable=false 
+        collideable=false
         local hit=player_here()
-        if hit and solid_obj then 
-          hit.move(axis=="x" and (amt>0 and right()+1-hit.left() or amt<0 and left()-hit.right()-1) or 0, 
-                  axis=="y" and (amt>0 and bottom()+1-hit.top() or amt<0 and top()-hit.bottom()-1) or 0,
+        if hit and solid_obj then
+          hit.move(axis~="x" and 0 or amt>0 and right()+1-hit.left() or amt<0 and left()-hit.right()-1,
+                  axis~="y" and 0 or amt>0 and bottom()+1-hit.top() or amt<0 and top()-hit.bottom()-1,
                   1)
-          if player_here() then 
+          if player_here() then
             kill_player(hit)
-          end 
-        elseif riding then 
+          end
+        elseif riding then
           riding.move(axis=="x" and movamt or 0, axis=="y" and movamt or 0,1)
         end
-        collideable=true 
+        collideable=true
       end
     end
   end
 
-  function init_smoke(ox,oy) 
+  function init_smoke(ox,oy)
     init_object(smoke,x+(ox or 0),y+(oy or 0),26)
   end
 
@@ -1208,12 +1190,12 @@ function init_object(type,sx,sy,tile)
   -- made into function because of repeated usage
   -- can be removed if doesn't save tokens
   function init_smoke_hitbox()
-    for ox=0,hitbox.w-8,8 do 
-      for oy=0,hitbox.h-8,8 do 
-        init_smoke(ox,oy) 
-      end 
-    end 
-  end 
+    for ox=0,hitbox.w-8,8 do
+      for oy=0,hitbox.h-8,8 do
+        init_smoke(ox,oy)
+      end
+    end
+  end
   -- </fake_wall> </arrow_platform>
 
 
@@ -1253,7 +1235,7 @@ function kill_player(obj)
   --- </fruitrain> ---
   delay_restart=15
   -- <transition>
-  tstate=0
+  transition:play()
   -- </transition>
 end
 
@@ -1261,47 +1243,54 @@ end
 
 
 function next_level()
-  local next_lvl=lvl_id+1
-  load_level(next_lvl)
+  load_level(lvl_id+1)
 end
 
 function load_level(id)
-  has_dashed=false
-  
   --remove existing objects
   foreach(objects,destroy_object)
-  
-  --reset camera speed
-  cam_spdx,cam_spdy=0,0
-		
+
+  --reset camera speed, drawing timer setup
+  ui_timer,cam_spdx,cam_spdy,has_dashed=5,0,0--,false
+
   local diff_level=lvl_id~=id
-  
-		--set level index
+
+  --set level index
   lvl_id=id
-  
+
   prev_wind_spd=wind_spd or 0
   --set level globals
   local tbl=split(levels[lvl_id])
-  lvl_x,lvl_y,lvl_w,lvl_h,wind_spd=tbl[1]*16,tbl[2]*16,tbl[3]*16,tbl[4]*16,tbl[6] or 0
+  for i=1,4 do
+    _ENV[split"lvl_x,lvl_y,lvl_w,lvl_h"[i]]=tbl[i]*16
+  end
 
-  lvl_pw=lvl_w*8
-  lvl_ph=lvl_h*8
-  
-  local exits=tonum(tbl[5]) or 0b0001 
-  exit_top,exit_right,exit_bottom,exit_left=exits&1!=0,exits&2!=0,exits&4!=0, exits&8!=0
-  
-  --drawing timer setup
-  ui_timer=5
+  lvl_pw,lvl_ph,wind_spd=lvl_w*8,lvl_h*8,tbl[6] or 0
+
+  local exits=tonum(tbl[5]) or 0b0001
+
+  -- exit_top,exit_right,exit_bottom,exit_left=exits&1!=0,exits&2!=0,exits&4!=0, exits&8!=0
+  for i,v in ipairs(split"exit_top,exit_right,exit_bottom,exit_left") do
+    _ENV[v]=exits&(0.5<<i)~=0
+  end
+
 
   --reload map
-  if diff_level then 
+  if diff_level then
     reload()
+  end
     --chcek for mapdata strings
-    if mapdata[lvl_id] then
-      replace_mapdata(lvl_x,lvl_y,lvl_w,lvl_h,mapdata[lvl_id])
+  if mapdata[lvl_id] then
+    --hex loaded levels go at (0,0), despite what the levels table says (to make everhorn nicer)
+    lvl_x,lvl_y=0,0
+    if diff_level then
+      --replace mapdata with hex
+      for i=1,#mapdata[lvl_id],2 do
+        mset(i\2%lvl_w,i\2\lvl_w,"0x"..sub(mapdata[lvl_id],i,i+1))
+      end
     end
-  end 
-  
+  end
+
   -- entities
   for tx=0,lvl_w-1 do
     for ty=0,lvl_h-1 do
@@ -1311,6 +1300,7 @@ function load_level(id)
       end
     end
   end
+
   foreach(objects,function(_ENV)
     (type.end_init or time)(_ENV)
   end)
@@ -1319,9 +1309,9 @@ function load_level(id)
   --generate camera triggers
   cam_offx,cam_offy=0,0
   for s in all(camera_offsets[lvl_id]) do
-    local tx,ty,tw,th,offx,offy=unpack(split(s))
-    local t=init_object(camera_trigger,tx*8,ty*8)
-    t.hitbox,t.offx,t.offy=rectangle(0,0,tw*8,th*8),offx,offy
+    local tx,ty,tw,th,offx_,offy_=unpack(split(s))
+    local _ENV=init_object(camera_trigger,tx*8,ty*8)
+    hitbox.w,hitbox.h,offx,offy=tw*8,th*8,offx_,offy_
   end
   --</camtrigger>--
 end
@@ -1336,37 +1326,37 @@ function _update()
     seconds%=60
   end
   frames%=30
-  
+
   if music_timer>0 then
     music_timer-=1
     if music_timer<=0 then
       music(10,0,7)
     end
   end
-  
+
   if sfx_timer>0 then
     sfx_timer-=1
   end
-  
+
   -- cancel if freeze
-  if freeze>0 then 
+  if freeze>0 then
     freeze-=1
     return
   end
-  
+
   -- restart (soon)
   if delay_restart>0 then
-  	cam_spdx,cam_spdy=0,0
+    cam_spdx,cam_spdy=0,0
     delay_restart-=1
     if delay_restart==0 then
-    -- <fruitrain> --
+      -- <fruitrain> --
       if full_restart then
         full_restart=false
         _init()
       -- </fruitrain> --
       else
         load_level(lvl_id)
-      end 
+      end
     end
   end
 
@@ -1385,6 +1375,10 @@ function _update()
     end
   end)
 
+  -- <transition>
+  transition:update()
+  -- </transition>
+
 end
 
 -- [drawing functions]
@@ -1393,25 +1387,23 @@ function _draw()
   if freeze>0 then
     return
   end
-  
+
   -- reset all palette values
   pal()
-  
-	--set cam draw position
-  draw_x=round(cam_x)-64
-  draw_y=round(cam_y)-64
+
+  --set cam draw position
+  draw_x,draw_y=round(cam_x)-64,round(cam_y)-64
   camera(draw_x,draw_y)
 
   -- draw bg color
   cls()
 
   -- bg clouds effect
-  foreach(clouds,function(c)
-    c.x+=c.spd-cam_spdx
-    rectfill(c.x+draw_x,c.y+draw_y,c.x+c.w+draw_x,c.y+16-c.w*0.1875+draw_y,1)
-    if c.x>128 then
-      c.x=-c.w
-      c.y=rnd(120)
+  foreach(clouds,function(_ENV)
+    x+=spd-_g.cam_spdx
+    _g.rectfill(x+_g.draw_x,y+_g.draw_y,x+w+_g.draw_x,y+16-w*0.1875+_g.draw_y,1)
+    if x>128 then
+      x,y=-w,_g.rnd(120)
     end
   end)
 
@@ -1431,7 +1423,7 @@ function _draw()
   pal=_pal
   camera(draw_x,draw_y)
   pal()
-	
+
   --set draw layering
   --0: background layer
   --1: default layer
@@ -1447,7 +1439,7 @@ function _draw()
   end)
   -- draw terrain
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,2)
-  
+
   -- draw objects
   foreach(layers,function(l)
     foreach(l,draw_object)
@@ -1463,23 +1455,21 @@ function _draw()
     off+=_g.min(0.05,spd/32)
     -- <wind> --
     wspd=_g.appr(wspd,_g.wind_spd*12,0.5)
-    if _g.wind_spd!=0 then 
-      x += wspd - _g.cam_spdx 
-      _g.line(x+_g.draw_x,y+_g.draw_y,x+wspd*-1.5+_g.draw_x,y+_g.draw_y,c)  
-    else 
+    if _g.wind_spd!=0 then
+      x += wspd - _g.cam_spdx
+      _g.line(x+_g.draw_x,y+_g.draw_y,x+wspd*-1.5+_g.draw_x,y+_g.draw_y,c)
+    else
       x+=spd+wspd-_g.cam_spdx
       _g.rectfill(x+_g.draw_x,y+_g.draw_y,x+s+_g.draw_x+wspd*-1.5,y+s+_g.draw_y,c)
     end
     -- </wind> --
-    if x>132 then 
-      x=-4
-      y=_g.rnd128()
-   	elseif x<-4 then
-     	x=128
-     	y=_g.rnd128()
+    if x>132 then
+      x,y=-4,_g.rnd128()
+    elseif x<-4 then
+      x,y=128,_g.rnd128()
     end
   end)
-  
+
   -- dead particles
   foreach(dead_particles,function(_ENV)
     x+=dx
@@ -1493,43 +1483,23 @@ function _draw()
 
   -- draw time
   if ui_timer>=-30 then
-  	if ui_timer<0 then
-  		draw_time(draw_x+4,draw_y+4)
-  	end
-  	ui_timer-=1
+    if ui_timer<0 then
+      draw_time(draw_x+4,draw_y+4)
+    end
+    ui_timer-=1
   end
 
   -- <transition>
-  camera()
-  color(0)
-  if tstate>=0 then
-    local t20=tpos+20
-    if tstate==0 then
-      po1tri(tpos,0,t20,0,tpos,127)
-      if(tpos>0) rectfill(0,0,tpos,127)
-      if(tpos>148) then
-        tstate=1
-        tpos=-20
-      end
-    else
-      po1tri(t20,0,t20,127,tpos,127)
-      if(tpos<108) rectfill(t20,0,127,127)
-      if(tpos>148) then
-        tstate=-1
-        tpos=-20
-      end
-    end
-    tpos+=14
-  end
+  transition:draw()
   -- </transition>
 end
 
 function draw_object(_ENV)
   -- <green_bubble> --
-  if not invisible then 
+  if not invisible then
     srand(draw_seed);
     (type.draw or draw_obj_sprite)(_ENV)
-  end 
+  end
   -- </green_bubble> --
 end
 
@@ -1555,7 +1525,7 @@ function round(x)
 end
 
 function appr(val,target,amount)
-  return val>target and max(val-amount,target) or min(val+amount,target)
+  return mid(val-amount,val+amount,target)
 end
 
 function sign(v)
@@ -1571,10 +1541,44 @@ function tile_at(x,y)
 end
 
 --<transition>--
-
--- transition globals
-tstate=-1
-tpos=-20
+transition = {
+  -- state:
+  --  1 | wiping in
+  -- -1 | wiping out
+  --  0 | idle
+  state=0,
+  play=function(_ENV)
+    state = state==0 and 1 or state
+    x=-64
+  end,
+  update=function(_ENV)
+    if (state==0) return
+    if state==1 and x>128 then
+      state=-1
+      play(_ENV)
+    elseif state==-1 and x>192 then
+      state=0
+    end
+    x+=14
+  end,
+  draw=function(_ENV)
+    if (state==0) return
+    _g.camera()
+    _g.color(0)
+    local x20=x+20
+    if state==1 then
+      for yo=-2,128,10 do
+        _g.po1tri(x,yo,x+64,yo+5,x,yo+10)
+      end
+      if (x>0) _g.rectfill(0,0,x,127,0)
+    else
+      for yo=-2,128,10 do
+        _g.po1tri(x20,yo,x20-64,yo+5,x20,yo+10)
+      end
+      if (x<108) _g.rectfill(x20,0,127,127,0)
+    end
+  end
+}
 
 -- triangle functions
 function po1tri(x0,y0,x1,y1,x2,y2)
@@ -1595,6 +1599,7 @@ end
 -->8
 --[map metadata]
 
+--@begin
 --level table
 --"x,y,w,h,exit_dirs,wind_speed"
 --exit directions "0b"+"exit_left"+"exit_bottom"+"exit_right"+"exit_top" (default top- 0b0001)
@@ -1614,41 +1619,28 @@ camera_offsets={
 --assigned levels will load from here instead of the map
 mapdata={
 }
+--@end
 
 
 function move_camera(obj)
   --<camtrigger>--
-  cam_spdx=cam_gain*(4+obj.x-cam_x+cam_offx)
-  cam_spdy=cam_gain*(4+obj.y-cam_y+cam_offy)
+  cam_spdx,cam_spdy=cam_gain*(4+obj.x-cam_x+cam_offx),cam_gain*(4+obj.y-cam_y+cam_offy)
   --</camtrigger>--
 
   cam_x+=cam_spdx
   cam_y+=cam_spdy
 
   --clamp camera to level boundaries
-  local clamped=mid(cam_x,64,lvl_pw-64)
-  if cam_x~=clamped then
-    cam_spdx=0
-    cam_x=clamped
+  local clampx,clampy=mid(cam_x,64,lvl_pw-64),mid(cam_y,64,lvl_ph-64)
+  if cam_x~=clampx then
+    cam_spdx,cam_x=0,clampx
   end
-  clamped=mid(cam_y,64,lvl_ph-64)
-  if cam_y~=clamped then
-    cam_spdy=0
-    cam_y=clamped
+  if cam_y~=clampy then
+    cam_spdy,cam_y=0,clampy
   end
 end
 
 
---replace mapdata with hex
-function replace_mapdata(x,y,w,h,data)
-  for y_=0,h*2-1,2 do
-    local offset=y*2+y_<64 and 8192 or 0
-    for x_=1,w*2,2 do
-      local i=x_+y_*w
-      poke(offset+x+y*128+y_*64+x_/2,"0x"..sub(data,i,i+1))
-    end
-  end
-end
 
 --[[
 
@@ -1663,19 +1655,16 @@ and can be safely removed!
 --copy mapdata string to clipboard
 function get_mapdata(x,y,w,h)
   local reserve=""
-  for y_=0,h*2-1,2 do
-    local offset=y*2+y_<64 and 8192 or 0
-    for x_=1,w*2,2 do
-      reserve=reserve..num2hex(peek(offset+x+y*128+y_*64+x_/2))
-    end
+  for i=0,w*h-1 do
+    reserve..=num2hex(mget(i%w,i\w))
   end
   printh(reserve,"@clip")
 end
 
 --convert mapdata to memory data
-function num2hex(v) 
+function num2hex(v)
   return sub(tostr(v,true),5,6)
-end 
+end
 __gfx__
 000000000000000000000000088888800000000000000000000000000000000000000000000000000300b0b00a0aa0a000000000000000000000000000077000
 00000000088888800888888088888888088888800888880000000000088888800004000000000000003b33000aa88aa0000777770000000000000000007bb700
@@ -1685,46 +1674,46 @@ __gfx__
 0000000008fffff008fffff00033330008fffff00fffff8088fffff808333380000950500005500008898880099a999007777000077776700770000007333370
 00000000003333000033330007000070073333000033337008f1ff10003333000004000000500500028888200299992007000000070000770777777000733700
 00000000007007000070007000000000000007000000700007733370007007000000000000055000002882000029920000000000000000000007777700077000
-000000006665666555000000000006664fff4fff4fff4fff4fff4fffd666666dd666666dd666066d000000000000000070000000000000000000000000000000
-000000006765676566700000000777764444444444444444444444446dddddd56ddd5dd56dd50dd5007700000770070007000007000000000000000000000000
-00000000677067706777700000000766000450000000000000054000666ddd55666d6d5556500555007770700777000000000000000000000000000000000000
-0070007007000700666000000000005500450000000000000000540066ddd5d5656505d500000055077777700770000000000000000000000000000000000000
-007000700700070055000000000006660450000000000000000005406ddd5dd56dd5065565000000077777700000700000000000000000000000000000000000
-067706770000000066700000000777764500000000000000000000546ddd6d656ddd7d656d500565077777700000077000000000000000000000000000000000
-5676567600000000677770000000076650000000000000000000000505ddd65005d5d65005505650070777000007077007000070000000000000000000000000
-56665666000000006660000000000055000000000000000000000000000000000000000000000000000000007000000000000000000000000000000000000000
-5777777557777777777777777777777577cccccccccccccccccccc77577777755555555555555555555555555555555500000000000000000000000000000000
-77777777777777777777777777777777777cccccccccccccccccc777777777775555555555555550055555555555555500000000000000000000000000000000
-777c77777777ccccc777777ccccc7777777cccccccccccccccccc777777777775555555555555500005555555500005500000000000000000000000000000000
-77cccc77777cccccccc77cccccccc7777777cccccccccccccccc7777777cc7775555555555555000000555555500005500000000000000000000000000000000
-77cccc7777cccccccccccccccccccc777777cccccccccccccccc777777cccc775555555555550000000055555500005555555555000000000000000000000000
-777cc77777cc77ccccccccccccc7cc77777cccccccccccccccccc77777cccc775555555555500000000005555500005555555555000000000000000000000000
-7777777777cc77cccccccccccccccc77777cccccccccccccccccc77777c7cc775555555555000000000000555555555555555555000000000000000000000000
-5777777577cccccccccccccccccccc7777cccccccccccccccccccc7777cccc775555555550000000000000055555555555555555000000000000000000000000
-77cccc7777cccccccccccccccccccc77577777777777777777777775777ccc77cccccccc50000000000000055555555500000005000000000000000000000000
-777ccc7777cccccccccccccccccccc77777777777777777777777777777cc777c77ccccc55000000000000555055555500000055000000000000000000000000
-777ccc7777cc7cccccccccccc77ccc777777ccc7777777777ccc7777777cc777c77cc7cc55500000000005555555005500000555000000000000000000000000
-77ccc77777ccccccccccccccc77ccc77777ccccc7c7777ccccccc77777ccc777cccccccc55550000000055555555005500005555000000000000000000000000
-77ccc777777cccccccc77cccccccc777777ccccccc7777c7ccccc77777cccc77cccccccc55555000000555555555555555555555000000000000000000000000
-777cc7777777ccccc777777ccccc77777777ccc7777777777ccc777777cccc77cc7ccccc55555500005555555505555555555555000000000000000000000000
-777cc777777777777777777777777777777777777777777777777777777cc777ccccc7cc55555550055555555555555555555555000000000000000000000000
-77cccc7757777777777777777777777557777777777777777777777557777775cccccccc55555555555555555555555555555555000000000000000000000000
-00077077700777005777755777577775007777000077770000bbbb00111111111111111111111111cccccccc0000000000000000000000000000000000000000
-0777777677777770777777777777777707767770077767700b3333b0111111111d1111d1111dddd14ccc11cccccc000000000000000000000000000000000000
-77666666677677777777cc7777cc77777777777767777777b333773b1111d11111d11d111111ddd14c111cc111cccccc00000000000000000000000000000000
-7677766676666677777cccccccccc7777677777767767767b333773b1111dd11111dd1111111ddd14c1cc111cccccc0000000000000000000000000000000000
-066666666666666077cccccccccccc777776777667777777b333333b1dddddd1111dd111111d11d14c1c1cc00000000000000000000000000000000000000000
-000000000000000057cc77ccccc7cc757777776666777777b333333b1111dd1111d11d1111d111114c111ccc0000000000000000000000000000000000000000
-0000000000000000577c77ccccccc77507777660066777700b3333b01111d1111d1111d1111111114ccc111cccc0000000000000000000000000000000000000
-0000000000000000777cccccccccc777006666000066770000bbbb00111111111111111100000000ccccccccc000000000000000000000000000000000000000
-0000000000000000777cccccccccc777000000000000000000000000111111110000000000000000000000000000000000000000000000000000000000000000
-000000000000000077cccccccccccc77000000000000000000000000111dd1110000000000000000000000000000000000000000000000000000000000000000
-000000000000000077cccc7ccccccc7700000000000000000000000011dddd110000000000000000000000000000000000000000000000000000000000000000
-0000000000000000577cccccccccc7750000000000000000000000001dddddd10000000000000000000000000000000000000000000000000000000000000000
-0000000000000000577cccccc77cc775000000000000000000000000111dd1110000000000000000000000000000000000000000000000000000000000000000
-000000000000000077ccccccc77ccc77000000000000000000000000111dd1110000000000000000000000000000000000000000000000000000000000000000
-000000000000000077cc7ccccccccc77000000000000000000000000111dd1110000000000000000000000000000000000000000000000000000000000000000
-0000000000000000777cccccccccc777000000000000000000000000111111110000000000000000000000000000000000000000000000000000000000000000
+00000010077c7c1001100000011000004fff4fff4fff4fff4fff4fffd666666dd666666dd666066d000000000000000070000000000000000000000000000000
+001001c1071c1cc11cc111001cc111774444444444444444444444446dddddd56ddd5dd56dd50dd5007700000770070007000007000000000000000000000000
+01c101c101cc1cc1cccccc10011ccc17000450000000000000054000666ddd55666d6d5556500555007770700777000000000000000000000000000000000000
+01c11c1001c11c107111110000011ccc00450000000000000000540066ddd5d5656505d500000055077777700770000000000000000000000000000000000000
+01c11c1001c11c10ccc11000001111170450000000000000000005406ddd5dd56dd5065565000000077777700000700000000000000000000000000000000000
+1cc1cc101c101c1071ccc11001cccccc4500000000000000000000546ddd6d656ddd7d656d500565077777700000077000000000000000000000000000000000
+1cc1c1701c10010077111cc100111cc750000000000000000000000505ddd65005d5d65005505650070777000007077007000070000000000000000000000000
+01c7c770010000000000011000000110000000000000000000000000000000000000000000000000000000007000000000000000000000000000000000000000
+111111110eeeeeeeeeee01eeeeeeeeee11e221111111111112222ee10eeeeee04424442444244444444424440000000044444000000000000000000000000000
+11112211eee22222222112ee22222eee1ee221111111111111222ee1ee222eee4222444244244494494222440099400044444200000000000000000000000000
+11121121ee222222211221222222222e1ee22211111111111122ee10e222222e2222244222224990042444240499429944422440000000000000000000000000
+11211112e2222222222221222222222211ee2221111111111222e111e22222222222222244442200024444424449429944424449000000000000000000000000
+12111121e22222e22e222212e2e2222e11e112221111111122221ee11e2e2e222222229244444400009944442444424444244494000000000000000000000000
+1121121122e22e1221e22e1e1e1222e1011e222211111111222222e111e221ee9222299444449900009994444244424422244444000000000000000000000000
+11122111221ee122221ee1112122ee1111e222221111111112222e10111221e14922994444499900000994404422242444244440000000000000000000000000
+11111111221112222221122111222ee111e222221111111112222211112222114499444444449000000000004444244444244400000000000000000000000000
+122222111122222222222222222222210eeeeeeeeeeeeee2eeeeeeee112222211111111100449000000992990022444444424444000000000000000000000000
+122e2e21122222222222222222222221e2ee2222eeeee2e1e22ee221112222211122111104499900009992990044244442224444000000000000000000000000
+1221e1211e22222222222122222222e122e2222222ee222122e22221122222e11222211144449900099942444999424424442424000000000000000000000000
+122112211e22e222222221122e22221122222e221222ee12ee1222211e222ee11222211144444420099442449994442444444244000000000000000000000000
+122212211eeee222112e2e1121e22e1122222e22111ee1111122222111e22e111122211144442244044424444444442244444244000000000000000000000000
+1122221111ee1ee2221eee22211ee1111e22e122e2111122122222e1111e22211111112222224994022244444444442444494299000000000000000000000000
+1122222111e111e22101e1112111e11111ee12221ee2122222222e11111e21111111112244244494444244444444424404994299000000000000000000000000
+112222210111011e1100111111111110011111111111111111211110011111101111111144244444442444444444244400994000000000000000000000000000
+077770000077767000eeeeeeeeeeeee0007777000077770000bbbb00111111111111111111111111cccccccc00000000eeeeeeeeeeeeeee04000000000000000
+07777677667777670ee112221e221ee007767770077767700b3333b0111111111d1111d1111dddd14ccc11cccccc00002222222222220000bbbbbbbb00000000
+67776777776777770e1e212221ee211e7777777767777777b333773b1111d11111d11d111111ddd14c111cc111cccccc40eeee0eeeeeeee03333333300000000
+6677777766777776e12e21212211e12e7677777767767767b333773b1111dd11111dd1111111ddd14c1cc111cccccc0040eeee00eeeeee00bbbbbbb000000000
+0666776666677666e22122e2e2e2122e7776777667777777b333333b1dddddd1111dd111111d11d14c1c1cc00000000040222200222222224b3333bb00000000
+0066666666666660e2e21e121e1212ee7777776666777777b333333b1111dd1111d11d1111d111114c111ccc0000000040eeee0eeeee000043bbbb3b00000000
+0006666000666600221ee121212122ee07777660066777700b3333b01111d1111d1111d1111111114ccc111cccc00000eeeeeeeeeeeeee004bb33bb000000000
+0000000000000000e21112121112122e006666000066770000bbbb00111111111111111100000000ccccccccc000000022222222222222204b3333bb00000000
+0000000000000000ee21e1111221e22e000000000000000000000000111111110000000000000000000000000000000000000000000000004b3333bb00000000
+0000000000000000e222111111e1222e000000000000000000000000111dd1110000000000000000000000000000000000000000000000004b3333b000000000
+0000000000000000e2222e11111222ee00000000000000000000000011dddd110000000000000000000000000000000000000000000000004bbbbbbb00000000
+0000000000000000ee22e1e111212eee0000000000000000000000001dddddd10000000000000000000000000000000000000000000000004bb33bbb00000000
+0000000000000000ee21122212ee122e000000000000000000000000111dd111000000000000000000000000000000000000000000000000bbbbbbb000000000
+00000000000000000ee221222e11212e000000000000000000000000111dd1110000000000000000000000000000000000000000000000003333333300000000
+0000000000000000ee212e12112212e0000000000000000000000000111dd111000000000000000000000000000000000000000000000000bbbbbbbb00000000
+0000000000000000ee22112112122eee000000000000000000000000111111110000000000000000000000000000000000000000000000004000000000000000
 __label__
 cccccccccccccccccccccccccccccccccccccc775500000000000000000000000000000000070000000000000000000000000000000000000000000000000000
 cccccccccccccccccccccccccccccccccccccc776670000000000000000000000000000000000000000000000000000000000000000000000000000000000000
