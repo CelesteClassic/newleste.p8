@@ -671,7 +671,7 @@ bouncy_cloud = {
       t+=0.05
 
       if y-start > 7 and #particles==0 then
-        make_cloud_particles(this)
+        make_cloud_particles(_ENV)
       end
 
       if t>=1 then
