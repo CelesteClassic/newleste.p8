@@ -670,7 +670,7 @@ bouncy_cloud = {
 
       t+=0.05
 
-      if y-start > 7 and #particles==0 then
+      if y-start > 6 and #particles==0 then
         make_cloud_particles(_ENV)
       end
 
@@ -694,6 +694,11 @@ bouncy_cloud = {
       end
 
     end
+    for p in all(particles) do
+      p.t-=0.25
+      p.y+=0.3
+      if p.t <0 then del(particles, p) end
+    end
   end,
   draw=function(_ENV)
     if break_timer==0 then
@@ -703,9 +708,6 @@ bouncy_cloud = {
       end
       for p in all(particles) do
         pset(p.x,p.y,6)
-        p.t-=0.25
-        p.y+=0.3
-        if p.t <=0 then del(particles, p) end
       end
       local w = (y-start)/2
       sspr(0, 32, 16, 8, x-w/2,y-1,16+w,8)
@@ -720,7 +722,7 @@ function make_cloud_particles(_ENV)
   for i=0,rnd(5)+5 do
     add(particles, {
       x=x+rnd(14)+1,
-      y=y+rnd(6)+1,
+      y=y+rnd(6)+3,
       t=1+rnd(1)
     })
   end
