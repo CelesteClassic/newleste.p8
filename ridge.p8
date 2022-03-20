@@ -1012,9 +1012,9 @@ bg_flag={
     for nx=w*8-1,0,-1 do
       local off = nx~=0 and sin((nx+t)/(abs(wind_spd)>0.5 and 10 or 16))*wind or 0
       local ang = 1-(wind/4)
-      local xoff = sin(ang)*nx
+      local xoff = sin(ang)*nx+(wind_spd>=0 and 0 or -2)
       local yoff = cos(ang)*nx
-      tline(x+xoff,y+off+yoff,x+xoff,y+h*8+off+yoff,lvl_x+x/8+nx/8,lvl_y+y/8,0,1/8)
+      tline(x+xoff,y+off+yoff+1,x+xoff,y+h*8+off+yoff+1,lvl_x+x/8+nx/8,lvl_y+y/8,0,1/8)
     end
 
   end
