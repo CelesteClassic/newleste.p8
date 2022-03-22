@@ -1,22 +1,25 @@
 pico-8 cartridge // http://www.pico-8.com
 version 35
 __lua__
-function spr_r(sx,sy,x,y,a)
-  local ca,sa=cos(a),sin(a)
-  local dx,dy=ca,sa
-  local x0,y0=7.5*(sa-ca)+8,-7.5*(ca+sa)+8
-  for _x=0,15 do
-    local srcx,srcy=x0,y0
-    for _y=0,15 do
-      if band(bor(srcx,srcy),-16)==0 then
-        local c=sget(sx+srcx,sy+srcy)
-        if c!=0 then
-          pset(x+_x,y+_y,c)
-        end
+function round(x)
+  return flr(x+0.5)
+end
+
+function spr_r(n,x,y,s,a)
+  local sx,sy,ca,sa,ds=
+    n%16*8,n\16*8,
+    cos(a),sin(a),
+    s-1>>1
+  for dx=-ds,ds do
+    for dy=-ds,ds do
+      local srcx,srcy=
+        round(ds+dx*ca-dy*sa),
+        round(ds+dx*sa+dy*ca)
+      local c=sget(sx+srcx,sy+srcy)
+      if c~=0 and srcx\s|srcy\s==0 then
+        pset(x+dx+ds,y+dy+ds,c)
       end
-      srcx,srcy=srcx-dy,srcy+dx
     end
-    x0,y0=x0+dx,y0+dy
   end
 end
 
@@ -41,7 +44,7 @@ function _draw()
 	if abs(a-3/5)<0.01 then
 		spr(3,56,56,2,2)
 	else
-	 spr_r(8,0,56,56,a/4+(a<3/5 and 0 or 3/4))
+	 spr_r(1,56,56,16,a/4+(a<3/5 and 0 or 3/4))
 	end 
 	print(a.." "..t,100,0,7)
 end
