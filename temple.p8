@@ -776,16 +776,12 @@ end
 sawblade={
   layer=0,
   init=function(_ENV)
-    hitbox=rectangle(1,1,14,14)
-    axis=sprite<=73 and "x" or "y"
-    r=_ENV[axis]
-    l=_ENV[axis]
+    hitbox, axis, r, l=rectangle(1,1,14,14), sprite<=73 and "x" or "y", _ENV[axis], _ENV[axis]
     if sprite%2==0 then
       while axis=="x" and r<lvl_pw and not fget(tile_at(r\8,y\8),0) or
             axis=="y" and r<lvl_ph and not fget(tile_at(x\8,r\8),0) do
         r+=8
       end
-      -- _ENV[axis]-=4
       r-=8
       dir=1
       l-=8
@@ -794,23 +790,12 @@ sawblade={
             axis=="y" and l>=0 and not fget(tile_at(x\8,l\8),0) do
           l-=8
       end
-      -- l+=8
       dir=-1
-      -- _ENV[axis]+=4
-      -- r+=8
     end
 
-    t=0
-    ang=0
-    outline=false
-    scale=(r-l)/48 --scale speed by distance
+    t, ang, outline, scale=0, 0, false, (r-l)/48 --scale speed by distance
   end,
   update=function(_ENV)
-    -- if _ENV[axis]>=r then
-    --   dir=-1
-    -- elseif _ENV[axis]<=l then
-    --   dir=1
-    -- end
     t+=1
 
     --animation stuff
@@ -832,9 +817,6 @@ sawblade={
     end
   end,
   draw=function(_ENV)
-    -- for i=0,3 do
-    --   spr(abs(2*_ENV[axis]-l-r)<10 and 113 or 112,x+(i%2)*8,y+i\2*8,1,1,i%2!=0,i>1)
-    -- end
     if abs(ang-0.6)<0.01 then 
       spr(74,x,y,2,2)
     else
