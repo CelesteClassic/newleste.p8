@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 34
+version 35
 __lua__
 --newleste.p8 base cart
 
@@ -21,7 +21,126 @@ function rectangle(x,y,w,h)
 end
 
 -- [globals]
+-- x0,y0 where to draw to
+-- src   compressed data address
+-- vget  read function (x,y)
+-- vset  write function (x,y,v)
 
+function
+    px9_decomp(x0,y0,src,vget,vset)
+
+    local function vlist_val(l, val)
+        -- find position and move
+        -- to head of the list
+
+--[ 2-3x faster than block below
+        local v,i=l[1],1
+        while v!=val do
+            i+=1
+            v,l[i]=l[i],v
+        end
+        l[1]=val
+--]]
+
+--[[ 7 tokens smaller than above
+        for i,v in ipairs(l) do
+            if v==val then
+                add(l,deli(l,i),1)
+                return
+            end
+        end
+--]]
+    end
+
+    -- bit cache is between 16 and 
+    -- 31 bits long with the next
+    -- bit always aligned to the
+    -- lsb of the fractional part
+    local cache,cache_bits=0,0
+    function getval(bits)
+        if cache_bits<16 then
+            -- cache next 16 bits
+            cache+=%src>>>16-cache_bits
+            cache_bits+=16
+            src+=2
+        end
+        -- clip out the bits we want
+        -- and shift to integer bits
+        local val=cache<<32-bits>>>16-bits
+        -- now shift those bits out
+        -- of the cache
+        cache=cache>>>bits
+        cache_bits-=bits
+        return val
+    end
+
+    -- get number plus n
+    function gnp(n)
+        local bits=0
+        repeat
+            bits+=1
+            local vv=getval(bits)
+            n+=vv
+        until vv<(1<<bits)-1
+        return n
+    end
+
+    -- header
+
+    local 
+        w,h_1,      -- w,h-1
+        eb,el,pr,
+        x,y,
+        splen,
+        predict
+        =
+        gnp"1",gnp"0",
+        gnp"1",{},{},
+        0,0,
+        0
+        --,nil
+
+    for i=1,gnp"1" do
+        add(el,getval(eb))
+    end
+    for y=y0,y0+h_1 do
+        for x=x0,x0+w-1 do
+            splen-=1
+
+            if(splen<1) then
+                splen,predict=gnp"1",not predict
+            end
+
+            local a=y>y0 and vget(x,y-1) or 0
+
+            -- create vlist if needed
+            local l=pr[a]
+            if not l then
+                l={}
+                for e in all(el) do
+                    add(l,e)
+                end
+                pr[a]=l
+            end
+
+            -- grab index from stream
+            -- iff predicted, always 1
+
+            local v=l[predict and 1 or gnp"2"]
+
+            -- update predictions
+            vlist_val(l, v)
+            vlist_val(el, v)
+
+            -- set
+            vset(x,y,v)
+
+        end
+    end
+end
+
+bg_build_hex = "fffffff0ffff0f1d3afcffffffff7f2dc2ffff2f0cffffdf10feff3f81ffff5fe0ffffff0978f8fff79150fefffb888480ffbf3e0807ffff995ff9ff0fe1ff16c67ffcff03f0bfe3606060fcff7f64f8ffff04f0ffff0784ff23ffff888bff15ff7f2b00c0ff908181f1bf0fe1e0ffff0bf8dff1ff8ff91ff2ff1fc06ffcce5ffcdff95bc2ffbfe55f4628000e191818ff6bca2ffc2f16feff50e4e017feff370f01bf27feffbf81f1f0ff5ff85f0d2fffff8c3f187f7087430606c6c39ffc6fc3ff98bff97f80808080ffb5e0ffff0ff89dffffc56f84ff290fff47fe0720143ce177feff800c0c8c974a18e1772e414040c0ff1f18b938f81ff03f25fc5f38f9df84ffffdfe07f06c2c1ff7fe17f2e7f0fff170e6e1010107033c6c5bffc3fc3f8dff02084ff05ff2f5c80ff11270f0000000080ff19e1603cfccb0bfe5fe17ff201fc2f0507ff7f8393f1080202027e10fcff9f1f0480ff4f6228e01000000000c041f91ff007ff138180f1bf49f2c9afe15f7e0f4029ff03c833fc1a2ae1ff17fe7ffc6f020a161e414040c04b12e31000000000c03e801f39f8ff8ffccec3270dff1bcac9ff009203fc89101e39b8f89b871179f83ff01b071f27bff00f7f70060000000047013ff0f0bf09400012c28ffcccc70f22e07fc4ff8fff7004c29f08f8df92104242f89df10317ff377ee077000000b0c21f5f00b700000000f8ff2ffcc37ffc2f40003e7e23fc0772802b1cfcc1efdc7c24849010fe1fdc5c9ce15ffee17fc3cf84bff91f107ee0ff10fe4638b8f87f714b38f88d250efe230be3136101030738c00902feff05ff03c61863fcc5ff8d8003844a023e7ee0ff2909212484ff5783ff2f3ff07fe22f9ee19393ff1bffff63e2ff2b0878f98d1f083840f88f1ff87f92104242f81fc9c127c202fe6f12feff00ff777ee07fcf2ffcc0ff8a8fdff8dfb0e1ff2b08f8ff176ce19393ff3f2b07ff7f4512424808ff5f7ee0ffc007f0bf0fe34458c0ff6ee17fc55f6400febf8200091cfcc6ff27247cfcc0ff5312424808bf1070807049f8ffff81217c72f23fe107fef713e3ffaff01bff1b0e3e7ee0ff2008f8ff53080bf8bff1ffff1f24849010febffcc0ff814f12feffbf80ffbf2427ff1310f0f21be3ffc4ff3f21218484f0ffe507feff38c202fe277c32feffbf80517ee3ffca0ffc1f40c0ffffaf72f2bf25218484f0ff17f981ffbfc30ffcff718405fc4f40c0cb6ffcff6512424808ff3f7ee4ffff8ff881ffff6fe0ffbff17f0001ffffff0fc8ff1fe5ffff8f40c0ffffff03f2ff47f9ffff2310f0ffffff6000"
+bg_tree_hex = "fffffff0ffff0f1d7afcffffffffffffffbfeee1ffff17f8ffff8625feff3f81ffff5f9024f99f27feff08ffffbf10c6ff1bfcff99c4ff9aff3f220fffe720c9ff9f906b91ff2de5ff3f9428e3ff1a96f8ff0789f0f13f0d07ffff86ff79e2ff0f043cfc6fe5e37fcf1f49fedfe1ffceff9f093f25fe4fe19724ff43b993fcc3ff1fe5e5ff2df827c9ff0f8c467ee2ffc4ff7f18fe6e24ff2370f2bf0d951fc3ff8cffffc068f88584ff4de29f24ff4bfeff86000fff5fb993fc204df27f59f827c9ff90ffffc1ff5f903f92fc6fe5bf24ff3bfe9627c91f89ff53e27f9078c32f49be06053ff00ff80dfc0f78c10f84ffc7f007c24f8cdf879370f247e2e287f017e1e5e0f70aa7843fe4e5907ff82549f945fe174854805ff821fc4692fcc14ffc3fa42c2c31b939f992bcfc463938c3ff25f1f04b928f1ff949fee587707220fccbc7cf899b5f27fe1cba70f153e49137c9270705e33f067e487cfcdff891239083bff8335c85233cfc96a4f243923f2278f9f821b17004490e02c2c7ff894f10fe373202707086f086ff120b08ff5b4605652c3119ff1f1efeaf8c2bf1087939f93f2cf203e1e10037fff2f124f921947f1321848b235c9cfccdc78ffc0f28e1e4081fff677ee24fb0f0c3f047b8f81f708591e10d7ff2f14f105efe8f9cfc015e7ee18ff04f38f85ff00700fee0e7f00b7ff2ffe0660c1cfc4bc17fbca0fc3fc2c1c7c18f7c14e10f1e0e4efe2761dcfcc49f8471f06738f83f70708303fc1fc2c1df0807f89333fcc9c1bffc1f38b8183ff00bff67c64b3878b9f91f7082378cff1fe30f30fea58c100efeff18e1274e0e3e7ee17fc86ffcc0c51ffc1efe9701bff007bff2f24ff85ff2bfe757feff04f81f05fc3afc4fc349f95f718393ff69c0180fff63ca18ff87f00bbff1ff01bff1f233e1e55ffe1f94937ff981938bff0dfff172f0ffff132b"
 
 objects,got_fruit, --tables
 freeze,delay_restart,sfx_timer,music_timer,ui_timer, --timers
@@ -42,6 +161,20 @@ function _init()
   max_djump,deaths,frames,seconds,minutes,music_timer,time_ticking,berry_count=1,0,0,0,0,0,true,0
   music(0,0,7)
   load_level(1)
+
+--<background>
+  for i=0,#bg_build_hex,2 do
+  	poke(0x8000+i/2, tonum("0x"..sub(bg_build_hex,i+1,i+2)))
+  end
+  px9_decomp(0,0,0x8000,pget,pset)
+  memcpy(0x8000,0x6000,0x1fff)
+
+  for i=0,#bg_tree_hex,2 do
+  	poke(0xa000+i/2, tonum("0x"..sub(bg_tree_hex,i+1,i+2)))
+  end
+  px9_decomp(0,0,0xa000,pget,pset)
+  memcpy(0xa000,0x6000,0x1fff)
+--</background>
 end
 
 
@@ -62,14 +195,17 @@ for i=0,16 do
 end
 
 particles={}
-for i=0,24 do
+for i=0,30 do
+	local lay= flr(rnd(3))
+	local c = lay > 0 and 5 or flr(rnd(4))==0 and 12 or 5+rnd(3)
   add(particles,{
     x=rnd128(),
     y=rnd128(),
     s=flr(rnd(1.25)),
-    spd=0.25+rnd(5),
+    spd=2.25+rnd(3),
     off=rnd(),
-    c=6+rnd(2),
+    c=c,
+    l=lay
   })
 end
 
@@ -1199,6 +1335,7 @@ end
 -- [main update loop]
 
 function _update()
+	if btnp(0,1) then load_level(11) end
   frames+=1
   if time_ticking then
     seconds+=frames\30
@@ -1277,15 +1414,47 @@ function _draw()
 
   -- draw bg color
   cls()
+    foreach(particles,function(_ENV)
+    	if l==2 then
+  	    x+=spd-_g.cam_spdx
+  	    y+=_g.sin(off)-_g.cam_spdy
+  	    y%=128
+  	    off+=_g.min(0.05,spd/32)
+  	    _g.rectfill(128-x+_g.draw_x,y+_g.draw_y,128-x+s+_g.draw_x,y+s+_g.draw_y,c)
+  	    if x>132 then
+  	      x,y=-4,_g.rnd128()
+  	    elseif x<-4 then
+  	      x,y=128,_g.rnd128()
+  	    end
+    	end
+    end)
 
-  -- bg clouds effect
-  foreach(clouds,function(_ENV)
-    x+=spd-_g.cam_spdx
-    _g.rectfill(x+_g.draw_x,y+_g.draw_y,x+w+_g.draw_x,y+16-w*0.1875+_g.draw_y,1)
-    if x>128 then
-      x,y=-w,_g.rnd(120)
-    end
+  --<background>
+  memcpy(0x0000,0x8000,0x1fff)
+ 	palt(8,true)
+ 	palt(0,false)
+ 	spr(0, flr(draw_x/3), lvl_id, 16, 16)
+ 	spr(0, flr(draw_x/3)+128, lvl_id, 16, 16)
+ 	  foreach(particles,function(_ENV)
+  	if l==1 then
+	    x+=spd-_g.cam_spdx
+	    y+=_g.sin(off)-_g.cam_spdy
+	    y%=128
+	    off+=_g.min(0.05,spd/32)
+	    _g.rectfill(128-x+_g.draw_x,y+_g.draw_y,128-x+s+_g.draw_x,y+s+_g.draw_y,c)
+	    if x>132 then
+	      x,y=-4,_g.rnd128()
+	    elseif x<-4 then
+	      x,y=128,_g.rnd128()
+	    end
+  	end
   end)
+ 	memcpy(0x0000,0xa000,0x1fff)
+ 	spr(0, flr(draw_x/4), lvl_id*2, 16, 16)
+ 	spr(0, flr(draw_x/4)+128, lvl_id*2, 16, 16)
+ 	reload(0x0000,0x0000,0x1fff)
+ 	palt()
+ 	--</background>
 
 		-- draw bg terrain
 		pal(11,0)
@@ -1293,7 +1462,7 @@ function _draw()
 		pal()
 
   -- draw outlines
-  for i=0,15 do pal(i,1) end
+  for i=0,15 do pal(i,0) end
   pal=time
   foreach(objects,function(_ENV)
     if outline then
@@ -1334,16 +1503,18 @@ function _draw()
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,8)
   -- particles
   foreach(particles,function(_ENV)
-    x+=spd-_g.cam_spdx
-    y+=_g.sin(off)-_g.cam_spdy
-    y%=128
-    off+=_g.min(0.05,spd/32)
-    _g.rectfill(x+_g.draw_x,y+_g.draw_y,x+s+_g.draw_x,y+s+_g.draw_y,c)
-    if x>132 then
-      x,y=-4,_g.rnd128()
-    elseif x<-4 then
-      x,y=128,_g.rnd128()
-    end
+  	if l==0 then
+	    x+=spd-_g.cam_spdx
+	    y+=_g.sin(off)-_g.cam_spdy
+	    y%=128
+	    off+=_g.min(0.05,spd/32)
+	    _g.rectfill(128-x+_g.draw_x,y+_g.draw_y,128-x+s+_g.draw_x,y+s+_g.draw_y,c)
+	    if x>132 then
+	      x,y=-4,_g.rnd128()
+	    elseif x<-4 then
+	      x,y=128,_g.rnd128()
+	    end
+  	end
   end)
 
   -- dead particles
@@ -1368,6 +1539,8 @@ function _draw()
   -- <transition>
   transition:draw()
   -- </transition>
+
+  pal(14,129,1)
 end
 
 function draw_object(_ENV)
@@ -1577,14 +1750,14 @@ __gfx__
 0000000008fffff008fffff00033330008fffff00fffff8088fffff808333380000950500005500008898880099a999007777000077776700770000007333370
 00000000003333000033330007000070073333000033337008f1ff10003333000004000000500500028888200299992007000000070000770777777000733700
 00000000007007000070007000000000000007000000700007733370007007000000000000055000002882000029920000000000000000000007777700077000
-888888886661666111188888888116664fff4fff4fff4fff4fff4fffd666666dd666666dd666066d000000000000000070000000666666666666666661111116
-888888886761676166711888881777764444444444444444444444446dddddd56ddd5dd56dd50dd500770000077007000700000761111116dd111dd16d1111d6
-88188818677167716777718888811766000450000000000000054000666ddd55666d6d55565005550077707007770000000000006dd11dd61dd1dd116dd11dd6
-8171817117181718666118888888811100450000000000000000540066ddd5d5656505d50000005507777770077000000000000061dddd1611ddd11161dddd16
-817181711718171811188888888116660450000000000000000005406ddd5dd56dd5065565000000077777700000700000000000611dd11611ddd111611dd116
-167716778188818866711888881777764500000000000000000000546ddd6d656ddd7d656d50056507777770000007700000000061dddd161dd1dd1161dddd16
-1676167688888888677771888881176650000000000000000000000505ddd65005d5d650055056500707770000070770070000706dd11dd6dd111dd16dd11dd6
-1666166688888888666118888888811100000000000000000000000000000000000000000000000000000000700000000000000066666666666666666d1111d6
+888888886660666000088888888006664fff4fff4fff4fff4fff4fffd666666dd666666dd666066d000000000000000070000000666666666666666661111116
+888888886760676066700888880777764444444444444444444444446dddddd56ddd5dd56dd50dd500770000077007000700000761111116dd111dd16d1111d6
+88088808677067706777708888800766000450000000000000054000666ddd55666d6d55565005550077707007770000000000006dd11dd61dd1dd116dd11dd6
+8070807007080708666008888888800000450000000000000000540066ddd5d5656505d50000005507777770077000000000000061dddd1611ddd11161dddd16
+807080700708070800088888888006660450000000000000000005406ddd5dd56dd5065565000000077777700000700000000000611dd11611ddd111611dd116
+067706778088808866700888880777764500000000000000000000546ddd6d656ddd7d656d50056507777770000007700000000061dddd161dd1dd1161dddd16
+0676067688888888677770888880076650000000000000000000000505ddd65005d5d650055056500707770000070770070000706dd11dd6dd111dd16dd11dd6
+0666066688888888666008888888800000000000000000000000000000000000000000000000000000000000700000000000000066666666666666666d1111d6
 1111001106666666066666666666666066d1ddd11ddd1666077777777777777777777770cc000000000000000ff40ff4fff04ff04ff04ff00ff4000000004ff0
 11110011666166d616dddddddd6616666dd111111ddd1d667777777777677767777777771c00cc00000000004fff4ff44ff4fff44ffffff4ffff40000004ffff
 1111000066d1dddd1ddddddddddd1d666dd1ddd01ddd11107677667777766677777777770000ccc0000000004ff44f444f44ff444fff4ffffff4440000444fff
