@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 34
+version 32
 __lua__
 --newleste.p8 base cart
 
@@ -75,20 +75,6 @@ end
 
 dead_particles={}
 
---<stars>--
-stars={}
-for i=0,10 do
-  add(stars,{
-    x=rnd128(),
-    y=rnd128(),
-    off=rnd(1),
-    spdy=rnd(0.5)+0.5
-  })
-end
-stars_active=true
---</stars>--
-
-
 -- [player entity]
 
 player={
@@ -104,24 +90,21 @@ player={
       _ENV[var]=0
     end
     create_hair(_ENV)
+    --<badeline_orb>--
+    flying=0
+    nocontrol=false
+    --</badeline_orb>--
   end,
   update=function(_ENV)
     if pause_player then
       return
     end
-
-    -- <dream_block> --
-    if dreaming and not check(dream_block,0,0) then
-      dreaming=false
-      spd=vector(mid(dash_target_x,-2,2),
-                      mid(dash_target_y,-2,2))
-      dash_time,dash_effect_time=0,0
-      if spd.x~=0 then
-        grace=4
-      end
+    --<badeline_orb>--
+    if flying>0 then
+      init_object(launch_effect,x+3,y+5)
+      flying-=1
     end
-    -- </dream_block> --
-
+    --</badeline_orb> --
     -- horizontal input
     local h_input=btn(➡️) and 1 or btn(⬅️) and -1 or 0
 
@@ -130,10 +113,11 @@ player={
 	    y>lvl_ph and not exit_bottom then
 	    kill_player(_ENV)
     end
-
     -- on ground checks
     local on_ground=is_solid(0,1)
 
+    --<badeline_orb> --
+    if not nocontrol then
         -- <fruitrain> --
     if on_ground then
       berry_timer+=1
@@ -146,7 +130,6 @@ player={
         -- to be implemented:
         -- save berry
         -- save golden
-
         berry_count+=1
         _g.berry_count+=1
         berry_timer, got_fruit[f.fruit_id]=-5, true
@@ -279,7 +262,7 @@ player={
         init_smoke()
       end
     end
-
+  end
     -- animation
     spr_off+=0.25
     sprite = on_ground and (
@@ -470,7 +453,6 @@ refill={
   draw=function(_ENV)
     if timer==0 then
       spr(15,x,y+sin(offset)+0.5)
-
     else
       -- color(7)
       -- line(x,y+4,x+3,y+7)
@@ -636,452 +618,74 @@ lifeup={
   end
 }
 
-badeline={
-  init=function(_ENV)
-    for o in all(objects) do
-      if (o.type==player_spawn or o.type==badeline) and not o.tracked then
-        bade_track(_ENV,o)
-        break
-      end
-    end
-    states={}
-    timer=0
-
-  end,
-  update=function(_ENV)
-    local tr,states=tracking,states
-    if tr.type==player_spawn and tr.state==2 and tr.delay<0 then
-      for o in all(objects) do
-        if o.type==player then
-          bade_track(_ENV,o)
-          tr=o
-          break
-        end
-      end
-    elseif tr.type==badeline and tr.timer<30 then
-      return
-    end
-    if timer<70 then
-      timer+=1
-    end
-    local sm={}
-    for s in all(smokes) do
-      add(sm,s)
-    end
-    smokes={}
-    add(states,{tr.x,tr.y,tr.flip.x,tr.sprite or 1,sm})
-    if #states>=30 then
-      x,y,flip.x,sprite,sm=unpack(states[1])
-      del(states,states[1])
-      for s in all(sm) do
-        init_smoke(unpack(s))
-      end
-    end
-    if timer==30 then
-      create_hair(_ENV)
-    end
-    if timer>=30 then
-      update_hair(_ENV)
-    end
-    local hit=check(player,0,0)
-    if hit and timer>=70 then
-      kill_player(hit)
-    end
-  end,
-  draw=function(_ENV)
-    if timer>=30 then
-      pal(8,2)
-      pal(15,6)
-      pal(3,1)
-      pal(1,8)
-      pal(7,5)
-      draw_hair(_ENV)
-      draw_obj_sprite(_ENV)
-      pal()
-    end
-	end
+--<badeline_orb>--
+garbage={
 }
-function bade_track(_ENV,o)
-  o.tracked=true
-  tracking=o
-  hitbox=o.hitbox
-  local f=o.init_smoke
-  o.init_smoke=function(...)
-    add(smokes,{...})
-    f(...)
-  end
-end
-
-fall_plat={
-  init=function(_ENV)
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==67 do
-      hitbox.w+=8
-    end
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==67 do
-      hitbox.h+=8
-    end
-    collides=true
-    solid_obj=true
-    timer=0
-  end,
-  update=function(_ENV)
-    if not state and check(player,0,-1) then
-      state = 0  -- shake
-      timer = 10
-    elseif timer>0 then
-      timer-=1
-      if timer==0 then
-        state=finished and 2 or 1
-        spd.y=0.4
-      end
-    elseif state==1 then
-      if spd.y==0 then
-        state=0
-        for i=0,hitbox.w-1,8 do
-          init_smoke(i,hitbox.h-2)
-        end
-        timer=6
-        finished=true
-      end
-      spd.y=appr(spd.y,4,0.4)
-    end
-  end,
-  draw=function(_ENV)
-    local x,y=x,y
-    if state==0 then
-      x+=rnd(2)-1
-      y+=rnd(2)-1
-    end
-    local r,d=x+hitbox.w-8,y+hitbox.h-8
-    for i=x,r,r-x do
-      for j=y,d,d-y do
-        spr(41+(i==x and 0 or 2) + (j==y and 0 or 16),i,j,1.0,1.0)
-      end
-    end
-    for i=x+8,r-8,8 do
-      spr(42,i,y)
-      spr(58,i,d)
-    end
-    for i=y+8,d-8,8 do
-      spr(80,x,i)
-      spr(81,r,i)
-    end
-    palt(0,false)
-    for i=x+8,r-8,8 do
-      for j=y+8,d-8,8 do
-        if i==x+8 or i==r-8 or j==y+8 or j==d-8 then
-          spr((i+j-x-y)%16==0 and 44 or 60,i,j)
-        else
-          spr(46,i,j)
-        end
-      end
-    end
-    palt(0,true)
-  end
-
-}
--- <touch_switch> --
-touch_switch={
-  init=function(_ENV)
-    off=2
-  end,
-  update=function(_ENV)
-    if player_here() and not collected then
-      collected=true
-      controller.missing-=1
-      init_smoke()
-    end
-    off+=collected and 0.5 or 0.2
-    off%=4
-  end,
-  draw=function(_ENV)
-    palt(0,false)
-    palt(8,true)
-    if controller.active then
-      sprite=68
-      pal(12,2)
-    else
-      sprite=split"68,69,70,69"[1+flr(off)]
-      flip.x=off>=3
-      if collected then
-        pal(12,7)
-      end
-    end
-    draw_obj_sprite(_ENV)
-    palt()
-    pal()
-  end
-}
-switch_block={
-  init=function(_ENV)
-    solid_obj=true
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==72 do
-      hitbox.w+=8
-    end
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==87 do
-      hitbox.h+=8
-    end
-    delay,end_delay=0,0
+--TODO: token optimize the heck out of these, assuming they have to be in every cart
+badeline_orb = {
+  init = function(_ENV)
+    start, off = y, 0
+    next_pos=1
+    positions={}
+    can_launch=true
   end,
   end_init=function(_ENV)
-    switches={}
     for o in all(objects) do
-      if o.type==touch_switch then
-        add(switches,o)
-        o.controller=_ENV
-      elseif o.sprite==88 then
-        target=vector(o.x,o.y)
+      if o.type==garbage then
+        positions[o.sprite-127]=vector(o.x,o.y)
         destroy_object(o)
-        dirx,diry=sign(o.x-x),sign(o.y-y)
-        distx,disty=abs(o.x-x),abs(o.y-y)
       end
-    end
-    missing=#switches
-  end,
-  update=function(_ENV)
-    if missing==0 and not active then
-      active=true
-      for s in all(switches) do
-        for i=1,2 do
-          s.init_smoke()
-        end
-      end
-      delay=20
-    end
-
-    if end_delay>0 then
-      end_delay-=1
-      if end_delay==0 then
-        delay=10
-        if dirx~=0 then
-          for i=0,hitbox.h-1,8 do
-            init_smoke(dirx==-1 and -6 or hitbox.w-2,i)
-          end
-        end
-        if diry~=0 then
-          for i=0,hitbox.w-1,8 do
-            init_smoke(i,diry==-1 and -6 or hitbox.h-2)
-          end
-        end
-      end
-    end
-    if delay>0 then
-      delay-=1
-    elseif active then
-      local dx,dy=target.x-x,target.y-y
-      --local c=min(max(abs(dx),abs(dy)),16)/8
-      local cx=min(abs(dx)+1,distx/4)/8
-      local cy=min(abs(dy)+1,disty/4)/8
-      --local c=clamp(abs(dx),abs(dy),16)/8
-      --c=c==0.125 and 0.25 or c
-      spd=vector(cx*sign(dx),cy*sign(dy))
-      if dx==0 and dy==0 and not done then
-        end_delay=5
-        done=true
-      end
-
     end
   end,
-  draw=function(_ENV)
-    --TODO: put this into a function to save tokens with fall_plat
-    local x,y=x,y
-    if delay>3 then
-      x+=rnd(2)-1
-      y+=rnd(2)-1
-    end
+  update = function(_ENV)
+    if can_launch then
+      off += 0.02
+      y = flr(start + sin(off) * 2)
+      local hit = player_here()
+      if hit then
+        freeze, hit.djump, hit.spd.x, hit.spd.y, hit.dash_time, hit.x, hit.y, hit.flying,hit.nocontrol,can_launch =
+        2, max_djump, 0, -3.5, 0, x, y, next_pos<=#positions and 3 or 99,next_pos>#positions,false
 
-    local r,d=x+hitbox.w-8,y+hitbox.h-8
-    for i=x,r,r-x do
-      for j=y,d,d-y do
-        spr(71,i,j,1.0,1.0,i~=x,j~=y)
+        sfx(19)
+        if next_pos>#positions then
+
+          init_smoke()
+          destroy_object(_ENV)
+        end
+
+      end
+    else
+      local target=positions[next_pos]
+      x+=0.3*(target.x-x)
+      start+=0.3*(target.y-y)
+      y=start
+      --printh(x,y)
+      if round(x)==target.x and round(y)==target.y then
+        x,y,start=round(x),round(y),round(start)
+        off=0
+        can_launch=true
+        next_pos+=1
       end
     end
-    for i=x+8,r-8,8 do
-      spr(72,i,y)
-      spr(72,i,d,1.0,1.0,true,true)
-    end
-    for i=y+8,d-8,8 do
-      spr(87,x,i)
-      spr(87,r,i,1.0,1.0,true)
-    end
-    for i=x+8,r-8,8 do
-      for j=y+8,d-8,8 do
-        rectfill(i,j,i+8,j+8,1)
-      end
-    end
-
-    spr(88,x+hitbox.w/2-4,y+hitbox.h/2-4)
   end
 }
-
-switch_target={}
--- <touch_switch> --
-dream_block={
-  init=function(_ENV)
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==65 do
-      hitbox.w+=8
-    end
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==65 do
-      hitbox.h+=8
-    end
-    kill_timer=0
-    particles={}
-    for i=1,hitbox.w*hitbox.h/32 do
-      add(particles,
-      {x=rnd(hitbox.w-1)+x,
-      y=rnd(hitbox.h-1)+y,
-      z=rnd(1),
-      c=split"3, 8, 9, 10, 12, 14"[flr(rnd(7))]})
-    end
-    dtimer=1
-    disp_shapes={}
+launch_effect = {
+  init = function(_ENV)
+    size = 0
     outline=false
   end,
-  update=function(_ENV)
-    --[[hitbox.w+=2
-    hitbox.h+=2]]
-    local hit=player_here()
-    if hit then --could save a bunch of tokens by doing local this,_ENV=_ENV,hit, not gonna do it for now cause it's more confusing
-      hit.dash_effect_time=10
-      hit.dash_time=2
-      if hit.dash_target_y==-1.5 then
-        hit.dash_target_y=-2
-      end
-      if hit.dash_target_x==0 then
-        hit.dash_target_y=sign(hit.dash_target_y)*2.5
-      end
-      if hit.dash_target_y==0 then
-        hit.dash_target_x=sign(hit.dash_target_x)*2.5
-      end
-      if not hit.dreaming then
-        hit.spd=vector(hit.dash_target_x*(hit.dash_target_y==0 and 2.5  or 1.7678),hit.dash_target_y*(hit.dash_target_x==0 and 2.5 or 1.7678))
-      end
-      if abs(hit.spd.x)<abs(hit.dash_target_x) or abs(hit.spd.y)<abs(hit.dash_target_y) then
-        hit.move(hit.dash_target_x,hit.dash_target_y,0)
-        if hit.is_solid(hit.dash_target_x,hit.dash_target_y) then
-          kill_player(hit)
-        end
-      end
-      hit.dreaming=true
-      hit.djump=max_djump
-      if dtimer>0 then
-        dtimer-=1
-        if dtimer==0 then
-          dtimer=4
-          create_disp_shape(disp_shapes, hit.x, hit.y)
-        end
-      end
-    else
-      dtimer=1
-    end
-    --[[hitbox.w-=2
-    hitbox.h-=2]]--
-    update_disp_shapes(disp_shapes)
+  update= function(_ENV)
+    size += 0.5
   end,
-  draw=function(_ENV)
-    rectfill(x+1,y+1,right()-1,bottom()-1,0)
-    foreach(particles, function(p)
-      local px,py = (p.x+cam_x*p.z-65)%(hitbox.w-2)+1+x, (p.y+cam_y*p.z-65)%(hitbox.h-2)+1+y
-      if #disp_shapes==0 then
-        rectfill(px,py,px,py,p.c)
-      else
-        local d,dx,dy,ds=displace(disp_shapes, vector(px,py))
-        d=max((6-d), 0)
-        rectfill(px+dx*d*ds,py+dy*d*ds,px+dx*d*ds,py+dy*d*ds,p.c)
-      end
-    end)
-    color(7)
-    if #disp_shapes==0 then
-      --rect(x,y,right(),bottom(),7)
-      for i=y,bottom(),hitbox.h-1 do
-        line(x+1, i, right()-1,i)
-      end
-      for i=x,right(),hitbox.w-1 do
-        line(i, y+1, i,bottom()-1)
-      end
-    else
-      local first,last=disp_shapes[1],disp_shapes[#disp_shapes]
+  draw = function(_ENV)
+    oval(x - size * 2, y - size, x + size * 2, y + size, size > 3 and 6 or 7)
 
-      minx=min(first.pos.x-first.r-4,last.pos.x-last.r-4)
-      maxx=max(first.pos.x+first.r+4,last.pos.x+last.r+4)
-      miny=min(first.pos.y-first.r-4,last.pos.y-last.r-4)
-      maxy=max(first.pos.y+first.r+4,last.pos.y+last.r+4)
-
-      if minx>x then
-        line(x,y,minx-1,y)
-        line(x,bottom(),minx-1,bottom())
-      end
-      if maxx<right() then
-        line(maxx+1,y,right(),y)
-        line(maxx+1,bottom(),right(),bottom())
-      end
-
-      if miny>y then
-        line(x,y,x,miny-1)
-        line(right(),y,right(),miny-1)
-      end
-      if maxy<bottom() then
-        line(x,maxy,x,bottom())
-        line(right(),maxy,right(),bottom())
-      end
-
-      for x_=max(minx,x),min(maxx,right()) do
-        for y_=y,bottom(),bottom()-y do
-          local d,dx,dy,ds=displace(disp_shapes,vector(x_,y_))
-          d=max((4-d), 0)
-          rectfill(x_+dx*d*ds,y_+dy*d*ds,x_+dx*d*ds,y_+dy*d*ds)
-        end
-      end
-      for x_=x,right(),right()-x do
-        for y_=max(miny,y),min(maxy,bottom()) do
-          local d,dx,dy,ds=displace(disp_shapes,vector(x_,y_))
-          d=max((4-d), 0)
-          rectfill(x_+dx*d*ds,y_+dy*d*ds,x_+dx*d*ds,y_+dy*d*ds)
-        end
-      end
+    if size > 6 then
+      destroy_object(_ENV)
     end
-    --[[pset(x, y, 0)
-    pset(x, bottom(), 0)
-    pset(right(), y, 0)
-    pset(right(), bottom(), 0)]]--
   end
 }
-
-
-function create_disp_shape(tbl,x,y)
-  add(tbl, {pos=vector(x,y),r=0})
-end
-
-function update_disp_shapes(tbl)
-  for i in all(tbl) do
-    i.r+=2
-    if i.r >= 15 then
-      del(tbl, i)
-    end
-  end
-end
-
-function displace(tbl, p)
-  local d,ds,po,s = 10000,0,vector(0,0),0
-  for i in all(tbl) do
-    local td,ts,tpo = sdf_circ(p, i.pos, i.r)
-    if td<d then
-      d,ds,po,s=td,ts,tpo,i.r
-    end
-  end
-  local gx, gy = sdg_circ(po, ds, s)
-  return d,gx,gy,(15-s)/15
-end
-
-function sdg_circ(po, d, r)
-  return sign(d-r)*(po.x/d), sign(d-r)*(po.y/d)
-end
-
-function sdf_circ(p, origin, r)
-  local po = vec_sub(p,origin)
-  local d = vec_len(po)
-  return abs(d-r), d, po
-end
+--</badeline_orb>--
 
 psfx=function(num)
   if sfx_timer<=0 then
@@ -1100,16 +704,11 @@ foreach(split([[
 12,fly_fruit
 15,refill
 23,fall_floor
-66,fall_plat
-68,touch_switch
-71,switch_block
-88,switch_target
-64,dream_block
+64,badeline_orb
 ]],"\n"),function(t)
  local tile,obj=unpack(split(t))
  tiles[tile]=_ENV[obj]
 end)
-
 
 -- [object functions]
 
@@ -1138,11 +737,6 @@ function init_object(_type,sx,sy,tile)
     end
     return oy>0 and not is_flag(ox,0,3) and is_flag(ox,oy,3) or  -- one way platform or
             is_flag(ox,oy,0) -- solid terrain
-            -- <dream_block> --
-           or check(dream_block,ox,oy) and (dash_effect_time<=2 or
-           not check(dream_block,sign(dash_target_x),sign(dash_target_y))
-           and not dreaming)
-           -- </dream_block> --
   end
   function oob(ox,oy)
     return not exit_left and left()+ox<0 or not exit_right and right()+ox>=lvl_pw or top()+oy<=-8
@@ -1151,7 +745,6 @@ function init_object(_type,sx,sy,tile)
   function is_flag(ox,oy,flag)
     for i=mid(0,lvl_w-1,(left()+ox)\8),mid(0,lvl_w-1,(right()+ox)/8) do
       for j=mid(0,lvl_h-1,(top()+oy)\8),mid(0,lvl_h-1,(bottom()+oy)/8) do
-
         local tile=tile_at(i,j)
         if flag>=0 then
           if fget(tile,flag) and (flag~=3 or j*8>bottom()) then
@@ -1167,7 +760,6 @@ function init_object(_type,sx,sy,tile)
     end
   end
   function objcollide(other,ox,oy)
-
     return other.collideable and
     other.right()>=left()+ox and
     other.bottom()>=top()+oy and
@@ -1244,8 +836,6 @@ function init_object(_type,sx,sy,tile)
 
 
 
-
-
   add(objects,_ENV);
 
   (type.init or time)(_ENV)
@@ -1279,7 +869,9 @@ function kill_player(obj)
   end
   --- </fruitrain> ---
   delay_restart=15
-  transition:play()
+  -- <transition>
+  tstate=0
+  -- </transition>
 end
 
 -- [room functions]
@@ -1308,9 +900,6 @@ function load_level(id)
   end
 
   lvl_pw,lvl_ph=lvl_w*8,lvl_h*8
-  --<badeline>--
-  bad_num=tbl[6] or 0
-  --</badeline>--
 
   local exits=tonum(tbl[5]) or 0b0001
 
@@ -1340,19 +929,16 @@ function load_level(id)
   for tx=0,lvl_w-1 do
     for ty=0,lvl_h-1 do
       local tile=tile_at(tx,ty)
-      if tiles[tile] then
-        init_object(tiles[tile],tx*8,ty*8,tile)
+      --<badeline_orb>--
+      if tiles[tile] or tile>=128 then
+        init_object(tiles[tile] or garbage,tx*8,ty*8,tile)
       end
+      --</badeline_orb>--
     end
   end
-  --<badeline>--
-  for i=1,bad_num do
-    init_object(badeline,0,0)
-  end
-  --</badeline>--
+
   foreach(objects,function(_ENV)
     (type.end_init or time)(_ENV)
-
   end)
 
   --<camtrigger>--
@@ -1425,10 +1011,6 @@ function _update()
     end
   end)
 
-  -- <transition>
-  transition:update()
-  -- </transition>
-
 end
 
 -- [drawing functions]
@@ -1448,60 +1030,14 @@ function _draw()
   -- draw bg color
   cls()
 
-  --<stars>--
-  -- bg stars effect
-  if stars_active then --stars_active is star condition, should probably set it somewhere
-    foreach(stars, function(c)
-      if stars_falling then
-        pal(7,6)
-        pal(6,12)
-        pal(13,12)
-      end
-      local x=c.x+draw_x
-      local y=c.y+draw_y
-      local s=flr(sin(c.off)*2)
-      if s==-2 then
-        pset(x,y,stars_falling and 12 or 7)
-      elseif s==-1 then
-        spr(73,x-3,y-3)
-      elseif s==0 then
-        line(x-5,y,x+5,y,13)
-        line(x,y-5,x,y+5,13)
-        spr(74,x-3,y-3)
-      else
-        sspr(72,40,16,16,x-7,y-7)
-      end
-      c.x+=-cam_spdx/4
-      c.y+=-cam_spdy/4
-      c.off+=0.01
-      if c.x>128 then
-        c.x=-8
-        c.y=rnd(120)
-      elseif c.x<-8 then
-        c.x=128
-        c.y=rnd(120)
-      end
-      if stars_falling then
-        c.y+=c.spdy
-        if c.y>128 then
-          c.y=-8
-          c.x=rnd(120)
-          c.spdy=rnd(0.5)+0.5
-        end
-        pal()
-      end
-    end)
-  end
-  --</stars>--
-
   -- bg clouds effect
-  --[[foreach(clouds,function(c)
+  foreach(clouds,function(_ENV)
     x+=spd-_g.cam_spdx
     _g.rectfill(x+_g.draw_x,y+_g.draw_y,x+w+_g.draw_x,y+16-w*0.1875+_g.draw_y,1)
     if x>128 then
       x,y=-w,_g.rnd(120)
     end
-  end)]]
+  end)
 
 		-- draw bg terrain
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,4)
@@ -1534,10 +1070,7 @@ function _draw()
     end
   end)
   -- draw terrain
-  palt(0,false)
-  palt(8,true)
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,2)
-  palt()
 
   -- draw objects
   foreach(layers,function(l)
@@ -1570,7 +1103,6 @@ function _draw()
     end
     rectfill(x-t,y-t,x+t,y+t,14+5*t%2)
   end)
-
   -- draw time
   if ui_timer>=-30 then
     if ui_timer<0 then
@@ -1580,7 +1112,27 @@ function _draw()
   end
 
   -- <transition>
-  transition:draw()
+  camera()
+  color(0)
+  if tstate>=0 then
+    local t20=tpos+20
+    if tstate==0 then
+      po1tri(tpos,0,t20,0,tpos,127)
+      if(tpos>0) rectfill(0,0,tpos,127)
+      if(tpos>148) then
+        tstate=1
+        tpos=-20
+      end
+    else
+      po1tri(t20,0,t20,127,tpos,127)
+      if(tpos<108) rectfill(t20,0,127,127)
+      if(tpos>148) then
+        tstate=-1
+        tpos=-20
+      end
+    end
+    tpos+=14
+  end
   -- </transition>
 end
 
@@ -1621,128 +1173,55 @@ function maybe()
   return rnd()<0.5
 end
 
---<dream_block>
-
-function vec_len_sqr(a)
-  return a.x^2 + a.y^2
-end
-
--- function vec_len(a)
---   return sqrt(vec_len_sqr(a))
--- end
-
-function vec_len(a)
- local maskx,masky=a.x>>31,a.y>>31
- local a0,b0=(a.x+maskx)^^maskx,(a.y+masky)^^masky
- if a0>b0 then
-  return a0*0.9609+b0*0.3984
- end
- return b0*0.9609+a0*0.3984
-end
-
-function vec_sub(a,b)
-  return vector(a.x-b.x, a.y-b.y)
-end
---</dream_block>
-
 function tile_at(x,y)
   return mget(lvl_x+x,lvl_y+y)
 end
 
-function spikes_at(x1,y1,x2,y2,xspd,yspd)
-  for i=max(0,x1\8),min(lvl_w-1,x2/8) do
-    for j=max(0,y1\8),min(lvl_h-1,y2/8) do
-      if({y2%8>=6 and yspd>=0,
-          y1%8<=2 and yspd<=0,
-          x1%8<=2 and xspd<=0,
-          x2%8>=6 and xspd>=0})[tile_at(i,j)-15] then
-            return true
-      end
-    end
-  end
+--<transition>--
+
+-- transition globals
+tstate=-1
+tpos=-20
+
+-- triangle functions
+function po1tri(x0,y0,x1,y1,x2,y2)
+  local c=x0+(x2-x0)/(y2-y0)*(y1-y0)
+  p01traph(x0,x0,x1,c,y0,y1)
+  p01traph(x1,c,x2,x2,y1,y2)
 end
 
--- <transition> --
-transition = {
-  -- state:
-  --  1 | wiping in
-  -- -1 | wiping out
-  --  0 | idle
-  state=0,
-  tw = 6,
-  play=function(_ENV)
-    state = state==0 and 1 or state
-    pixelw = 128/(tw-1)
-    circles = {}
-    local ctotal = tw*tw
-    for i=0,ctotal-1 do
-      local c = {
-        x=i%tw * pixelw + _g.rnd(6)-3,
-        y=i\tw * pixelw + _g.rnd(6)-3,
-        delay=i%tw * 2 + _g.rnd(4)-2,
-        radius=state==1 and 0 or pixelw
-      }
-      add(circles, c)
-    end
-  end,
-  update=function(_ENV)
-    if (state==0) return
-    for i=1,#circles do
-      local c = circles[i]
-      if c.delay > 0 then
-        c.delay -= 1
-      else
-        c.radius += state*3
-      end
-    end
-    local lastr = circles[#circles].radius
-    if state==1 and lastr > pixelw*0.7 then
-      state=-1
-      play(_ENV)
-    elseif lastr < 0 then
-      state=0
-    end
-  end,
-  draw=function(this)
-    if (this.state==0) return
-    camera()
-    for i=1,#this.circles do
-      local c = this.circles[i]
-      if c.radius > 0 then
-        circfill(c.x, c.y, c.radius, 0)
-      end
-    end
+function p01traph(l,r,lt,rt,y0,y1)
+  lt,rt=(lt-l)/(y1-y0),(rt-r)/(y1-y0)
+  for y0=y0,y1 do
+    rectfill(l,y0,r,y0)
+    l+=lt
+    r+=rt
   end
-}
+end
 -- </transition> --
 -->8
 --[map metadata]
 
---@conf
---[[param_names = {"badeline num"}
-autotiles = {{52, 54, 53, 39, 33, 35, 34, 55, 49, 51, 50, 48, 36, 38, 37, 32, 29, 30, 31, 41, 42, 43, nil, nil, nil, nil, nil, 56, 45, 46, 47, 80, 44, 81, [41] = 61, [42] = 62, [43] = 63, [0] = 48, [44] = 57, [45] = 58, [46] = 59, [56] = 40, [57] = 60}, {29, 31, 30, 29, 29, 31, 30, 61, 61, 63, 62, 45, 45, 47, 46, 48, 52, 53, 54, 32, 41, 42, 43, nil, nil, nil, nil, 39, 33, 34, 35, 56, 80, 44, 81, nil, nil, nil, nil, 48, 36, 37, 38, [45] = 57, [46] = 58, [47] = 59, [52] = 55, [53] = 49, [0] = 29, [54] = 50, [55] = 51, [57] = 40, [58] = 60}, {41, 43, 42, 41, 41, 43, 42, 57, 57, 59, 58, 80, 80, 81, 46, 44, 48, 52, 53, 54, 32, 56, nil, nil, nil, nil, nil, 60, 39, 33, 34, 35, 29, 30, 31, nil, nil, nil, nil, 40, 48, 36, 37, 38, 45, 46, 47, [53] = 49, [54] = 49, [55] = 50, [0] = 41, [56] = 51, [57] = 61, [58] = 62, [59] = 63}}
-]]
 --@begin
 --level table
---"x,y,w,h,exit_dirs,badeline num"
+--"x,y,w,h,exit_dirs"
 --exit directions "0b"+"exit_left"+"exit_bottom"+"exit_right"+"exit_top" (default top- 0b0001)
 levels={
-  "0,0,1,1,0b0001",
-  "1,0,2,2,0b0001,1"
+	"0,0,1,1",
+ "1,0,3,1"
 }
 
 --<camtrigger>--
 --camera trigger hitboxes
 --"x,y,w,h,off_x,off_y"
 camera_offsets={
-  {},
-  {}
 }
 --</camtrigger>--
 
 --mapdata string table
 --assigned levels will load from here instead of the map
-mapdata={}
+mapdata={
+}
 --@end
 
 
@@ -1798,62 +1277,70 @@ __gfx__
 0000000008fffff008fffff00033330008fffff00fffff8088fffff808333380000950500005500008898880099a999007777000077776700770000007333370
 00000000003333000033330007000070073333000033337008f1ff10003333000004000000500500028888200299992007000000070000770777777000733700
 00000000007007000070007000000000000007000000700007733370007007000000000000055000002882000029920000000000000000000007777700077000
-888888886665666555888888888886664fff4fff4fff4fff4fff4fffd666666dd666666dd666066d0000000000000000700000000666666d16666d6d1d666660
-888888886765676566788888888777764444444444444444444444446dddddd56ddd5dd56dd50dd50077000007700700070000076666666d16666ddd16666666
-88888888677867786777788888888766000450000000000000054000666ddd55666d6d5556500555007770700777000000000000d666666d1ddddddd1666666d
-8878887887888788666888888888885500450000000000000000540066ddd5d5656505d500000055077777700770000000000000dd6666dd1dddd6dd1d6666dd
-887888788788878855888888888886660450000000000000000005406ddd5dd56dd5065565000000077777700000700000000000dddddddd11ddddd11ddddddd
-867786778888888866788888888777764500000000000000000000546ddd6d656ddd7d656d500565077777700000077000000000d66ddddd111111111dddd66d
-5676567688888888677778888888876650000000000000000000000505ddd65005d5d65005505650070777000007077007000070ddddddd1110001111ddddddd
-56665666888888886668888888888855000000000000000000000000000000000000000000000000000000007000000000000000111111111000000111dddddd
-11111111ddd1ddd1ddddd5111ddd1ddddd555111111111111115555ddd5515dd0cccccc0077777777777777777777770cc000000dddd11110000000011111111
-11111111d5515551555555111555155d55555111111111111111111155555155cccccccc7777777777677767777777771c00cc006dddd1100000000011d66ddd
-11555551d55155511111111111111111111111111111111111555dd1111111111ccccccc7677667777766677777777770000ccc0ddd6d110000000001dd66d66
-115ddd51555155515dddd1551555555d1dd55d111111111111555dd1dd55111d1cc1ccc17766677777776d676777677700001ccc66ddd110000000001ddddd66
-111ddd1155515d515ddd515515d55ddd1dd5551111111111115555d1dd5551dd1cc11c1077d67777dd77dcd7666677700cc01ccc66ddd110000000001ddddd66
-111115551111111155555155111111111d5555111111111111111111d555515d111111007dcd667dccddcccd6d6777661ccc11c166ddd110000000001d6ddd66
-55511555d55555111111111111155ddd1111111111111111111555dd55555155011010007cccd66cccccccccccc66d661ccc011166dd1110000000001dddd666
-55511111d5555511111111111115555ddd55511111111111111555dddd55515d000000007ccccccc0ccc00cccccd6dd611c00000111111110000000011dddddd
-dd55515dd5555111111111111115555dddd15ddddddddd51ddd51ddd555551551111111177cccccc00cccccccccccc770ccc1000ddddd1111111111111111111
-55555155d55551111111111111155ddddd51555555555551555515dd555551115511111177cccccccccccccccccccc771cc110006ddddd111ddddd11111ddddd
-11111111111111115511111111111111555111111111111111111555111111115515555167c7cccccccccccccccc7c671111000066d66dd1dddd6dd1111dd6dd
-dd5111dd55515d51dd11555115d55ddd111111155111111151111111d551555d111555516ccccccccccccc6cccccccc60011cc1066dd6dd166ddddd11ddddddd
-dd5111dd55515551dd1155511555555d555551155155555151155555d5515555111111116ccccccccc6cccccccccccc6001cccc0666dddd166ddddd1ddd6666d
-55511155d55155511111555111111111555551111155555111155555111155551555551166ccccc6cccccccc6ccccc660111cc1066666dd1ddddd6d1d6666666
-11111111d5515551555155511555155ddd555155515d5551551555ddd55155dd155555116ccc66c6666ccc666c66ccc61c111100666666d1d66666d1d6666666
-5555515d1dd1ddd1dd51dd511ddd1dd1dddd515dd1dddd51d515dddd1d515dd111111111066666660666666666666660cc100000066666d1d66666d1d6666666
-0000000000000000577777777777777788cccc8888cccc8888cccc881dddd15ddddd51dd000d0000d00600d00000000000000000000000000000000000000000
-00008000000b000077777777777777778c0000c88c0000c88c0000c8d555515555d551550d0d0d000d060d000000000000000000000000000000000000000000
-00b00000000000007777ccccccccccccc00cc00cc00c100cc00cc00cd55551555555515500d6d000006760000000000000000000000000000000000000000000
-0000000000000000777cc7ccccccccccc0c00c0cc010c10cc00cc00cd555111111111111dd676dd0667776600000000000000000000000000000000000000000
-0000b000080000b077ccc7ccccccccccc0cccc0cc01cc10cc00cc00c555111111111111100d6d000006760000000000000000000000000000000000000000000
-0b0000000000000077c77777ccccccccc00cc00cc00c100cc00cc00c55511111111111110d0d0d000d060d000000000000000000000000000000000000000000
-00000080000b000077cc777ccccccccc8c0000c88c0000c88c0000c81111111111111111000d0000d00600d00000000000000000000000000000000000000000
-000000000000000077ccc7cccccccccc88cccc8888cccc8888cccc88d55111111111111100000000000000000000000000000000000000000000000000000000
-7cccccccccccccc70000000000000000000000000000000000000000d5511111111cc11100000001000000000000000000000000000000000000000000000000
-77ccccc0cccccc770000000000000000000000000000000000000000d551111111cccc1100000001000000000000000000000000000000000000000000000000
-76ccccc0cccc77770000000000000000000000000000000000000000d55111111cc11cc10000010d010000000000000000000000000000000000000000000000
-667cccc000ccccc70000000000000000000000000000000000000000555111111cc11cc10001000d000100000000000000000000000000000000000000000000
-6ccccccc0ccccc770000000000000000000000000000000000000000111111111cccccc100001006001000000000000000000000000000000000000000000000
-7cccccccccccc6770000000000000000000000000000000000000000d55111111cccccc100100d060d0010000000000000000000000000000000000000000000
-7cccccccccccc6670000000000000000000000000000000000000000d551111111cccc1100000067600000000000000000000000000000000000000000000000
-77cccccccccccc670000000000000000000000000000000000000000d5511111111cc11111dd6677766dd1100000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000067600000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000100d060d0010000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000001006001000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000000000000000000000000000000000001000d000100000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000010d010000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000
+000000006665666555000000000006664fff4fff4fff4fff4fff4fffd666666dd666666dd666066d000000000000000070000000000000000000000000000000
+000000006765676566700000000777764444444444444444444444446dddddd56ddd5dd56dd50dd5007700000770070007000007000000000000000000000000
+00000000677067706777700000000766000450000000000000054000666ddd55666d6d5556500555007770700777000000000000000000000000000000000000
+0070007007000700666000000000005500450000000000000000540066ddd5d5656505d500000055077777700770000000000000000000000000000000000000
+007000700700070055000000000006660450000000000000000005406ddd5dd56dd5065565000000077777700000700000000000000000000000000000000000
+067706770000000066700000000777764500000000000000000000546ddd6d656ddd7d656d500565077777700000077000000000000000000000000000000000
+5676567600000000677770000000076650000000000000000000000505ddd65005d5d65005505650070777000007077007000070000000000000000000000000
+56665666000000006660000000000055000000000000000000000000000000000000000000000000000000007000000000000000000000000000000000000000
+5777777557777777777777777777777577cccccccccccccccccccc77577777755555555555555555555555555555555500000000000000000000000000000000
+77777777777777777777777777777777777cccccccccccccccccc777777777775555555555555550055555555555555500000000000000000000000000000000
+777c77777777ccccc777777ccccc7777777cccccccccccccccccc777777777775555555555555500005555555500005500000000000000000000000000000000
+77cccc77777cccccccc77cccccccc7777777cccccccccccccccc7777777cc7775555555555555000000555555500005500000000000000000000000000000000
+77cccc7777cccccccccccccccccccc777777cccccccccccccccc777777cccc775555555555550000000055555500005555555555000000000000000000000000
+777cc77777cc77ccccccccccccc7cc77777cccccccccccccccccc77777cccc775555555555500000000005555500005555555555000000000000000000000000
+7777777777cc77cccccccccccccccc77777cccccccccccccccccc77777c7cc775555555555000000000000555555555555555555000000000000000000000000
+5777777577cccccccccccccccccccc7777cccccccccccccccccccc7777cccc775555555550000000000000055555555555555555000000000000000000000000
+77cccc7777cccccccccccccccccccc77577777777777777777777775777ccc77cccccccc50000000000000055555555500000005000000000000000000000000
+777ccc7777cccccccccccccccccccc77777777777777777777777777777cc777c77ccccc55000000000000555055555500000055000000000000000000000000
+777ccc7777cc7cccccccccccc77ccc777777ccc7777777777ccc7777777cc777c77cc7cc55500000000005555555005500000555000000000000000000000000
+77ccc77777ccccccccccccccc77ccc77777ccccc7c7777ccccccc77777ccc777cccccccc55550000000055555555005500005555000000000000000000000000
+77ccc777777cccccccc77cccccccc777777ccccccc7777c7ccccc77777cccc77cccccccc55555000000555555555555555555555000000000000000000000000
+777cc7777777ccccc777777ccccc77777777ccc7777777777ccc777777cccc77cc7ccccc55555500005555555505555555555555000000000000000000000000
+777cc777777777777777777777777777777777777777777777777777777cc777ccccc7cc55555550055555555555555555555555000000000000000000000000
+77cccc7757777777777777777777777557777777777777777777777557777775cccccccc55555555555555555555555555555555000000000000000000000000
+00222200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0222ee20000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+2222eee2000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+22222ee2000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+222222e2000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+22222222000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+02222220000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00222200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-55555555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-55555665000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-56555665000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-55555555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-55555555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-55655655000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-55555555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-55555555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00888000008888800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00008000000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00008000000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00008000008888800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00008000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00008000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00008000008888800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00888880000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __label__
 cccccccccccccccccccccccccccccccccccccc775500000000000000000000000000000000070000000000000000000000000000000000000000000000000000
 cccccccccccccccccccccccccccccccccccccc776670000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1985,41 +1472,25 @@ ccccccccccccccccccccccccccccccccccccccccccccc77700000000000000000000000000000000
 cccccccccccccccccccccccccccccccccccccccccccccc7700000000000000000000000000000000000000000000000000000000000000000000000000000000
 
 __gff__
-0000000000000000000000000000000002020202080808000000000000030303030303030303030303030303030303030303030303030303030303030303030300000000000000000000000000000000030300000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000
+0000000000000000000000000000000002020202080808000000000000000000030303030303030304040404040000000303030303030303030404040400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __map__
-000000000000000000000000000000002b3b29000000000000000000002a3b2b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000000000000000000003b290000000000000000000000002a3b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000440000000100000000004400002900000000000000000000001010102a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000132122222312000000000000000000000000000000000040414100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+2b3b29000000000000000000002a3b2b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+3b290000000000000000000000002a3b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+2900000000000001000000000000002a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000132122222312000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000133132323312000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000001111111100000000000000000000000000000000000010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000000000000000040414100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0047484800000000000000424343430022222222222222222300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0057000000000000000000430000000025252525252532323300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0057000000000000000000430000000025252525252640414100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000040414100430000000025252525252641000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0058000000000041000000430000000025252525252641000010101010100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000025252532323341000034353535360000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000025252600000041000025000000000010000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-2222222222222317172122222222222225252600000041000025000000001340000013400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-2525252525252600002425252525252525252600000041000025000000001341000013410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000025252522222341000025000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000025252525252641000000000000000000000000000000000010100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000032323232323341000000000000000000000000000000001340410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000001341000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1000000000001111111100000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+2708000000000000000000000000082700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+37080000810000000b0000000000083700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000040414141000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000041000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000010000000101010101010100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000010101027000000404141414141410000001000000010100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000040414130000000410000000000000000002700000040411200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000030000000000000000000000000003700000041001200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000010030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000021222330000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000024252630000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000004000000000000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+2222222223171720201717212222222223000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+3825252526000000000000242525253826000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
 010100000f0001e000120002200017000260001b0002c000210003100027000360002b0003a000300003e00035000000000000000000000000000000000000000000000000000000000000000000000000000000
 010100000970009700097000970008700077000670005700357003470034700347003470034700347003570035700357003570035700347003470034700337003370033700337000070000700007000070000700

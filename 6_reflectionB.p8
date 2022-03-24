@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 34
+version 35
 __lua__
 --newleste.p8 base cart
 
@@ -99,169 +99,237 @@ player={
     -- horizontal input
     local h_input=btn(➡️) and 1 or btn(⬅️) and -1 or 0
 
+    -- <feather> --
+    -- vertical input
+    local v_input=btn(⬆️) and -1 or btn(⬇️) and 1 or 0
+
+    -- update feather particles (update remaining ones if not in feather state)
+    foreach(feather_particles, function(p)
+      p.x+=p.xspd
+      p.y+=p.yspd
+      p.xspd=appr(p.xspd, 0, 0.03)
+      p.yspd=appr(p.yspd, 0, 0.03)
+      p.life-=1
+      if p.life==0 then
+        del(feather_particles, p)
+      end
+    end)
+    -- </feather> --
+
     -- spike collision / bottom death
     if is_flag(0,0,-1) or
 	    y>lvl_ph and not exit_bottom then
 	    kill_player(_ENV)
     end
 
-    -- on ground checks
+    if feather_state then
+      local k=1
+      if h_input!=0 or v_input!=0 then
+        -- calculate direction and velocity
+        movedir=appr_circ(movedir,atan2(h_input,v_input),0.04)
+
+        -- speed up if holding button
+        k=1.5
+      end
+      spd = vector(k*cos(movedir), k*sin(movedir))
+
+      -- update tail
+      local last=vector(x+4.5,y+4.5)
+      foreach(tail,function(h)
+				h.x+=(last.x-h.x)/1.4
+				h.y+=(last.y-h.y)/1.4
+				last=h
+			end)
+
+
+      --bounce off objects
+    	if bouncetimer==0 then
+      	if is_solid(0, 2) or is_solid(0, -2) then
+        	movedir *=-1
+        	bouncetimer = 2
+        	init_smoke()
+				elseif is_solid(2, 0) or is_solid(-2, 0) then
+					movedir = round(movedir)+0.5-movedir
+					bouncetimer = 2
+					init_smoke()
+				end
+			end
+			--make sure we dont bounce too often
+    	if bouncetimer > 0 then
+      	bouncetimer-=1
+    	end
+
+
+      -- feather particles
+      local particle = {x=x+rnd(8)-4, y=y+rnd(8)-4, life=10+flr(rnd(5))}
+			particle.xspd = -spd.x/2-(x-particle.x)/4
+			particle.yspd = -spd.y/2-(y-particle.y)/4
+			add(feather_particles, particle)
+
+      lifetime-=1
+      if lifetime==0 or btn(❎) then
+        -- transform back to player
+        p_dash=false
+        feather_state=false
+        init_smoke()
+        player.init(_ENV)
+        spd.x/=2
+        spd.y=spd.y<0 and -1.5 or 0
+      end
+    elseif feather_idle then
+      spd.x*=0.8
+      spd.y*=0.8
+      spawn_timer-=1
+      if spawn_timer==0 then
+        feather_idle=false
+        feather_state=true
+        if h_input==0 and v_input==0 then
+          movedir=flip.x and 0.5 or 0
+        else
+          movedir=atan2(h_input,v_input)
+        end
+        lifetime=60
+        bouncetimer=0
+        tail={}
+        feather_particles={}
+        for i=0,15 do
+          add(tail,{x=x+4,y=y+4,size=mid(1,2,9-i)})
+        end
+      end
+    end
+    if not feather_state and not feather_idle then
+      -- cursed token save: use else and goto here
+
+      -- on ground checks
     local on_ground=is_solid(0,1)
 
-        -- <fruitrain> --
-    if on_ground then
+          -- <fruitrain> --
+      if on_ground then
       berry_timer+=1
-    else
+      else
       berry_timer, berry_count=0, 0
-    end
+      end
 
-    for f in all(fruitrain) do
+      for f in all(fruitrain) do
       if f.type==fruit and not f.golden and berry_timer>5 and f then
-        -- to be implemented:
-        -- save berry
-        -- save golden
-
-        berry_count+=1
+          -- to be implemented:
+          -- save berry
+          -- save golden
+          berry_count+=1
         _g.berry_count+=1
         berry_timer, got_fruit[f.fruit_id]=-5, true
         init_object(lifeup, f.x, f.y,berry_count)
-        del(fruitrain, f)
+          del(fruitrain, f)
         destroy_object(f);
         (fruitrain[1] or {}).target=_ENV
+        end
       end
-    end
-    -- </fruitrain> --
+      -- </fruitrain> --
 
-    -- landing smoke
+      -- landing smoke
     if on_ground and not was_on_ground then
       init_smoke(0,4)
-    end
+      end
 
-    -- jump and dash input
+      -- jump and dash input
     local jump,dash=btn(🅾️) and not p_jump,btn(❎) and not p_dash
     p_jump,p_dash=btn(🅾️),btn(❎)
 
-    -- jump buffer
-    if jump then
+      -- jump buffer
+      if jump then
       jbuffer=4
     elseif jbuffer>0 then
       jbuffer-=1
-    end
+      end
 
-    -- grace frames and dash restoration
-    if on_ground then
+      -- grace frames and dash restoration
+      if on_ground then
       grace=6
       if djump<max_djump then
-        psfx(22)
+          psfx(22)
         djump=max_djump
-      end
+        end
     elseif grace>0 then
       grace-=1
-    end
+      end
 
-    -- dash effect timer (for dash-triggered events, e.g., berry blocks)
+      -- dash effect timer (for dash-triggered events, e.g., berry blocks)
     dash_effect_time-=1
 
-    -- dash startup period, accel toward dash target speed
+      -- dash startup period, accel toward dash target speed
     if dash_time>0 then
       init_smoke()
       dash_time-=1
       spd=vector(
         appr(spd.x,dash_target_x,dash_accel_x),
         appr(spd.y,dash_target_y,dash_accel_y)
-      )
-    else
-      -- x movement
-      local accel=on_ground and 0.6 or 0.4
+        )
+      else
+        -- x movement
+        local accel=on_ground and 0.6 or 0.4
 
-      -- set x speed
+        -- set x speed
       spd.x=abs(spd.x)<=1 and
         appr(spd.x,h_input,accel) or
         appr(spd.x,sign(spd.x),0.15)
 
-      -- facing direction
+        -- facing direction
       if spd.x~=0 then
         flip.x=spd.x<0
-      end
+        end
 
-      -- y movement
-      local maxfall=2
+        -- y movement
+        local maxfall=2
 
-      -- wall slide
+        -- wall slide
       if is_solid(h_input,0) then
-        maxfall=0.4
-        -- wall slide smoke
+          maxfall=0.4
+          -- wall slide smoke
         if rnd()<0.2 then
           init_smoke(h_input*6)
-        end
-      end
-
-      -- apply gravity
-      if not on_ground then
-        spd.y=appr(spd.y,maxfall,abs(spd.y)>0.15 and 0.21 or 0.105)
-      end
-
-      -- jump
-      if jbuffer>0 then
-        if grace>0 then
-          -- normal jump
-          psfx(18)
-          jbuffer,grace,spd.y=0,0,-2
-          -- <zip_mover>
-            local hit=check(zip_mover,0,1)
-            if hit and hit.state==1 then
-              if hit.delay>=11 then
-                spd.x=hit.dir.x*4
-                spd.y=min(hit.dir.y*3,-2)
-              else
-                spd.x=(hit.spd.x-sign(hit.spd.x))*0.75
-                spd.y=mid(hit.spd.y-sign(hit.spd.y),-2,-3)
-              end
-
-              -- local d=sqrt(((hit.x-hit.target.x)^2+(hit.y-hit.target.y)^2)/36) -- frames till reaching target (i think)
-              -- if hit.delay>=12 or d<=3 and d!=0 then
-              --   spd=vector(hit.dir.x*4,min(3*hit.dir.y,-2))
-              -- elseif hit.delay==0 and d<=7 then
-              --   spd=vector(hit.spd.x-1,min(3*hit.dir.y,-2))
-              -- else
-              --   spd.y=-2
-              --   spd.x=hit.spd.x-1
-              -- end
-
-            else
-            end
-          -- </zip_mover>
-          init_smoke(0,4)
-        else
-          -- wall jump
-          local wall_dir=(is_solid(-3,0) and -1 or is_solid(3,0) and 1 or 0)
-          if wall_dir~=0 then
-            psfx(19)
-            jbuffer,spd=0,vector(wall_dir*-2,-2)
-            -- wall jump smoke
-            init_smoke(wall_dir*6)
           end
         end
-      end
 
-      -- dash
+        -- apply gravity
+        if not on_ground then
+        spd.y=appr(spd.y,maxfall,abs(spd.y)>0.15 and 0.21 or 0.105)
+        end
+
+        -- jump
+      if jbuffer>0 then
+        if grace>0 then
+            -- normal jump
+            psfx(18)
+          jbuffer,grace,spd.y=0,0,-2
+          init_smoke(0,4)
+          else
+            -- wall jump
+          local wall_dir=(is_solid(-3,0) and -1 or is_solid(3,0) and 1 or 0)
+            if wall_dir~=0 then
+              psfx(19)
+            jbuffer,spd=0,vector(wall_dir*-2,-2)
+              -- wall jump smoke
+            init_smoke(wall_dir*6)
+            end
+          end
+        end
+
+        -- dash
       local d_full, d_half = 5, 3.5355339059 -- 5 * sqrt(2)
 
       if djump>0 and dash then
         init_smoke()
         djump-=1
         dash_time,_g.has_dashed,dash_effect_time=4, true, 10
-        -- vertical input
-        local v_input=btn(⬆️) and -1 or btn(⬇️) and 1 or 0
-        -- calculate dash speeds
+          -- calculate dash speeds
         spd=vector(h_input~=0 and
         h_input*(v_input~=0 and d_half or d_full) or
         (v_input~=0 and 0 or flip.x and -1 or 1)
-        ,v_input~=0 and v_input*(h_input~=0 and d_half or d_full) or 0)
-        -- effects
-        psfx(20)
+          ,v_input~=0 and v_input*(h_input~=0 and d_half or d_full) or 0)
+          -- effects
+          psfx(20)
         _g.freeze=2
-        -- dash target speeds and accels
+          -- dash target speeds and accels
         dash_target_x,dash_target_y,dash_accel_x,dash_accel_y=
         2*sign(spd.x), (spd.y>=0 and 2 or 1.5)*sign(spd.y),
         spd.y==0 and 1.5 or 1.06066017177 , spd.x==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
@@ -272,17 +340,17 @@ player={
         end
 
       elseif djump<=0 and dash then
-        -- failed dash smoke
-        psfx(21)
+          -- failed dash smoke
+          psfx(21)
         init_smoke()
+        end
       end
-    end
 
-    -- animation
+      -- animation
     spr_off+=0.25
     sprite = on_ground and (
-      btn(⬇️) and 6 or -- crouch
-      btn(⬆️) and 7 or -- look up
+        btn(⬇️) and 6 or -- crouch
+        btn(⬆️) and 7 or -- look up
       spd.x*h_input~=0 and 1+spr_off%4 or 1) -- walk or stand
       or is_solid(h_input,0) and 5 or 3 -- wall slide or mid air
 
@@ -293,19 +361,42 @@ player={
         exit_top and y<-4 or
         exit_left and right()<0 or
         exit_bottom and top()>=lvl_ph) and levels[lvl_id+1] then
-      next_level()
-    end
+        next_level()
+      end
 
     -- was on the ground, previous horizontal input (for soft dashes)
     was_on_ground,ph_input=on_ground, h_input
+    end
   end,
 
   draw=function(_ENV)
-    -- draw player hair and sprite
+    --<feather> --
+
+    -- draw feather particles (if not in feather state draw remaining ones)
+    foreach(feather_particles, function(p)
+			pset(p.x+4, p.y+4,10)
+    end)
+
+    if feather_state then
+      if lifetime%5==1 then pal(10, 7) end
+
+			if lifetime < 10 then
+				pal(10, lifetime%4<2 and 8 or 10)
+			end
+			circfill(x+4, y+4, 4, 10)
+      foreach(tail,function(h)
+				circfill(h.x,h.y,h.size,10)
+			end)
+    elseif feather_idle then
+      circfill(x+4, y+4, 4, spawn_timer%4<2 and 7 or 10)
+    --</feather> --
+    else
+      -- draw player hair and sprite
     pal(8,djump==1 and 8 or 12)
     draw_hair(_ENV)
     draw_obj_sprite(_ENV)
-    pal()
+      pal()
+    end
   end
 }
 
@@ -468,7 +559,6 @@ refill={
   draw=function(_ENV)
     if timer==0 then
       spr(15,x,y+sin(offset)+0.5)
-
     else
       -- color(7)
       -- line(x,y+4,x+3,y+7)
@@ -633,297 +723,218 @@ lifeup={
     --<fruitrain>--
   end
 }
---<zip_mover> --
-function spr_r(s,x,y,a)
-  x+=1
-  y+=1 --idk why this is
-  local sx,sy=s%16*8,s\16*8 --bad tokens but lazy
-  local ca,sa=cos(a),sin(a)
-  local dx,dy=ca,sa
-  local x0,y0=3.5*(sa-ca)+4,-3.5*(ca+sa)+4
-  x0*=2
-  y0*=2
-  for _x=0,15 do
-    local srcx,srcy=x0,y0
-    for _y=0,15 do
-      if band(bor(srcx,srcy),-16)==0 then
-        local c=sget(sx+srcx,sy+srcy)
-        if c!=0 then
-          pset(x+_x,y+_y,c)
-        end
-      end
-      srcx,srcy=srcx-dy,srcy+dx
-    end
-    x0,y0=x0+dx,y0+dy
-  end
-end
-
-
-function mynorm(dx,dy)
-	dx>>=8
-	dy>>=8
-	return sqrt(dx*dx+dy*dy)<<8
-end
-
-zip_mover={
+kevin={
   init=function(_ENV)
-    solid_obj=true
-    delay=0
-    state=0
-    shake=0
-    id=tile_at(x/8,y/8-1)
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==68 do
+    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==65 do
       hitbox.w+=8
     end
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==68 do
+    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==80 do
       hitbox.h+=8
     end
-    break_timer,death_timer=0,0
-    start=vector(x,y)
-    ang=0
-    particles={}
-  end,
-  end_init=function(_ENV)
-    for o in all(objects) do
-      if o.sprite==id then
-        if o.x!=x or o.y!=y-8 then
-          target=vector(o.x,o.y)
-        end
-        destroy_object(o)
-      end
-    end
-    local dx=target.x-x
-    local dy=target.y-y
-    local d=mynorm(dx,dy)
-    dir=vector(dx/d,dy/d)
+    solid_obj=true
+    collides=true
+    retrace_list={}
+    hit_timer=0
+    retrace_timer=0
+    shake=0
   end,
   update=function(_ENV)
-    -- states:
-    -- 0 - idle
-    -- 1 - active moving towards target
-    -- 2 - returning back to original pos
-    if delay>0 then
-      delay-=1
-      if delay==0 then
-        state=(state+1)%3
-      end
-      --ang=appr(ang,state==1 and flr(ang) or ceil(ang),0.2)
-    elseif state==0 then
-      local hit=check(player,0,-1)
-      if hit then
-        delay=4
-        shake=4
-      end
-    else
-      local accel,maxspeed,shake,target
-      if state==1 then
-        accel,maxspeed,shake,target=0.5,6,6,_ENV.target
+    if shake>0 then
+      shake-=1
+    end
+    for xdir=-1,1 do
+      for ydir=-1,1 do
+        if (xdir+ydir)%2==1 then
+          local hit=check(player,xdir,ydir)
+          if hit and hit.dash_effect_time>0 and
+            (xdir!=0 and sign(hit.dash_target_x)==-xdir or ydir!=0 and sign(hit.dash_target_y)==-ydir) and
+            (not active or xdir!=dirx and ydir!=diry) then
+            hit.spd=vector(xdir*1.5,ydir==1 and 0.5 or -1.5)
+            hit.dash_time=-1
+            --hit.dash_effect_time=0
 
-        --create particles
-        -- this is really bad token wise, and can be optimized, but idc for now
-        local c1x=start.x+hitbox.w/2-0.5
-        local c1y=start.y+7.5
-        local c2x=target.x+hitbox.w/2-0.5
-        local c2y=target.y+7.5
-        cang=atan2(c1x-c2x,c1y-c2y)
+            add(retrace_list,vector(x,y))
+            dirx,diry=xdir,ydir
+            spd=vector(0,0)
+            hit_timer=10
+            active=true
+            shake=4
+          end
+        end
+      end
+    end
 
-        local r=6
-        ox,oy=r*cos(0.25+cang),r*sin(0.25+cang)
-        --line(c1x,c1y,c2x,c2y,8)
-        if rnd()<0.8 then
-          local cx,cy
-          if rnd()<0.5 then
-            cx,cy=c1x,c1y
-          else
-            cx,cy=c2x,c2y
+    if hit_timer>0 then
+      hit_timer-=1
+      if hit_timer==0 then
+        spd=vector(0.2*dirx,0.2*diry)
+      end
+    elseif active  then
+      if spd.x==0 and spd.y==0 then
+        retrace_timer=10
+        active=false
+        shake=5
+        if dirx!=0 then
+          for oy=0,hitbox.h-1,8 do
+            init_smoke(dirx==-1 and -8 or hitbox.w,oy)
           end
-          if rnd()<0.5 then
-            ox*=-1
-            oy*=-1
+        else
+          for ox=0,hitbox.w-1,8 do
+            init_smoke(ox,diry==-1 and -8 or hitbox.h)
           end
-          add(particles,{
-            x=cx+ox+rnd(3)-1,
-            y=cy+oy+rnd(3)-1,
-            dx=ox*rnd(0.05),
-            dy=oy*rnd(0.05),
-            d=10
-          })
         end
       else
-        accel,maxspeed,shake,target=0.2,-1,4,start
+        spd=vector(appr(spd.x,3*dirx,0.2),appr(spd.y,3*diry,0.2))
       end
-      for axis in all{"x","y"} do
-        spd[axis]=mid(appr(spd[axis],maxspeed*dir[axis],abs(accel*dir[axis])),_ENV[axis]-target[axis],target[axis]-_ENV[axis])
+    elseif retrace_timer>0 then
+      retrace_timer-=1
+      if retrace_timer==0 then
+        retrace=true
       end
-      ang+=sqrt(spd.x^2+spd.y^2)/100*(state==1 and 1 or -1)
-      if x==target.x and y==target.y then
-        delay=15
-        _ENV.shake=shake
-        ang=0
-      end
-    end
-    if _ENV.shake>0 then
-      _ENV.shake-=1
-    end
-
-    --update particles
-    for p in all(particles) do
-      p.x+=p.dx
-      p.y+=p.dy
-      p.d-=1
-      if p.d<0 then
-        del(particles,p)
+    elseif retrace then
+      local last=retrace_list[#retrace_list]
+      if not last then
+        retrace=false
+      elseif last.x==x and last.y==y then
+        del(retrace_list,last)
+        retrace_timer=5
+        shake=4
+        spd=vector(0,0)
+        rem=vector(0,0)
+      else
+        spd=vector(appr(spd.x,sign(last.x-x),0.2),appr(spd.y,sign(last.y-y),0.2))
       end
     end
   end,
   draw=function(_ENV)
-
-    if pal==_pal then --don't outline
-      --tracks
-      local c1x=start.x+hitbox.w/2-0.5
-      local c1y=start.y+7.5
-      local c2x=target.x+hitbox.w/2-0.5
-      local c2y=target.y+7.5
-
-      cang=atan2(c1x-c2x,c1y-c2y)
-
-      local r=4.5
-      ox,oy=r*cos(0.25+cang),r*sin(0.25+cang)
-      --line(c1x,c1y,c2x,c2y,8)
-      --pset(c1x+ox/r*(r+6),c1y+oy/r*(r+6),9)
-
-      c1x+=1*sin(0.25+cang)
-      c1y-=1*cos(0.25+cang)
-      c2x-=1*sin(0.25+cang)
-      c2y+=1*cos(0.25+cang)
-      line(round(c1x+ox),round(c1y+oy),round(c2x+ox),round(c2y+oy),2)
-      line(round(c1x-ox),round(c1y-oy),round(c2x-ox),round(c2y-oy),2)
-
-
-      --ox,oy=(r+1.5)*cos(0.25+cang),(r+1.5)*sin(0.25+cang)
-      if abs(c1x-c2x)>abs(c1y-c2y) then
-        oy+=sign(c2x-c1x)
-      else
-        ox+=sign(c1y-c2y)
-      end
-      poke(0x5f38,1)
-      poke(0x5f3a,start.x/8+lvl_x+1)
-      pal(7,4)
-
-      tline(round(c1x+ox),round(c1y+oy),round(c2x+ox),round(c2y+oy),0,lvl_y+start.y/8+0.875-flr(ang*40%4)/8,0.125,0)
-      tline(round(c1x-ox),round(c1y-oy),round(c2x-ox),round(c2y-oy),0,lvl_y+start.y/8+0.5+flr(ang*40%4)/8,0.125,0)
-      pal()
-      --tline(0,0,128,0,0,start.y/8+0.5--[[+ang*10%4/8]],0.125,0)
-      -- gears
-      spr_r(101,start.x+hitbox.w/2-8,start.y,ang)
-      spr_r(101,target.x+hitbox.w/2-8,target.y,ang)
-
-      --particles
-      for p in all(particles) do
-        pset(p.x,p.y,10)
-      end
-    end
-
     local x,y=x,y
     if shake>0 then
       x+=rnd(2)-1
       y+=rnd(2)-1
     end
-    local r,b=x+hitbox.w-1,y+hitbox.h-1
-
-    if state==1 then
-    	pal(2,3)
-    	pal(8,11)
-    elseif state==2 and delay==0 then
-      pal(2,9)
-      pal(8,10)
+    local r,b=x+hitbox.w-8,y+hitbox.h-8
+    local up,down,left,right=active and diry==-1,active and diry==1,active and dirx==-1,active and dirx==1
+    for sx=x+8, r-8,8 do
+      pal(12, up and 7 or 12)
+      spr(65,sx,y)
+      pal(12, down and 7 or 12)
+      spr(65,sx,b,1,1,false,true)
     end
-
-    --chasis
-    line(x,y,r,y,7)
-    rectfill(x,y+1,r,b,1)
-    rect(x+1,y+2,r-1,b-1,5)
-    spr(67,x+hitbox.w/2-4,y)
-    rect(x,y+1,r,b,6)
-
-    --top corner sprites
-    if hitbox.w>8 then
-    	spr(70,x,y)
-    	spr(70,r-7,y,1,1,true)
+    for sy=y+8, b-8,8 do
+      pal(12, left and 7 or 12)
+      spr(80,x,sy)
+      pal(12, right and 7 or 12)
+      spr(80,r,sy,1,1,true)
     end
+    rectfill(x+8,y+8,r,b,4)
 
-    --bottom corner sprites
-    spr(70,x,b-7,1,1,false,true)
-    spr(70,r-7,b-7,1,1,true,true)
-
+    -- spr(64,x,y)
+    -- spr(64,r-8,y,1,1,true)
+    -- spr(64,x,b-8,1,1,false,true)
+    -- spr(64,r-8,b-8,1,1,true,true)
+    local lookup={down,left,up,right,down}
+    for i=0,3 do
+      pal(12,(lookup[i+1] or lookup[i+2]) and 7 or 12)
+      spr(64,i<=1 and x or r, (i-1)\2==0 and y or b,1,1,i>=2,(i-1)\2!=0)
+    end
     pal()
-    --pset(start.x+8,start.y+4,11)
-    --pset(c1x+ox,c1y+oy,11)
-    --pset(c2x+ox,c2y+oy,11)
+    -- face
+    spr(active and 67 or 66,x+hitbox.w/2-4,y+hitbox.h/2-4)
   end
-}
---</zip_mover>--
 
-fall_plat={
+}
+
+bumper={
   init=function(_ENV)
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==119 do
-      hitbox.w+=8
-    end
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==119 do
-      hitbox.h+=8
-    end
-    collides=true
-    solid_obj=true
-    timer=0
+    hitbox=rectangle(1,1,14,14)
+    hittimer=0
+    outline=false
   end,
   update=function(_ENV)
-    if not state and check(player,0,-1) then
-      state = 0  -- shake
-      timer = 10
-    elseif timer>0 then
-      timer-=1
-      if timer==0 then
-        state=finished and 2 or 1
-        spd.y=0.4
+    if hittimer>0 then
+      hittimer-=1
+      if hittimer==0 then
+        init_smoke(4,4)
       end
-    elseif state==1 then
-      if spd.y==0 then
-        state=0
-        for i=0,hitbox.w-1,8 do
-          init_smoke(i,hitbox.h-2)
-        end
-        timer=6
-        finished=true
+    else
+      local hit=player_here()
+      if hit then
+        hit.init_smoke()
+        local dx,dy=x+8-(hit.x+4),y+8-(hit.y+4)
+        local angle=atan2(dx,dy)
+        hit.spd = abs(dx) > abs(dy) and vector(sign(dx)*-2.8,-2) or --  -3.5*(cos(0.9),sin(0.9))
+                 vector(-3*cos(angle),-3*sin(angle))
+        hit.dash_time,hit.djump=-1,max_djump
+        hittimer=20
       end
-      spd.y=appr(spd.y,4,0.4)
     end
   end,
   draw=function(_ENV)
-    local x,y=x,y
-    if state==0 then
-      x+=rnd(2)-1
-      y+=rnd(2)-1
-    end
-    local r,d=x+hitbox.w-8,y+hitbox.h-8
-    spr(38,x,y)
-    spr(40,r,y)
-    spr(54,x,d)
-    spr(56,r,d)
-    for i=x+8,r-8,8 do
-      spr(39,i,y)
-      spr(55,i,d)
-    end
-    for i=y+8,d-8,8 do
-      spr(52,x,i)
-      spr(53,r,i)
-    end
-    for i=x+8,r-8,8 do
-      for j=y+8,d-8,8 do
-        spr((i+j-x-y)%16==0 and 41 or 57,i,j)
+    local rx,ry=x+8,y+8
+		if hittimer>0 then
+			pal(12, 1)
+			pal(4, 2)
+			if hittimer > 17 then
+				circ(rx, ry, 26-hittimer, 7)
+				circfill(rx, ry, 25-hittimer, 1)
+				if hittimer > 19 then
+					rectfill(rx-4, ry-9, rx+4, ry+9, 7)
+					rectfill(rx-9, ry-4, rx+9, ry+4, 7)
+				end
+			end
+		end
+		spr(68, x, y, 2, 2)
+		pal()
+		if hittimer == 1 then
+			circfill(rx, ry, 4, 6)
+		end
+  end
+}
+
+--<feather> --
+function appr_circ(value,target,amount)
+	return (value +sign(sin(value)*cos(target)-cos(value)*sin(target))*amount)%1
+end
+
+feather={
+  init=function(_ENV)
+    sprtimer=0
+    offset=0
+    starty=y
+    timer=0
+  end,
+  update=function(_ENV)
+    if timer>0 then
+      timer-=1
+      if timer==0 then
+        init_smoke()
       end
+    else
+      sprtimer+=0.2
+      offset+=0.01
+      y=starty+0.5+2*sin(offset)
+      local hit=player_here()
+      if hit then
+        init_smoke()
+        timer=60
+        if hit.feather_state then
+          hit.lifetime=60
+        else
+          hit.spawn_timer,hit.feather_idle,hit.dash_time,hit.dash_effect_time=10,true,0,0
+          hit.spd=vector(mid(hit.spd.x,-1.5,1.5),mid(hit.spd.y,-1.5,1.5))
+        end
+      end
+    end
+  end,
+  draw=function(_ENV)
+    if timer==0 then
+      local d=flr(sprtimer%6)
+      spr(70+min(d,6-d),x,y, 1, 1,d>3)
     end
   end
 }
+
+-- </feather>
 psfx=function(num)
   if sfx_timer<=0 then
    sfx(num)
@@ -941,12 +952,14 @@ foreach(split([[
 12,fly_fruit
 15,refill
 23,fall_floor
-67,zip_mover
-103,fall_plat
+64,kevin
+68,bumper
+70,feather
 ]],"\n"),function(t)
-  local tile,obj=unpack(split(t))
-  tiles[tile]=_ENV[obj]
+ local tile,obj=unpack(split(t))
+ tiles[tile]=_ENV[obj]
 end)
+
 
 -- [object functions]
 
@@ -983,7 +996,6 @@ function init_object(_type,sx,sy,tile)
   function is_flag(ox,oy,flag)
     for i=mid(0,lvl_w-1,(left()+ox)\8),mid(0,lvl_w-1,(right()+ox)/8) do
       for j=mid(0,lvl_h-1,(top()+oy)\8),mid(0,lvl_h-1,(bottom()+oy)/8) do
-
         local tile=tile_at(i,j)
         if flag>=0 then
           if fget(tile,flag) and (flag~=3 or j*8>bottom()) then
@@ -998,7 +1010,6 @@ function init_object(_type,sx,sy,tile)
       end
     end
   end
-
   function objcollide(other,ox,oy)
     return other.collideable and
     other.right()>=left()+ox and
@@ -1040,10 +1051,8 @@ function init_object(_type,sx,sy,tile)
         movamt=_ENV[axis]-p --save how many px moved to use later for solids
       else
         movamt=amt
-        --<zip_mover> --
-        if (solid_obj or semisolid_obj) and upmoving and riding and riding.spd.y>-1 then
-        --</zip_mover> --
-          movamt+=top()-riding.bottom()-1
+        if (solid_obj or semisolid_obj) and upmoving and riding then
+          movamt+=top()-bottom()-1
           local hamt=round(riding.spd.y+riding.rem.y)
           hamt+=sign(hamt)
           if movamt<hamt then
@@ -1075,8 +1084,6 @@ function init_object(_type,sx,sy,tile)
   function init_smoke(ox,oy)
     init_object(smoke,x+(ox or 0),y+(oy or 0),26)
   end
-
-
 
 
 
@@ -1114,7 +1121,7 @@ function kill_player(obj)
   --- </fruitrain> ---
   delay_restart=15
   -- <transition>
-  transition:play()
+  tstate=0
   -- </transition>
 end
 
@@ -1173,11 +1180,9 @@ function load_level(id)
   for tx=0,lvl_w-1 do
     for ty=0,lvl_h-1 do
       local tile=tile_at(tx,ty)
-      -- <zip_mover> --
-      if tiles[tile] or tile>=128 then
-        init_object(tiles[tile] or tile>=128 and {},tx*8,ty*8,tile)
+      if tiles[tile] then
+        init_object(tiles[tile],tx*8,ty*8,tile)
       end
-      -- <zip_mover> --
     end
   end
 
@@ -1255,10 +1260,6 @@ function _update()
     end
   end)
 
-  -- <transition>
-  transition:update()
-  -- </transition>
-
 end
 
 -- [drawing functions]
@@ -1288,9 +1289,7 @@ function _draw()
   end)
 
 		-- draw bg terrain
-		pal(11,0)
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,4)
-		pal()
 
   -- draw outlines
   for i=0,15 do pal(i,1) end
@@ -1319,12 +1318,12 @@ function _draw()
       add(layers[type.layer or 1],_ENV) --add object to layer, default draw below player
     end
   end)
-  -- draw terrain
   palt(0,false)
   palt(8,true)
+  -- draw terrain
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,2)
-  palt()
-
+  palt(0,true)
+  palt(8,false)
   -- draw objects
   foreach(layers,function(l)
     foreach(l,draw_object)
@@ -1356,7 +1355,6 @@ function _draw()
     end
     rectfill(x-t,y-t,x+t,y+t,14+5*t%2)
   end)
-
   -- draw time
   if ui_timer>=-30 then
     if ui_timer<0 then
@@ -1366,7 +1364,27 @@ function _draw()
   end
 
   -- <transition>
-  transition:draw()
+  camera()
+  color(0)
+  if tstate>=0 then
+    local t20=tpos+20
+    if tstate==0 then
+      po1tri(tpos,0,t20,0,tpos,127)
+      if(tpos>0) rectfill(0,0,tpos,127)
+      if(tpos>148) then
+        tstate=1
+        tpos=-20
+      end
+    else
+      po1tri(t20,0,t20,127,tpos,127)
+      if(tpos<108) rectfill(t20,0,127,127)
+      if(tpos>148) then
+        tstate=-1
+        tpos=-20
+      end
+    end
+    tpos+=14
+  end
   -- </transition>
 end
 
@@ -1412,42 +1430,10 @@ function tile_at(x,y)
 end
 
 --<transition>--
-transition = {
-  -- state:
-  --  1 | wiping in
-  -- -1 | wiping out
-  --  0 | idle
-  state=0,
-  play=function(_ENV)
-    state = state==0 and 1 or state
-    x=-20
-  end,
-  update=function(_ENV)
-    if (state==0) return
-    if x>148 then
-      if state==1 then
-        state=-1
-        play(_ENV)
-      else
-        state=0
-      end
-    end
-  end,
-  draw=function(_ENV)
-    if (state==0) return
-    _g.camera()
-    _g.color(0)
-    local x20=x+20
-    if state==1 then
-      _g.po1tri(x,0,x20,0,x,127)
-      if (x>0) _g.rectfill(0,0,x,127)
-    else
-      _g.po1tri(x20,0,x20,127,x,127)
-      if (x<108) _g.rectfill(x20,0,127,127)
-    end
-    x+=14
-  end
-}
+
+-- transition globals
+tstate=-1
+tpos=-20
 
 -- triangle functions
 function po1tri(x0,y0,x1,y1,x2,y2)
@@ -1468,59 +1454,26 @@ end
 -->8
 --[map metadata]
 
---@conf
---[[param_names = {}
-autotiles = {{38, 40, 39, 38, 38, 40, 39, 54, 54, 56, 55, 52, 52, 53, 42, 41, 33, 34, 35, 43, 44, 45, 29, 30, 31, nil, nil, 57, 36, nil, 37, 46, nil, 47, nil, nil, nil, nil, nil, 58, 49, 50, 51, 59, 60, 61, [53] = 48, [0] = 38, [54] = 32, [55] = 62, [56] = 64, [57] = 65, [58] = 66}, {33, 35, 34, 33, 33, 35, 34, 49, 49, 51, 50, 36, 36, 37, 42, 32, 38, 39, 40, 43, 44, 45, 29, 30, 31, nil, nil, 48, 52, nil, 53, 46, nil, 47, nil, nil, nil, nil, nil, 62, 54, 55, 56, 59, 60, 61, [53] = 41, [0] = 33, [54] = 57, [55] = 58, [56] = 64, [57] = 65, [58] = 66}, {43, 45, 44, 43, 43, 45, 44, 59, 59, 61, 60, 46, 46, 47, 42, 38, 39, 40, 33, 34, 35, 29, 30, 31, nil, nil, nil, 52, nil, 53, 36, [33] = 37, [40] = 54, [41] = 55, [42] = 56, [43] = 49, [44] = 50, [45] = 51, [0] = 43, [52] = 41, [53] = 57, [54] = 58, [55] = 32, [56] = 48, [57] = 62}, {29, 29, 30, 29, 29, 29, 30, 29, 29, 29, 30, 31, 31, 31, 29, [0] = 29}, {80, 82, 81, 80, 80, 82, 81, 112, 112, 114, 113, 96, 96, 98, 97, 33, 34, 35, 38, 39, 40, 43, 44, 45, 71, 72, 73, 36, 32, 37, 52, 42, 53, 46, 64, 47, 87, 88, 89, 49, 50, 51, 54, 55, 56, 59, 60, 61, 90, 91, 92, 62, 48, 57, 41, 58, 66, 65, 74, 75, 76, 77, 93, [0] = 80}}
-]]
 --@begin
 --level table
 --"x,y,w,h,exit_dirs"
 --exit directions "0b"+"exit_left"+"exit_bottom"+"exit_right"+"exit_top" (default top- 0b0001)
 levels={
-  "0,0,1,1,0b0001",
-  "1,0,1,1,0b0001",
-  "2,0,1,1,0b0001",
-  "3,0,1,1,0b0001",
-  "4,0,1,1,0b0001",
-  "6,0,1,1,0b0001",
-  "5,0,1,1,0b0001",
-  "7,0,1,1,0b0001",
-  "0,1,1,1,0b0001",
-  "1,1,1,1,0b0010",
-  "2,1,1.5,1,0b0010",
-  "4,1,1,1,0b0010",
-  "5,1,1,1,0b0001",
-  "6,1,2,1,0b0010",
-  "0,2,1,1,0b0010",
-  "1,2,1,1,0b0010"
+	"0,0,1,1",
+ "1,0,3,1"
 }
 
 --<camtrigger>--
 --camera trigger hitboxes
 --"x,y,w,h,off_x,off_y"
 camera_offsets={
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {}
 }
 --</camtrigger>--
 
 --mapdata string table
 --assigned levels will load from here instead of the map
-mapdata={}
+mapdata={
+}
 --@end
 
 
@@ -1567,7 +1520,6 @@ end
 function num2hex(v)
   return sub(tostr(v,true),5,6)
 end
-
 __gfx__
 000000000000000000000000088888800000000000000000000000000000000000000000000000000300b0b00a0aa0a000000000000000000000000000077000
 00000000088888800888888088888888088888800888880000000000088888800004000000000000003b33000aa88aa0000777770000000000000000007bb700
@@ -1577,93 +1529,46 @@ __gfx__
 0000000008fffff008fffff00033330008fffff00fffff8088fffff808333380000950500005500008898880099a999007777000077776700770000007333370
 00000000003333000033330007000070073333000033337008f1ff10003333000004000000500500028888200299992007000000070000770777777000733700
 00000000007007000070007000000000000007000000700007733370007007000000000000055000002882000029920000000000000000000007777700077000
-888888886661666111188888888116664fff4fff4fff4fff4fff4fffd666666dd666666dd666066d000000000000000070000000666666666666666661111116
-888888886761676166711888881777764444444444444444444444446dddddd56ddd5dd56dd50dd500770000077007000700000761111116dd111dd16d1111d6
-88188818677167716777718888811766000450000000000000054000666ddd55666d6d55565005550077707007770000000000006dd11dd61dd1dd116dd11dd6
-8171817117181718666118888888811100450000000000000000540066ddd5d5656505d50000005507777770077000000000000061dddd1611ddd11161dddd16
-817181711718171811188888888116660450000000000000000005406ddd5dd56dd5065565000000077777700000700000000000611dd11611ddd111611dd116
-167716778188818866711888881777764500000000000000000000546ddd6d656ddd7d656d50056507777770000007700000000061dddd161dd1dd1161dddd16
-1676167688888888677771888881176650000000000000000000000505ddd65005d5d650055056500707770000070770070000706dd11dd6dd111dd16dd11dd6
-1666166688888888666118888888811100000000000000000000000000000000000000000000000000000000700000000000000066666666666666666d1111d6
-1111001106666666066666666666666066d1ddd11ddd1666077777777777777777777770cc000000000000000ff40ff4fff04ff04ff04ff00ff4000000004ff0
-11110011666166d616dddddddd6616666dd111111ddd1d667777777777677767777777771c00cc00000000004fff4ff44ff4fff44ffffff4ffff40000004ffff
-1111000066d1dddd1ddddddddddd1d666dd1ddd01ddd11107677667777766677777777770000ccc0000000004ff44f444f44ff444fff4ffffff4440000444fff
-1555500001111111110011001111111066d1ddd00ddd00067766677777776d676777677700001ccc00000000444444404444f4400fff4ff44444000000044ff4
-0555511166d16661ddd0dddd16661d660110ddd101100dd677d67777dd77dcd7666677700cc01ccc0000000004400440440444400444044004ff4000004f4440
-055551116dd1d661ddd1dddd166d1dd666d0ddd11ddd0dd67dcd667dccddcccd6d6777661ccc11c100000000fff400000000440000444ff4fff44400004444ff
-0000111166d1dd61ddd1dddd16dd1d666dd111111ddd1d667cccd66cccccccccccc66d661ccc011100000000ff4404000000000004404fffff44400000044fff
-000011110111111111111111111111106dd1ddd11ddd1d667ccccccc0ccc00cccccd6dd611c00000000000004440000000000000000004ff04400000000044ff
-11110000011111001111110000111d667cccccccccccccc777cccccc00cccccccccccc770ccc10000cccccc04440000000000000000004441000000100001000
-1100000066d1dd60ddddddd106dd1dd677ccccc0cccccc7777cccccccccccccccccccc771cc11000ccccccccff44040000000440004044ff0155551000055500
-110555006dd1d661ddddddd1166d1dd676ccccc0cccc777767c7cccccccccccccccc7c67111100001cccccccfff400000440444000004fff055511500051d150
-110555006dd16661ddddddd016660dd6667cccc000ccccc76ccccccccccccc6cccccccc60011cc101cc1ccc10440044044444f40044004400555115000d555d0
-000000016dd001111111110011100dd66ccccccc0ccccc776ccccccccc6cccccccccccc6001cccc01cc11c10444444404ff4440004444444051555500051d150
-000011116dd0dddd1ddd1dddddddddd67cccccccccccc67766ccccc6cccccccc6ccccc660111cc10111111004ff44f444fff4f4444f44ff40555555000d555d0
-00001111666166d616dd1ddd6d6666667cccccccccccc6676ccc66c6666ccc666c66ccc61c111100011010004fff4ff4ffff4ff44ff4fff4015555100051d150
-0000111106666666666666666666666077cccccccccccc67066666660666666666666660cc100000000000000ff40ff444ff0ff44ff04ff01000000100055500
-0000044404444000440004406666666600000b000007700077750000155555555555555555555551155555555555555555555555555555510011111151111110
-044044444444400004444440666666660000a00000577500656500005111111111111111111111155511111111111111111111111111115500555555d1111110
-444444444444000044444440566226650008000005666650666000005151155155155511115151555155515551555111111111111111111500555555d1111110
-44440440004444404444444456288265000000007760067755000000515115115511511111515155515111515115111aa11111111111111500555555d1111110
-4444000000444440444444405688886577007700776006770000000051551551511151111515151551511151511511aaaa1aaa1aa1aaaa1500588588d2212210
-0444000004444440444444405668866507700770056666500000000051111111111111111555555551515151511511aaaa1aaaaaaaaaa1150088588582122120
-00440044044444004444440056666665007700770057750000000000515511115111111115511515515551555115111aa11a1aaa1aa1aa1500555555d1111110
-00400044044000000440400055555555700770070007700000000000515115115155111115115115511111111111111111111111111111150000111151111110
-000555055555555555005550000000000000000000055500000555005115151551511111155555555155515111555151115155515551551500005555d1111000
-005555515511551151551555000000000000555000286820001888105155151551551151151151155151515111515151115151515111151500005555d1111000
-0515515515511551111111155000000000005bb505688865056878655111111111111515155151155155515111555151515155515511551500005555d1111000
-551111551551155111511115b55000000000555b05678765056888655155155515551115155551155151115111515155555151115111111500005555d1111000
-551111111115111511115555dbb500000000555505688865056877655151151515151151151151155151115551515115151151115551511500005555d1111000
-111111151155111115115555dd1b50000000555500286820001866105115155515551111155151155111111111111111111111111111111500005555d1111000
-510001111111151111111550d11110000000555500055500000555005151111111111151155551155511111111111111111111111111115500005555d111b000
-510001111111111111111150d11110000000555500001000000010001555555555555555555555511555555555555555555555555555555100005555d1111000
-051111111111111151111150000055550005550000000000000000005777777700000000000000000000000015555511000000000000000000005555d1111000
-555111111111111111155155000055550018861000000000000000007777777700000000000000000000000051111151000000000000000000005555d1111000
-551111111111111111155115000005550567886500000001100000007777cccc000000000000000000000000551d1551000000009449400000005555d1111000
-55111111111111111111111500000555058888850000111dd1110000777cc7cc000000000000000000000000515d515100000000420420000000555bb1111000
-05111151111111111111155500000055056788650001dd1dd1dd100077ccc7cc00000000000000000000000051111151000000004204200000005555bb111000
-05111111111111111151155000000055001886100001dd1551dd100077c7777700000000000000000000770051555151000000094494220000005555dd111000
-0111111111111111111115500000000500055500000111555511100077cc777c0000000000000000077766705111115100000004424422000000b555d1111000
-1111111111111111111115500000000500001000001dd551155dd10077ccc7cc00000000000000007667767715555511000000040040020000005555d1111000
-551111111111111111111150d111100000001000001dd551155dd10077cccccc0000000000000000000055555555555000677794494222200000111151111000
-515511111111111111111150d111100000005000000111555511100077cccccc00000000000000000005ddddddddddd500d676440442022000555555d1111110
-115515115111111511111155d1111000000010000001dd1551dd100077cccccc00000000000000000005ddddddddddd500d665400402002000588588d2212210
-511111111111111511111115d1111000000010000001dd1dd1dd100077cccccc000000000000000000055ddddddddd5500d56944940222220088588582122120
-111111111111155111111155d1111000000010000000111dd111000077cccccc00000000000000000555555555555555d66d14414402202200555555d1111110
-055115511111155111111550d111000000001000000000011000000077cccccc0000000000000000ddddddddddddd555ddd514114000200200555555d1111110
-055515511115111111150000d100000000005000000000000000000077cccccc00000000000000000111110000111110d55594494000222200555555d1111110
-000555555500055515000000d000000000001000000000000000000077cccccc0000000000000000000000000000000000000000400020020011111151111110
-0404c3c3c3a204f1531627004392a2a2a2a293737373737393a2a2a2937373930000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-c3d3e4f407b3c3d1e1e1e1e1d1a3a2a2a224f200000000066392a2a2830716430000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000e5f5000616f116260005e293a2a2a2a2f2000515151616439353000007630000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000e6f6000616d1e1d11516e204a2a2a214d315161616161643a383000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-1000e7f7000616f116161616e214a2a214f216161717171716f18300000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-22222232051616d116748494b3c31424a2d316270000000007f12100000055000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0203023316b61717167585951627e204531727000000767700f12100000047000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-a203521616270000071717172700b3c3530000000000770000f12100000047000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-a204f217270000000000000000000000530000767700000000f12100005161120000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-14c3d3000000000046000000c6d60000530000770000000005d12100000515420000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-f22700000000000047000000c7d70000830000000000000007161515151617420000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-f200000000a7b7a64700000061122222000000000000000000071616172700420000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-f2010100006272728200000101420203100000000000000000000727000101420000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-9372820000439292f20101b2c2e3a2a2324151000000000000000000001222020000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-a292530101e204a2a3c2c22414a2a2a25201010101010101010101010142e3a20000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-a2939272c214a2a2a224a2a2a2a2a2a2022222c272727272c2c2c222222203a20000000000000000000000000000000000000000000000000000000000000000
+88888828dddddd28822888888228882d9aaa9aaa9aaa9aaa9aaa9aaad666666dd666666dd666066d000000000000000070000000000000000000000000000000
+882882d22d2d2dd22dd222882dd222dd9999999999999999999999996dddddd56ddd5dd56dd50dd5007700000770070007000007000000000000000000000000
+82d282d282dd2dd2dddddd28822ddd2d000940000000000000049000666ddd55666d6d5556500555007770700777000000000000000000000000000000000000
+82d22d2882d22d28d222228888822ddd00940000000000000000490066ddd5d5656505d500000055077777700770000000000000000000000000000000000000
+82d22d2882d22d28ddd228888822222d0940000000000000000004906ddd5dd56dd5065565000000077777700000700000000000000000000000000000000000
+2dd2dd282d282d28d2ddd22882dddddd9400000000000000000000496ddd6d656ddd7d656d500565077777700000077000000000000000000000000000000000
+2dd2d2d22d288288dd222dd288222dd240000000000000000000000405ddd65005d5d65005505650070777000007077007000070000000000000000000000000
+82dddddd82888888d288822888888228000000000000000000000000000000000000000000000000000000007000000000000000000000000000000000000000
+3ffffbffffbffbfffffbfff3f3333bb33331113f8771777777cc177777771778177c1c100ccc177187777778177c1cc100000110000000000000000000000000
+fbbbff333bb3bbb3bbbbff3fb3bb31bbbb311bbf777c177cc771cc77c771c777177cc1c101ccc17171cccc7817ccc1c700110011000000000000000000000000
+f33bbf3331bb1bb333bbbf3fbbbbb11b1bb31bbb77ccc1cccccc1ccccc11cc7711cccc1c111c77187c1cccc71ccccc11001cc001000000000000000000000000
+fb3311b3bb1bb113b3311b3ffb1bb31131b331bf77cccc1ccccc1ccccccc1cc7811cccc11cc177717cc1cccc11cccccc000ccc00000000000000000000000000
+fbb3311bb311b33bbb3311bffb11b33bbb13331b1cccccc11cccc11c1cccc1c71771cccccccc177117cc1ccc771cccc70000ccc0000000000000000000000000
+f3333bb313313b3b3333bb3fbbb133bbbbb3bb3f71ccccc111ccc11111cccc1717cc1cc0ccccc111117cc1cc7cc1cc77cc000c11000000000000000000000000
+f11133bb311b1bb311133bbffbbb33bb1bb3bbbf7711ccc101111000011cccc111ccc1101cccc718cc1cc1c117cc1771cc100011000000000000000000000000
+fb11b33b313bb133b11b33bff3bb331b31331bbbccc11111001100000011cccc111cc10001cc77711cc1cc1111ccc11101100000000000000000000000000000
+bb1bb3b33bb3bb33bbbbff3f33133111000110001111cccc0cccccc1cccccc11771777777777777811cccccc8877771c00cc0010000000000000000000000000
+fbb1b3bbb3bb1bb333bbbf3f3313311100011c007ccc1cccccc1cccc1cccc7117cc177c717777cc11c1cccc171c777c100cc1011000000000000000000000000
+bbb3131bbb3bb113b3311b3b1111133111001cc07cccc1cccccc1cccc1ccc7117ccc1cccc17cccc117c1ccc1771ccccc00011c01000000000000000000000000
+b11b3b31bbb3b33bbb3311b1133113331cc001c117cccc1c1cccc1cccc1ccc71ccccc1cccc1cccc11c7c1cc1ccc1cccc1100cc10000000000000000000000000
+33111bb33bb3313b3333bb1b133311330ccc0011717ccc1cc1c7c711cc71c77177ccc71cccc1ccc11cc71c7ccccc1ccc1cc00110000000000000000000000000
+313311bb313b11131113111b1133111300cc10007717cc11771777cccc771711177c7717cccc1c711c7717711cccc1cc0ccc0000000000000000000000000000
+31b31111311bb11111111113311133311101100017c1cc1c71817cc11cc7711111777717ccccc1111177171111cc1111c0cc1011000000000000000000000000
+13333113331113331133331133111331011000008111111111881111111111188111111111c1111881111118111111110c01101c000000000000000000000000
+0220cc5555cccc55ddd00dddddd00ddd000000000000000000aaa0000099aa0000999aa0000aaa00000000000000000000000000000000000000000000000000
+2125ccc55cccccc50000000000000000000001111110000009aaa900099aaaa0099aaaaa00aaaaa0000000000000000000000000000000000000000000000000
+222c5cc55cc11cc5011001100cc00cc0000015dccd51000001aaa1009911aaaa995aaa11009a5a90000000000000000000000000000000000000000000000000
+05cc1cc111111111000000000cc00cc00001cddccddc10000111110091110aa095aa0001009a5a90000000000000000000000000000000000000000000000000
+cc511522222222220011110000111100001ccc1111ccc100011111009110000095a0000000995990000000000000000000000000000000000000000000000000
+cccc5524444444440111111001d11d10015dc144441cd510011111001100000095a0000000995990000000000000000000000000000000000000000000000000
+5ccc224444444444001dd10001d11d1001dd14c44c41dd1000111000100000000950000000095900000000000000000000000000000000000000000000000000
+5551244444444444000dd0000011110001cc14c44c41cc1000001000100000000050000000050000000000000000000000000000000000000000000000000000
+5551244400000000000000000000000001cc14444441cc1000000000000000000000000000000000000000000000000000000000000000000000000000000000
+5cc1244400000000000000000000000001dd144cc441dd1000000000000000000000000000000000000000000000000000000000000000000000000000000000
+ccc12444000000000000000000000000015dc144441cd51000000000000000000000000000000000000000000000000000000000000000000000000000000000
+cc112444000000000000000000000000001ccc1111ccc10000000000000000000000000000000000000000000000000000000000000000000000000000000000
+cc1124440000000000000000000000000001cddccddc100000000000000000000000000000000000000000000000000000000000000000000000000000000000
+ccc12444000000000000000000000000000015dccd51000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+5cc12444000000000000000000000000000001111110000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+55512444000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __label__
 cccccccccccccccccccccccccccccccccccccc775500000000000000000000000000000000070000000000000000000000000000000000000000000000000000
 cccccccccccccccccccccccccccccccccccccc776670000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1795,41 +1700,25 @@ ccccccccccccccccccccccccccccccccccccccccccccc77700000000000000000000000000000000
 cccccccccccccccccccccccccccccccccccccccccccccc7700000000000000000000000000000000000000000000000000000000000000000000000000000000
 
 __gff__
-0000000000000000000000000000000002020202080808000000000000030303030303030303030303030303030303030303030303030303030303030303030403030300000000040404040404040404040404040404040404040404040404040404040404000000000004040404040404040404040000000000040404040404
+0000000000000000000000000000000002020202080808000000000000000000030303030303030303030303030300000303030303030303030303030300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __map__
-2a2a39391d373a39293c3c3232337161611f0000703132200000301f6161613400003e303232323232201f7161611f20393a373737373861717161342900000025620000001f37371f37392a2a2a2a302a293737371f1f3729391d3800000024350000003637373737373737293a39293737372a292a2a2a3935000000313230
-2a2937371f611d3738007061616200601e1d000000111136293a351f7161613430203233003f4e4f60311f0070711f3e3738007071616172000070361d39392925615200501f00001d0034203020303229356161611f1f6134291f6200000024350000000060616161617200363737370000003637392a2a2938000000740024
-402f70611f611f620000006061615161611f000a000050613439381f00706134323361620000637360611d0000631f300000000000606200000000601f37373725616151611d0000000036373232330039357061611d1d61361d1d6200006a242f0000000070616b61720000000000000000000000342a2a2f000000003f0024
-412f00601d1e1d7200000070616161611e1d0000005061613435111d0000603461716161520000506162000000001f200000000c00606152000000701f111111336161616162000000001111111111002938007061111172001f6172002122202f00000000006061620000000000000000010000003439422f006c6d00000024
-422f0060724e4f00000000002627272762000000006061713638003f0000703472006026272800606172000000001d300000000050616161520000001d000000616147484961520000000000000000003500000060616200501f620000313e2a41272800000070616200001000000000231415000034392a2f6a7c7d00000024
-402f5162005e6f000000000036373a296152000050617200000000000000003400007036391d51616200000000003f2400000050616126271d00000000000000716157585961620000000000000000003500000060616151611d62000000243029293928101010606152131d120000002500474849342941402c2c2c14151624
-1d3d71615263730000000000001334396161515161620000000000000000003400000000361f6161620000000000002400001d1e1e1e1d391f0000000000000000707171611d14150000000000000000380000007010106161117200000024202a2a2a29272728616162131d120000002f005758593429373c3c412500000024
-1f0000706151520000000000001336296161616161620000000000000000003400000000001f7161611d6a00000050240000006036292a291f0000000000000000000000701f0000000000800000000000000000001d1d6171720000000034392a303e323237386161620011000000002f000070613435616200242552000024
-1f000b00706161515200000000506134617171616b615210101010000000503400000000001d0070611f27285051612400000070613429391f0000001717000000000000001d0000000000000000000000000000001f1f72000000000000343a203e3361616161616b720000008100002f000000703435616b51242562000024
-1f0000000070611d1e1d520050616136720000706161612627272800005061340000000000000000701f29356161613100000000603637371f000000000000000000000000000000000000000000000000000000001f1f0000090000000036293233616171717161620000000000000025000000003435617171242572000024
-1f0000000000601f611f6151616171710000000070716134292938520026273a0000000000000000001d39356171616110000000706161611d000000000000000000000000000054530000000000000000000009001d1f00001d0000000050346161717200000070720000000000000025008000003638720000313300000024
-1f0001000000701f1e1f61717172000000006c6d0900703629356161513429390000000000000000007036386200706123000000006061720000000000000000000000000000005e5f000000000000000000001d00001d00001d0000000a60366172000000000000100000000081000033004344000000000000000080005024
-1d27272d0000001f611f7200000000006a017c7d1d0000003435716121302a2a000000005600000000006061720a007025000000006062000000000000171700000000010000006e6f00008000000000016a211f0000000000000000505161616200000080000013211200000043440062004400000000000000000000006024
-293a392f000000342735101010000000151621271d0000003439107024202a2a280001007400000000506162000000102500010050611d000000000000000000000026272800007e7f000043444400002222301f0054530000005051617171616201000043440000000080000044000062000000000000000000005051516124
-2a2a402f101010343a35272728520000000024291f0000003439231024202a2a351415161d000000006061621010102b2514151626271f10000017170000000000503429350000262800004400000000303e201f006e6f0050516161720000602222230044000000000000000000000061520000000000000000506161616124
-2a2a2a412c2c27292a2939392f615151000024001f000000342920223e2a2a2a350000001f000000506161612b2c2c412500000034391f280000000000000000516134393500003435520000000000002a2a301f007e7f0060616172000000703020250000000000000000000000000061615200000000000050616161616124
-2a2a2a2a2a2a293500000034392a2a2a2a3a1f120000706161616161617200001f3232203e2a2a2a2a25120000000000000000003629392900000000000000002a2a2a2a2a3a37373737373737392a2a2a2a2a2a2a2a2a2a2a2a39356161343a20373737293a373737373737293937373737373a2a2937372a29373737373720
-2a2a2a2a2a2a393551520034392a2a2a2a391f120000007071616161720000001f61613132202a2a2025120000000000000000000036373700000000000000002a2a2a2a3a3800007071717161363a2a2a20303e2a2a2039292a29356161363933006061343500606152000034350074007400243e3500003638000060616131
-2a2a2a2a2a2a3a1d6161513b412a2a2a1e1e1d120000000000706162101010101d7171616124202a3033120000000000000000000070616100000000000000002a2a2a29350000000000000070613429303232323020323237393a3561616134000070713435004a4b4c4d0024350074007400313233000011110050616b7200
-2a2a2a2a2a2a2a1f616b61612e40422a2938000000000000000060611d1e1e1e7200007061311d3e2561520000000000000000000000606100000000000000002a2a2a3a35000000000f00007470343925616161241f11111134393870616134000000003425005a5b5c5d0024250074003f0011111100000000506172000000
-2a2a2a2a2a41401f616161713b3c3c413800505200001010100070611f2a2a2a0000000070721f30256172000000000000006c6d0000606100000000000000002a2a2a3935000000000000007400343a33474849311f120013343512006061340100000034250000606162003133003f00000000000000000050616200000000
-2a2a2a393c3c3c1f617172000000002e6151616152001d22230000701f2929396a01000000001f20257200000000000000007c7d001d1e1e00000000000000002a29293a35101010101000007400342961575859611f120a13343512007061362314000024250000706161521111000000000000000000000070707215162627
-2a2a29356161611d720000000056002e70616b7161511f3025000f001f373737271d141500501f30250000000f00000000162122221f203000000000000000002a413737381415161d1d12007400343a61717161611f120013343512000060612500000024250000007071715152000000000010101000000909000000003429
-2a2a423561617172000000000074002e6a60620070611f3e250000001f617161291f005051611f3e250000000000000000003130221d2a2a00000000000000002a402f0000000000131f12007400363772000070711f12000036381200006061250000003133000000000000707152000000002627280000262800000000342a
-40413c3d617200000000005052746a2e1e1e1d0000601f20250000001d7200603a1f516161611f20250000000000000000006024202a2a2a000000000000000041422f0000000000131f12007400111128016a00001d000000800000000060611d00000011110000000000001010605209090034393500003435000000003439
-3c3d61616200000000000060612627293029380000601f20250000003f000070391f616171711f323352000000000000000070243e2a2a2a00000000000000003c3c3d0000000000131f120064000000392723000000000000000000000070611f50520000000050515151512b2d60612b2d003439350000343500505200342a
-0070616162000000000000606134392a2938000000601f303300000000000000291f717210101f61717200000000000000000031302a2a2a00000000000000000000000000000000131f120074001010303233000000000000000000000000701f6162000000506171717171342f70712e2f00342a3500003435506162003439
-0000606172004a4b4c4d007061343a2a3500000050611f250000000000001626391f000015161d7200000000000000000000006024302a2a00000000000000000000000000000000131d120074502122334e4f000000000000800000000000001f6161521010606209090000343500002e2f002e393500103435616162002e29
-0001706200005a5b5c5d0000702e422a3500015061611f250000000000000034291f00000000000000545300000000000000506124202a2a000000000000000000000000090000000000005051612420006e6f000000000000434444000000001f616162262861721d2800002e3500002e35003b422f102b2935474849002e41
-22222362006a746a00747a7b002e412a3514151621221d2510000000001010342a1f000000000000006e5f000000000000006061243e2a2a0000000000000000000100131d1200000000506061712430005e5f000000000000440000000000001f616161343572001f3500002e2f0000343500002e412c412a35575859003b40
-203020222227272727272722223e2a2a1f0000002420203e28101010102627393a1f5200001d1e1d005e6f00000000000050616124202a2a0000000000000000222223131f1200005051616172102420005e6f000000000000000000000000001f6161612e3500001f2f00002e2f0000343500002e402a2a412f61720000002e
-2a2a2a3e3029393a29292a20302a2a2a1f00000024302a203a27272727293a2a291f6152001f001f007e7f00000000005061616124302a2a0000000000000000302025131f120050616161720021302a005e5f000000000000000000000000001f6161612e2f00001f2f00002e2f0000343500002e402a2a402f72000000002e
+2b3b29000000000000000000002a3b2b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+3b290000000000000000000000002a3b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+2900000000000000000000000000002a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000132526262712000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000133536363712000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000001111111100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000046000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000001000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+2620212121212121212121212121222622000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+3c30313333333331313333313331323427000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
 010100000f0001e000120002200017000260001b0002c000210003100027000360002b0003a000300003e00035000000000000000000000000000000000000000000000000000000000000000000000000000000
 010100000970009700097000970008700077000670005700357003470034700347003470034700347003570035700357003570035700347003470034700337003370033700337000070000700007000070000700
@@ -1960,5 +1849,3 @@ __music__
 00 41425253
 00 41425253
 
-__change_mask__
-fbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbfffffffbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
