@@ -1260,13 +1260,12 @@ laser={
     outline=false
     timer=0
     particles={}
-    playerx,playery=badeline.x,badeline.y
   end,
   update=function(this) 
     this.timer+=1
     local p=find_player()
     if this.timer<30 then 
-      this.playerx,this.playery=appr(this.playerx,p.x,10),appr(this.playery,p.y,10)
+      this.playerx,this.playery=appr(this.playerx or this.badeline.x,p.x,10),appr(this.playery or this.badeline.y,p.y,10)
     elseif this.timer==45 then 
       if line_dist(p.x+4,p.y+6,get_laser_coords(this))<6 then 
         kill_player(p)
