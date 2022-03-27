@@ -939,10 +939,15 @@ dash_switch={
   end,
   update=function(_ENV)
     if not active then
-      local hit=check(player,-dirx,-diry) or check(theo_crystal,-dirx,-diry)
+      local hit=check(player,-dirx,-diry) or check(theo_crystal,-dirx,-diry) or check(red_bubble,-dirx,-diry)
       if hit then
         --<theo_crystal> --
-        if hit.type==theo_crystal or (hit.dash_effect_time>3 and
+        if hit.type==theo_crystal or
+        (hit.type==red_bubble and
+        (diry==0 or sign(hit.spd.y==diry)) and
+        (dirx==0 or sign(hit.spd.x==dirx)))
+        or
+        (hit.dash_effect_time>3 and
         (diry==0 or sign(hit.dash_target_y)==diry) and
         (dirx==0 or sign(hit.dash_target_x)==dirx)) then
           if hit.type==theo_crystal then
