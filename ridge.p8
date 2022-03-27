@@ -753,7 +753,11 @@ fake_wall={
       _g.sfx_timer=20
       sfx(16)
       destroy_object(_ENV)
-      init_smoke_hitbox()
+      for ox=0,hitbox.w-8,8 do
+        for oy=0,hitbox.h-8,8 do
+          init_smoke(ox,oy)
+        end
+      end
       if has_fruit then
         init_object(fruit,x+4,y+4,10)
       end
@@ -930,7 +934,6 @@ arrow_platform={
           death_timer=1
           return
         else
-          init_smoke_hitbox()
           break_timer=0
           collideable=true
           active=false
@@ -946,9 +949,15 @@ arrow_platform={
       break_timer=0
     end
     if break_timer==16 then
-      init_smoke_hitbox()
       death_timer=60
       collideable=false
+      for px=x,right(),6 do
+        for py=y,bottom(),6 do
+          local o=init_object(rubble,px,py)
+          o.tx=px+start_x-x
+          o.ty=py+start_y-y
+        end
+      end
     end
 
     spd=vector(active and dir or 0,active and dir==0 and -1 or 0)
@@ -959,8 +968,11 @@ arrow_platform={
     end
   end,
   draw=function(_ENV)
-    if (death_timer>0) return
-
+    if (death_timer>4) return
+    if death_timer>0 then
+      rectfill(start_x-1,start_y-1,start_x+hitbox.w+1,start_y+hitbox.h+1,7)
+      return
+      else
     local x,y=x,y
     pal(13,active and 11 or 13)
     local shake=break_timer>8
@@ -986,7 +998,43 @@ arrow_platform={
     end
     pal()
   end
+  end
 
+}
+
+rubble={
+  layer=0,
+  init=function(_ENV)
+    spd.x=rnd(5)-2.5
+    spd.y=-rnd(3)
+    hitbox=rectangle(0,0,6,6)
+    collides=true
+    sprite=102+flr(rnd(3))
+    flip=vector(maybe(),maybe())
+    outline=false
+    timer=60
+  end,
+  update=function(_ENV)
+    timer-=1
+    if timer==0 then
+      destroy_object(_ENV)
+    end
+    -- if timer==10 then 
+    --   x=tx
+    --   y=ty
+    -- end
+    if timer<=22 then
+      collides=false
+      spd.x=max(0.15*abs(tx-x),1)*sign(tx-x)
+      spd.y=max(0.15*abs(ty-y),1)*sign(ty-y)
+    else
+      spd.x=appr(spd.x,0,0.1)
+      spd.y=appr(spd.y,3,0.3)
+    end
+  end,
+  draw=function(_ENV)
+    spr(sprite,x,y,0.75,0.75,flip.x,flip.y)
+  end
 }
 
 bg_flag={
@@ -1186,21 +1234,6 @@ function init_object(_type,sx,sy,tile)
   function init_smoke(ox,oy)
     init_object(smoke,x+(ox or 0),y+(oy or 0),26)
   end
-
-  -- <fake_wall> <arrow_platform>
-
-  -- made into function because of repeated usage
-  -- can be removed if doesn't save tokens
-  function init_smoke_hitbox()
-    for ox=0,hitbox.w-8,8 do
-      for oy=0,hitbox.h-8,8 do
-        init_smoke(ox,oy)
-      end
-    end
-  end
-  -- </fake_wall> </arrow_platform>
-
-
 
 
   add(objects,_ENV);
@@ -1716,6 +1749,12 @@ __gfx__
 22222222222212440ee221222e11212e000001222000000000000224111dd1112000012222222220021000000000011111112221124000003333333300000000
 2122221122111214ee212e12112212e0000000121200000000000122111dd111120001122211120021000000000001210011111222400000bbbbbbbb00000000
 1111111111111224ee22112112122eee000000012120000000000122111111112120012211111111100000000000012200000111110000000000000000000000
+00000000000000000000000000000000000000000000000001111000001110000011110000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000011111000111111000111110000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000011111100111111001111110000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000011111100111111001111100000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000011111100011111001111100000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000001111000001110000111100000000000000000000000000000000000000000000000000000000000
 __label__
 cccccccccccccccccccccccccccccccccccccc775500000000000000000000000000000000070000000000000000000000000000000000000000000000000000
 cccccccccccccccccccccccccccccccccccccc776670000000000000000000000000000000000000000000000000000000000000000000000000000000000000
