@@ -1441,6 +1441,7 @@ end
 osc_plat={
   init=function(this) 
     find_badestate(this,-1)
+    fall_plat.init(this) -- kinda terrible because depends on fall_plat implementation, but tokens
     this.target_garb=this.check(garbage,-1,0)
   end,
   end_init=function(this)
@@ -1452,7 +1453,6 @@ osc_plat={
     end 
     find_match(this,this.target_garb or hit)
 
-    fall_plat.init(this) -- kinda terrible because depends on fall_plat implementation, but tokens
     
     if not this.badestate then 
       this.timer=1
