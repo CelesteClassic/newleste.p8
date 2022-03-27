@@ -949,7 +949,7 @@ arrow_platform={
       break_timer=0
     end
     if break_timer==16 then
-      death_timer=60
+      death_timer=90
       collideable=false
       for px=x,right(),6 do
         for py=y,bottom(),6 do
@@ -1012,7 +1012,7 @@ rubble={
     sprite=102+flr(rnd(3))
     flip=vector(maybe(),maybe())
     outline=false
-    timer=60
+    timer=90
   end,
   update=function(_ENV)
     timer-=1
@@ -1033,7 +1033,12 @@ rubble={
     end
   end,
   draw=function(_ENV)
-    spr(sprite,x,y,0.75,0.75,flip.x,flip.y)
+    local ox,oy=0,0
+    if timer<=32 and timer>22 then
+      ox=rnd(2)
+      oy=rnd(2)
+    end
+    spr(sprite,x+ox,y+oy,0.75,0.75,flip.x,flip.y)
   end
 }
 
