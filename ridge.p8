@@ -1132,7 +1132,7 @@ function init_object(_type,sx,sy,tile)
   function move(ox,oy,start)
     for axis in all{"x","y"} do
       -- <wind> --
-      rem[axis]+=axis=="x" and ox+(type==player and dash_time<=0 and wind_spd or 0) or oy
+      rem[axis]+=axis=="x" and ox or oy
       -- </wind> --
       local amt=round(rem[axis])
       rem[axis]-=amt
@@ -1364,7 +1364,9 @@ function _update()
 
   -- update each object
   foreach(objects,function(_ENV)
-    move(spd.x,spd.y,type==player and 0 or 1);
+    --<wind>--
+    move(spd.x+(type==player and dash_time<=0 and wind_spd or 0),spd.y,type==player and 0 or 1);
+    --<wind>--
     (type.update or time)(_ENV)
     draw_seed=rnd()
   end)
