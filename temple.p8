@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 32
+version 35
 __lua__
 --newleste.p8 base cart
 
@@ -827,7 +827,6 @@ red_bubble={
     spd=vector(0,0)
     rem=vector(0,0)
     active=false
-    init_smoke()
   end,
   update=function(_ENV)
     local maxspd=3.5
