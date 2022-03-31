@@ -1119,10 +1119,10 @@ function kill_player(obj)
     del(fruitrain,f)
   end
   --- </fruitrain> ---
-  delay_restart=15
-  -- <transition>
-  tstate=0
-  -- </transition>
+  --delay_restart=15
+  -- <transition> --
+  co_trans=cocreate(transition)
+  -- </transition> --
 end
 
 -- [room functions]
@@ -1360,29 +1360,9 @@ function _draw()
     ui_timer-=1
   end
 
-  -- <transition>
-  camera()
-  color(0)
-  if tstate>=0 then
-    local t20=tpos+20
-    if tstate==0 then
-      po1tri(tpos,0,t20,0,tpos,127)
-      if(tpos>0) rectfill(0,0,tpos,127)
-      if(tpos>148) then
-        tstate=1
-        tpos=-20
-      end
-    else
-      po1tri(t20,0,t20,127,tpos,127)
-      if(tpos<108) rectfill(t20,0,127,127)
-      if(tpos>148) then
-        tstate=-1
-        tpos=-20
-      end
-    end
-    tpos+=14
-  end
-  -- </transition>
+  -- <transition> --
+  if (co_trans and costatus(co_trans) != "dead") coresume(co_trans)
+  -- </transition> --
 end
 
 function draw_object(_ENV)
@@ -1427,10 +1407,31 @@ function tile_at(x,y)
 end
 
 --<transition>--
+function transition()
+  for y=-64,128,14 do
+    camera()
+    color(0)
+    po1tri(0,y,128,y,64,y+64)
+    rectfill(0,-1,127,y)
+    yield()
+  end
 
--- transition globals
-tstate=-1
-tpos=-20
+  delay_restart=1
+  for t=1,5 do
+    cls(0)
+    yield()
+  end
+
+  for y=-64,128,14 do
+    camera()
+    color(0)
+    local y64=y+64
+    po1tri(0,y,0,y64,64,y64)
+    po1tri(128,y,128,y64,64,y64)
+    rectfill(0,y64,127,128)
+    yield()
+  end
+end
 
 -- triangle functions
 function po1tri(x0,y0,x1,y1,x2,y2)
