@@ -1357,10 +1357,10 @@ function kill_player(obj)
     -- </keydoor> --
   end
   --- </fruitrain> ---
-  delay_restart=15
-  -- <transition>
-  tstate=0
-  -- </transition>
+  --delay_restart=15
+  -- <transition> --
+  co_trans=cocreate(transition)
+  -- </transition> --
 end
 
 -- [room functions]
@@ -1599,27 +1599,7 @@ function _draw()
   end
 
   -- <transition>
-  camera()
-  color(0)
-  if tstate>=0 then
-    local t20=tpos+20
-    if tstate==0 then
-      po1tri(tpos,0,t20,0,tpos,127)
-      if(tpos>0) rectfill(0,0,tpos,127)
-      if(tpos>148) then
-        tstate=1
-        tpos=-20
-      end
-    else
-      po1tri(t20,0,t20,127,tpos,127)
-      if(tpos<108) rectfill(t20,0,127,127)
-      if(tpos>148) then
-        tstate=-1
-        tpos=-20
-      end
-    end
-    tpos+=14
-  end
+  if (co_trans and costatus(co_trans) != "dead") coresume(co_trans)
   -- </transition>
 end
 
@@ -1660,6 +1640,10 @@ function sign(v)
   return v~=0 and sgn(v) or 0
 end
 
+function cube(n)
+  return n*n*n
+end
+
 function maybe()
   return rnd()<0.5
 end
@@ -1669,24 +1653,26 @@ function tile_at(x,y)
 end
 
 --<transition>--
+function transition()
+  for wipe_in in all{false,true} do
+    local meetings={}
+    for i=1,8 do
+      add(meetings,8+rnd(112))
+    end
 
--- transition globals
-tstate=-1
-tpos=-20
-
--- triangle functions
-function po1tri(x0,y0,x1,y1,x2,y2)
-  local c=x0+(x2-x0)/(y2-y0)*(y1-y0)
-  p01traph(x0,x0,x1,c,y0,y1)
-  p01traph(x1,c,x2,x2,y1,y2)
-end
-
-function p01traph(l,r,lt,rt,y0,y1)
-  lt,rt=(lt-l)/(y1-y0),(rt-r)/(y1-y0)
-  for y0=y0,y1 do
-    rectfill(l,y0,r,y0)
-    l+=lt
-    r+=rt
+    for percent=0,1,0.04 do
+      camera()
+      for i=0,7 do
+        num3 = i/10
+        num4 = (wipe_in and (1 - num3) or num3) * 0.3
+        num5 = cube(min(1, ((wipe_in and (1 - percent) or percent) - num4) / 0.7))
+        rectfill(i*16,-1,i*16+15,meetings[i+1]*num5-1,0)
+        local y2=128-(128-meetings[i+1])*num5
+        if (y2<127) rectfill(i*16,128,i*16+15,y2,0)
+      end
+      yield()
+    end
+    if (not wipe_in) delay_restart=1
   end
 end
 -- </transition> --
