@@ -1041,8 +1041,8 @@ dream_block={
       if #disp_shapes!=0 then
         local d,dx,dy,ds=displace(disp_shapes, vector(px,py))
         d=max((6-d), 0)
-        px+=dx*ds
-        py+=dy*ds
+        px+=dx*ds*d
+        py+=dy*ds*d
       end
 
       if p.s<0.2 and p.t<=8 then
