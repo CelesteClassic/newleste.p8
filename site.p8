@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 35
+version 36
 __lua__
 --newleste.p8 base cart
 
@@ -1091,7 +1091,7 @@ dream_block={
         dtimer-=1
         if dtimer==0 then
           dtimer=4
-          create_disp_shape(disp_shapes, hit.x, hit.y)
+          create_disp_shape(disp_shapes, hit.x+4, hit.y+4)
         end
       end
     else
@@ -1115,7 +1115,7 @@ dream_block={
     foreach(particles, function(p)
       local px,py = (p.x+cam_x*p.z-65)%(hitbox.w-2)+1+x, (p.y+cam_y*p.z-65)%(hitbox.h-2)+1+y
       if #disp_shapes!=0 then
-        local d,dx,dy,ds=displace(disp_shapes, vector(px,py))
+        local d,dx,dy,ds=displace(disp_shapes, px,py)
         d=max((6-d), 0)
         px+=dx*ds*d
         py+=dy*ds*d
@@ -1167,7 +1167,7 @@ dream_block={
           if #disp_shapes==0 then
             pset(j,py,dream_blocks_active and 7 or 5)
           else
-            local d,dx,dy,ds=displace(disp_shapes,vector(j,py))
+            local d,dx,dy,ds=displace(disp_shapes,j,py)
             d=max((4-d), 0)
             pset(j+dx*d*ds,py+dy*d*ds,dream_blocks_active and 7 or 5)
           end
@@ -1194,7 +1194,7 @@ dream_block={
           if #disp_shapes==0 then
             pset(px,j,dream_blocks_active and 7 or 5)
           else
-            local d,dx,dy,ds=displace(disp_shapes,vector(px,j))
+            local d,dx,dy,ds=displace(disp_shapes,px,j)
             d=max((4-d), 0)
             pset(px+dx*d*ds,j+dy*d*ds,dream_blocks_active and 7 or 5)
           end
@@ -1205,114 +1205,58 @@ dream_block={
       end
     end
 
-
-      -- line(x,y,x,bottom(),7)
-      -- line(right(),y,right(),bottom(),7)
-      -- for i=x,right(),hitbox.w-1 do
-      --   local rx,lx=i
-      --   for j=y,bottom() do
-      --     if j%8==0 then
-      --       lx=rx
-      --       rx=j==bottom()-7 and i or
-      --             i+(i==x and -1 or 1)*((sin(time()/seeds[i+j-x-y+1])+sin(time()/seeds[i+j+2-x-y])+2)/2)
-      --     end
-      --     local m=(rx-lx)/8
-      --     local px=round(m*(j-(j-j%8))+lx)
-      --     pset(px,j,7)
-      --     if px!=i then
-      --       line(px+sign(i-px),j,i,j,0)
-      --     end
-      --   end
-      -- end
       for i=x+1,right()-1,hitbox.w-3 do
         for j=y+1,bottom()-1,hitbox.h-3 do
           pset(i,j,dream_blocks_active and 7 or 5)
         end
       end
-    -- else
-    --   local first,last=disp_shapes[1],disp_shapes[#disp_shapes]
-
-    --   minx=min(first.pos.x-first.r-4,last.pos.x-last.r-4)
-    --   maxx=max(first.pos.x+first.r+4,last.pos.x+last.r+4)
-    --   miny=min(first.pos.y-first.r-4,last.pos.y-last.r-4)
-    --   maxy=max(first.pos.y+first.r+4,last.pos.y+last.r+4)
-
-    --   if minx>x then
-    --     line(x,y,minx-1,y)
-    --     line(x,bottom(),minx-1,bottom())
-    --   end
-    --   if maxx<right() then
-    --     line(maxx+1,y,right(),y)
-    --     line(maxx+1,bottom(),right(),bottom())
-    --   end
-
-    --   if miny>y then
-    --     line(x,y,x,miny-1)
-    --     line(right(),y,right(),miny-1)
-    --   end
-    --   if maxy<bottom() then
-    --     line(x,maxy,x,bottom())
-    --     line(right(),maxy,right(),bottom())
-    --   end
-
-    --   for x_=max(minx,x),min(maxx,right()) do
-    --     for y_=y,bottom(),bottom()-y do
-    --       local d,dx,dy,ds=displace(disp_shapes,vector(x_,y_))
-    --       d=max((4-d), 0)
-    --       rectfill(x_+dx*d*ds,y_+dy*d*ds,x_+dx*d*ds,y_+dy*d*ds)
-    --     end
-    --   end
-    --   for x_=x,right(),right()-x do
-    --     for y_=max(miny,y),min(maxy,bottom()) do
-    --       local d,dx,dy,ds=displace(disp_shapes,vector(x_,y_))
-    --       d=max((4-d), 0)
-    --       rectfill(x_+dx*d*ds,y_+dy*d*ds,x_+dx*d*ds,y_+dy*d*ds)
-    --     end
-    --   end
-    -- end
-    --[[pset(x, y, 0)
-    pset(x, bottom(), 0)
-    pset(right(), y, 0)
-    pset(right(), bottom(), 0)]]--
   end
 }
---</dream_block>--
 
 
 function create_disp_shape(tbl,x,y)
-  add(tbl, {pos=vector(x,y),r=0})
+  add(tbl, {x,y,0}) --x,y,r
 end
 
 function update_disp_shapes(tbl)
   for i in all(tbl) do
-    i.r+=2
-    if i.r >= 15 then
+    i[3]+=2
+    if i[3] >= 15 then
       del(tbl, i)
     end
   end
 end
 
-function displace(tbl, p)
-  local d,ds,po,s = 10000,0,vector(0,0),0
+function displace(tbl, px,py)
+  local d,ds,pox,poy,s = 10000,0,0,0,0
   for i in all(tbl) do
-    local td,ts,tpo = sdf_circ(p, i.pos, i.r)
-    if td<d then
-      d,ds,po,s=td,ts,tpo,i.r
+    local ox,oy,r=i[1],i[2],i[3]
+    if abs(px-ox)+abs(py-oy)<=20 then
+      --cpu optimization - if the manhatten distance is far enough, we don't care anyway
+      local td,ts,tpox,tpoy = sdf_circ(px,py, ox,oy,r)
+      if td<d then
+        d,ds,pox,poy,s=td,ts,tpox,tpoy,r
+      end
     end
   end
-  local gx, gy = sdg_circ(po, ds, s)
+  if d>10 then
+    return d,0,0,0
+  end
+  local gx, gy = sdg_circ(pox,poy, ds, s)
   return d,gx,gy,(15-s)/15
 end
 
-function sdg_circ(po, d, r)
-  return sign(d-r)*(po.x/d), sign(d-r)*(po.y/d)
+function sdg_circ(pox,poy, d, r)
+  local s=sign(d-r)/d
+  return s*pox, s*poy
 end
 
-function sdf_circ(p, origin, r)
-  local po = vec_sub(p,origin)
-  local d = vec_len(po)
-  return abs(d-r), d, po
+function sdf_circ(px,py, ox, oy, r)
+  local pox,poy = px-ox,py-oy
+  local d = vec_len(pox,poy)
+  return abs(d-r), d, pox,poy
 end
+--</dream_block>--
 
 psfx=function(num)
   if sfx_timer<=0 then
@@ -1862,9 +1806,9 @@ end
 --   return sqrt(vec_len_sqr(a))
 -- end
 
-function vec_len(a)
- local maskx,masky=a.x>>31,a.y>>31
- local a0,b0=(a.x+maskx)^^maskx,(a.y+masky)^^masky
+function vec_len(x,y)
+ local maskx,masky=x>>31,y>>31
+ local a0,b0=(x+maskx)^^maskx,(y+masky)^^masky
  if a0>b0 then
   return a0*0.9609+b0*0.3984
  end
@@ -1872,7 +1816,7 @@ function vec_len(a)
 end
 
 function vec_sub(a,b)
-  return vector(a.x-b.x, a.y-b.y)
+  return {a[1]-b[1],a[2]-b[2]}
 end
 --</dream_block>
 
