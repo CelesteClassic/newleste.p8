@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 34
+version 36
 __lua__
 --newleste.p8 base cart
 
@@ -104,6 +104,11 @@ player={
       _ENV[var]=0
     end
     create_hair(_ENV)
+    dream_particles={}
+
+    --<dream_block>--
+    _init_smoke=init_smoke
+    --</dream_block>--
   end,
   update=function(_ENV)
     if pause_player then
@@ -111,8 +116,39 @@ player={
     end
 
     -- <dream_block> --
+    for p in all(dream_particles) do
+      p.x+=p.dx
+      p.y+=p.dy
+      p.t-=1
+      if p.t <= 0 then
+        del(dream_particles, p)
+      end
+    end
+    if dreaming then
+      dream_time+=1
+      if dream_time%5==0 then
+        add(dream_particles,{ -- afterimage particles
+          x=x,
+          y=y,
+          dx=spd.x/8,
+          dy=spd.y/8,
+          t=10,
+          type=2
+        })
+      end
+      add(dream_particles,{ -- trail particles
+        x=x+4,
+        y=y+4,
+        dx=rnd(0.5)-0.25,
+        dy=rnd(0.5)-0.25,
+        t=7,
+        type=1
+      })
+    end
     if dreaming and not check(dream_block,0,0) then
       dreaming=false
+      dream_block.layer=3
+      init_smoke=_init_smoke
       spd=vector(mid(dash_target_x,-2,2),
                       mid(dash_target_y,-2,2))
       dash_time,dash_effect_time=0,0
@@ -304,10 +340,45 @@ player={
 
   draw=function(_ENV)
     -- draw player hair and sprite
-    pal(8,djump==1 and 8 or 12)
-    draw_hair(_ENV)
-    draw_obj_sprite(_ENV)
-    pal()
+    for t=1,2 do
+      for p in all(dream_particles) do
+        if p.type==t and t==2 then
+          local c = p.t < 4 and 1 or p.t < 7 and 13 or 12
+          local s = (10-p.t)/4
+          for i=0,15 do
+            pal(i,c)
+          end
+          sspr(8, 0, 8, 8, p.x-s/2, p.y-s/2, 8+s, 8+s) -- draw player afterimage
+        elseif p.type==t and t==1 then
+          local c = p.t < 2 and 1 or p.t < 3 and 13 or 12
+          circfill(p.x, p.y, p.t/2, c) --draw trails
+        end
+        pal()
+      end
+    end
+    if dreaming then
+      local gfx = {76,76,76, 77,77,77, 78, 79,79,79}
+      local cs = {7,12,12,1,1,12,1}
+      local sprite = gfx[(flr(dream_time)%#gfx)+1]
+      if dream_time < 3 then sprite=75 end
+      local sx, sy = (sprite % 16) * 8, flr(sprite \ 16) * 8
+      local size = flr(rnd(5))<2 and 4 or 0
+      for i=0,15 do
+        pal(i,12)
+      end
+      draw_obj_sprite(_ENV)
+      local c = cs[(flr(dream_time-1)%#cs)+1]
+      local size = dream_time==1 and 0 or dream_time==2 and 5 or size
+      local w = dream_time<3 and 4 or 2
+      pal(7,c)
+      sspr(sx, sy, 8, 8, x-w, y-size/2, 8+w*2, 8+size) -- draw flickering sprite
+      pal()
+    else
+      pal(8,djump==1 and 8 or 12)
+      draw_hair(_ENV)
+      draw_obj_sprite(_ENV)
+      pal()
+    end
   end
 }
 
@@ -916,7 +987,18 @@ switch_block={
 
 switch_target={}
 -- <touch_switch> --
+
+
+function calc_seg(seg)
+  local t=dream_blocks_active and time() or 0
+  if (seg[2]) return (sin(t/seg[2]+seg[2])+sin(t/seg[3]+seg[3])+2)/2
+  return 0
+end
+
+--<dream_block>--
+dream_blocks_active=true
 dream_block={
+  layer=3,
   init=function(_ENV)
     while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==65 do
       hitbox.w+=8
@@ -931,11 +1013,47 @@ dream_block={
       {x=rnd(hitbox.w-1)+x,
       y=rnd(hitbox.h-1)+y,
       z=rnd(1),
-      c=split"3, 8, 9, 10, 12, 14"[flr(rnd(7))]})
+      c=split"3, 8, 9, 10, 12, 14"[flr(rnd(6))+1],
+      s=rnd(),
+      t=flr(rnd(10))})
     end
     dtimer=1
     disp_shapes={}
     outline=false
+    xsegs={}
+    ysegs={}
+    for i=1,2 do
+      local seg={{x},{x+4}}
+      local x_=x+10+flr(rnd(6))
+      while x_<right()-4 do
+        add(seg,{x_,rnd(3)+2,rnd(3)+2})
+        x_+=flr(rnd(6))+6
+      end
+      if seg[#seg][1]>right()-8 then
+        seg[#seg][1]=right()-4
+        seg[#seg][2]=nil
+      else
+        add(seg,{right()-4})
+      end
+      add(seg,{right()})
+      add(xsegs,seg)
+    end
+    for i=1,2 do
+      local seg={{y},{y+4}}
+      local y_=y+10+flr(rnd(6))
+      while y_<bottom()-4 do
+        add(seg,{y_,rnd(3)+2,rnd(3)+2})
+        y_+=flr(rnd(6))+6
+      end
+      if seg[#seg][1]>bottom()-8 then
+        seg[#seg][1]=bottom()-4
+        seg[#seg][2]=nil
+      else
+        add(seg,{bottom()-4})
+      end
+      add(seg,{bottom()})
+      add(ysegs,seg)
+    end
   end,
   update=function(_ENV)
     --[[hitbox.w+=2
@@ -955,6 +1073,7 @@ dream_block={
       end
       if not hit.dreaming then
         hit.spd=vector(hit.dash_target_x*(hit.dash_target_y==0 and 2.5  or 1.7678),hit.dash_target_y*(hit.dash_target_x==0 and 2.5 or 1.7678))
+        hit.dream_time=0
       end
       if abs(hit.spd.x)<abs(hit.dash_target_x) or abs(hit.spd.y)<abs(hit.dash_target_y) then
         hit.move(hit.dash_target_x,hit.dash_target_y,0)
@@ -963,12 +1082,16 @@ dream_block={
         end
       end
       hit.dreaming=true
+      hit.init_smoke=function() end
       hit.djump=max_djump
+      dream_block.layer=1 --this is a hack to make dream blocks appear in front of the player usually, but behind when the player is dashing
+      -- this might cause too much jank with badelines
+      -- TODO: check and fix this if needed
       if dtimer>0 then
         dtimer-=1
         if dtimer==0 then
           dtimer=4
-          create_disp_shape(disp_shapes, hit.x, hit.y)
+          create_disp_shape(disp_shapes, hit.x+4, hit.y+4)
         end
       end
     else
@@ -977,111 +1100,163 @@ dream_block={
     --[[hitbox.w-=2
     hitbox.h-=2]]--
     update_disp_shapes(disp_shapes)
+
+    foreach(particles, function(p)
+      if dream_blocks_active then
+        p.t=(p.t+1)%16
+      end
+    end)
   end,
   draw=function(_ENV)
     rectfill(x+1,y+1,right()-1,bottom()-1,0)
+
+    local color_mapping={[3]=5,[8]=5,[9]=6,[10]=6,[12]=13,[14]=13}
+    local big_particles={}
     foreach(particles, function(p)
       local px,py = (p.x+cam_x*p.z-65)%(hitbox.w-2)+1+x, (p.y+cam_y*p.z-65)%(hitbox.h-2)+1+y
-      if #disp_shapes==0 then
-        rectfill(px,py,px,py,p.c)
-      else
-        local d,dx,dy,ds=displace(disp_shapes, vector(px,py))
+      if #disp_shapes!=0 then
+        local d,dx,dy,ds=displace(disp_shapes, px,py)
         d=max((6-d), 0)
-        rectfill(px+dx*d*ds,py+dy*d*ds,px+dx*d*ds,py+dy*d*ds,p.c)
+        px+=dx*ds*d
+        py+=dy*ds*d
+      end
+
+      if p.s<0.2 and p.t<=8 then
+        add(big_particles,{px,py,dream_blocks_active and p.c or color_mapping[p.c]})
+      else
+        pset(px,py,dream_blocks_active and p.c or color_mapping[p.c])
       end
     end)
+    foreach(big_particles,function(p)
+      local px,py,pc=unpack(p)
+      line(px-1,py,px+1,py,pc)
+      line(px,py-1,px,py+1,pc)
+    end)
+
     color(7)
-    if #disp_shapes==0 then
-      --rect(x,y,right(),bottom(),7)
-      for i=y,bottom(),hitbox.h-1 do
-        line(x+1, i, right()-1,i)
-      end
-      for i=x,right(),hitbox.w-1 do
-        line(i, y+1, i,bottom()-1)
-      end
-    else
-      local first,last=disp_shapes[1],disp_shapes[#disp_shapes]
+    -- draw outline pixel by pixel
+    -- divide into segments of 8 pixels
+    -- at the boundaries of each segment, set the position to be a sum of sines
+    -- lerp between the boundaries
+    -- fill the dream block in
+    --
+    --
 
-      minx=min(first.pos.x-first.r-4,last.pos.x-last.r-4)
-      maxx=max(first.pos.x+first.r+4,last.pos.x+last.r+4)
-      miny=min(first.pos.y-first.r-4,last.pos.y-last.r-4)
-      maxy=max(first.pos.y+first.r+4,last.pos.y+last.r+4)
+    -- local minx,maxx,miny,maxy
+    -- if #disp_shapes!=0 then
+    --   local first,last=disp_shapes[1],disp_shapes[#disp_shapes]
+    --   minx=min(first.pos.x-first.r-4,last.pos.x-last.r-4)
+    --   maxx=max(first.pos.x+first.r+4,last.pos.x+last.r+4)
+    --   miny=min(first.pos.y-first.r-4,last.pos.y-last.r-4)
+    --   maxy=max(first.pos.y+first.r+4,last.pos.y+last.r+4)
+    -- end
 
-      if minx>x then
-        line(x,y,minx-1,y)
-        line(x,bottom(),minx-1,bottom())
-      end
-      if maxx<right() then
-        line(maxx+1,y,right(),y)
-        line(maxx+1,bottom(),right(),bottom())
-      end
+    for i=y,bottom(),hitbox.h-1 do
+      -- line(x+1, i, right()-1,i)
 
-      if miny>y then
-        line(x,y,x,miny-1)
-        line(right(),y,right(),miny-1)
-      end
-      if maxy<bottom() then
-        line(x,maxy,x,bottom())
-        line(right(),maxy,right(),bottom())
-      end
-
-      for x_=max(minx,x),min(maxx,right()) do
-        for y_=y,bottom(),bottom()-y do
-          local d,dx,dy,ds=displace(disp_shapes,vector(x_,y_))
-          d=max((4-d), 0)
-          rectfill(x_+dx*d*ds,y_+dy*d*ds,x_+dx*d*ds,y_+dy*d*ds)
+      local segs=xsegs[i==y and 1 or 2]
+      for idx,seg in ipairs(segs) do
+        if idx==#segs then
+          break
         end
-      end
-      for x_=x,right(),right()-x do
-        for y_=max(miny,y),min(maxy,bottom()) do
-          local d,dx,dy,ds=displace(disp_shapes,vector(x_,y_))
-          d=max((4-d), 0)
-          rectfill(x_+dx*d*ds,y_+dy*d*ds,x_+dx*d*ds,y_+dy*d*ds)
+        lx,rx=seg[1],segs[idx+1][1]
+        local ly,ry=i+(i==y and -1 or 1)*calc_seg(seg), i+(i==y and -1 or 1)*calc_seg(segs[idx+1])
+        local m=(ry-ly)/(rx-lx)
+        for j=lx,rx do
+          local py=round(m*(j-lx)+ly)
+          if #disp_shapes==0 then
+            pset(j,py,dream_blocks_active and 7 or 5)
+          else
+            local d,dx,dy,ds=displace(disp_shapes,j,py)
+            d=max((4-d), 0)
+            pset(j+dx*d*ds,py+dy*d*ds,dream_blocks_active and 7 or 5)
+          end
+          if py!=i then
+            line(j,py+sign(i-py),j,i,0)
+          end
         end
       end
     end
-    --[[pset(x, y, 0)
-    pset(x, bottom(), 0)
-    pset(right(), y, 0)
-    pset(right(), bottom(), 0)]]--
+
+    for i=x,right(),hitbox.w-1 do
+      -- line(x+1, i, right()-1,i)
+
+      local segs=ysegs[i==x and 1 or 2]
+      for idx,seg in ipairs(segs) do
+        if idx==#segs then
+          break
+        end
+        ly,ry=seg[1],segs[idx+1][1]
+        local lx,rx=i+(i==x and -1 or 1)*calc_seg(seg), i+(i==x and -1 or 1)*calc_seg(segs[idx+1])
+        local m=(rx-lx)/(ry-ly)
+        for j=ly,ry do
+          local px=round(m*(j-ly)+lx)
+          if #disp_shapes==0 then
+            pset(px,j,dream_blocks_active and 7 or 5)
+          else
+            local d,dx,dy,ds=displace(disp_shapes,px,j)
+            d=max((4-d), 0)
+            pset(px+dx*d*ds,j+dy*d*ds,dream_blocks_active and 7 or 5)
+          end
+          if px!=i then
+            line(px+sign(i-px),j,i,j,0)
+          end
+        end
+      end
+    end
+
+      for i=x+1,right()-1,hitbox.w-3 do
+        for j=y+1,bottom()-1,hitbox.h-3 do
+          pset(i,j,dream_blocks_active and 7 or 5)
+        end
+      end
   end
 }
 
 
 function create_disp_shape(tbl,x,y)
-  add(tbl, {pos=vector(x,y),r=0})
+  add(tbl, {x,y,0}) --x,y,r
 end
 
 function update_disp_shapes(tbl)
   for i in all(tbl) do
-    i.r+=2
-    if i.r >= 15 then
+    i[3]+=2
+    if i[3] >= 15 then
       del(tbl, i)
     end
   end
 end
 
-function displace(tbl, p)
-  local d,ds,po,s = 10000,0,vector(0,0),0
+function displace(tbl, px,py)
+  local d,ds,pox,poy,s = 10000,0,0,0,0
   for i in all(tbl) do
-    local td,ts,tpo = sdf_circ(p, i.pos, i.r)
-    if td<d then
-      d,ds,po,s=td,ts,tpo,i.r
+    local ox,oy,r=i[1],i[2],i[3]
+    if abs(px-ox)+abs(py-oy)<=20 then
+      --cpu optimization - if the manhatten distance is far enough, we don't care anyway
+      local td,ts,tpox,tpoy = sdf_circ(px,py, ox,oy,r)
+      if td<d then
+        d,ds,pox,poy,s=td,ts,tpox,tpoy,r
+      end
     end
   end
-  local gx, gy = sdg_circ(po, ds, s)
+  if d>10 then
+    return d,0,0,0
+  end
+  local gx, gy = sdg_circ(pox,poy, ds, s)
   return d,gx,gy,(15-s)/15
 end
 
-function sdg_circ(po, d, r)
-  return sign(d-r)*(po.x/d), sign(d-r)*(po.y/d)
+function sdg_circ(pox,poy, d, r)
+  local s=sign(d-r)/d
+  return s*pox, s*poy
 end
 
-function sdf_circ(p, origin, r)
-  local po = vec_sub(p,origin)
-  local d = vec_len(po)
-  return abs(d-r), d, po
+function sdf_circ(px,py, ox, oy, r)
+  local pox,poy = px-ox,py-oy
+  local d = vec_len(pox,poy)
+  return abs(d-r), d, pox,poy
 end
+--</dream_block>--
 
 psfx=function(num)
   if sfx_timer<=0 then
@@ -1139,9 +1314,9 @@ function init_object(_type,sx,sy,tile)
     return oy>0 and not is_flag(ox,0,3) and is_flag(ox,oy,3) or  -- one way platform or
             is_flag(ox,oy,0) -- solid terrain
             -- <dream_block> --
-           or check(dream_block,ox,oy) and (dash_effect_time<=2 or
-           not check(dream_block,sign(dash_target_x),sign(dash_target_y))
-           and not dreaming)
+           or check(dream_block,ox,oy) and (not dream_blocks_active
+           or dash_effect_time<=2
+           or not check(dream_block,sign(dash_target_x),sign(dash_target_y)) and not dreaming)
            -- </dream_block> --
   end
   function oob(ox,oy)
@@ -1631,9 +1806,9 @@ end
 --   return sqrt(vec_len_sqr(a))
 -- end
 
-function vec_len(a)
- local maskx,masky=a.x>>31,a.y>>31
- local a0,b0=(a.x+maskx)^^maskx,(a.y+masky)^^masky
+function vec_len(x,y)
+ local maskx,masky=x>>31,y>>31
+ local a0,b0=(x+maskx)^^maskx,(y+masky)^^masky
  if a0>b0 then
   return a0*0.9609+b0*0.3984
  end
@@ -1641,7 +1816,7 @@ function vec_len(a)
 end
 
 function vec_sub(a,b)
-  return vector(a.x-b.x, a.y-b.y)
+  return {a[1]-b[1],a[2]-b[2]}
 end
 --</dream_block>
 
@@ -1822,14 +1997,14 @@ dd5111dd55515551dd1155511555555d555551155155555151155555d5515555111111116ccccccc
 55511155d55155511111555111111111555551111155555111155555111155551555551166ccccc6cccccccc6ccccc660111cc1066666dd1ddddd6d1d6666666
 11111111d5515551555155511555155ddd555155515d5551551555ddd55155dd155555116ccc66c6666ccc666c66ccc61c111100666666d1d66666d1d6666666
 5555515d1dd1ddd1dd51dd511ddd1dd1dddd515dd1dddd51d515dddd1d515dd111111111066666660666666666666660cc100000066666d1d66666d1d6666666
-0000000000000000577777777777777788cccc8888cccc8888cccc881dddd15ddddd51dd000d0000d00600d00000000000000000000000000000000000000000
-00008000000b000077777777777777778c0000c88c0000c88c0000c8d555515555d551550d0d0d000d060d000000000000000000000000000000000000000000
-00b00000000000007777ccccccccccccc00cc00cc00c100cc00cc00cd55551555555515500d6d000006760000000000000000000000000000000000000000000
-0000000000000000777cc7ccccccccccc0c00c0cc010c10cc00cc00cd555111111111111dd676dd0667776600000000000000000000000000000000000000000
-0000b000080000b077ccc7ccccccccccc0cccc0cc01cc10cc00cc00c555111111111111100d6d000006760000000000000000000000000000000000000000000
-0b0000000000000077c77777ccccccccc00cc00cc00c100cc00cc00c55511111111111110d0d0d000d060d000000000000000000000000000000000000000000
-00000080000b000077cc777ccccccccc8c0000c88c0000c88c0000c81111111111111111000d0000d00600d00000000000000000000000000000000000000000
-000000000000000077ccc7cccccccccc88cccc8888cccc8888cccc88d55111111111111100000000000000000000000000000000000000000000000000000000
+0000000000000000577777777777777788cccc8888cccc8888cccc881dddd15ddddd51dd000d0000d00600d00007700000077000000770000000000000077000
+00008000000b000077777777777777778c0000c88c0000c88c0000c8d555515555d551550d0d0d000d060d000007700000777700007007007077770700777700
+00b00000000000007777ccccccccccccc00cc00cc00c100cc00cc00cd55551555555515500d6d000006760000077770077777777070000707777777707777770
+0000000000000000777cc7ccccccccccc0c00c0cc010c10cc00cc00cd555111111111111dd676dd0667776600077770007777770777777777777777777777777
+0000b000080000b077ccc7ccccccccccc0cccc0cc01cc10cc00cc00c555111111111111100d6d000006760000777777007700770777777770777777077777777
+0b0000000000000077c77777ccccccccc00cc00cc00c100cc00cc00c55511111111111110d0d0d000d060d000777777077777777077777700777777007777770
+00000080000b000077cc777ccccccccc8c0000c88c0000c88c0000c81111111111111111000d0000d00600d07777777700777700007777000777777000777700
+000000000000000077ccc7cccccccccc88cccc8888cccc8888cccc88d55111111111111100000000000000007777777700077000000000007777777000077000
 7cccccccccccccc70000000000000000000000000000000000000000d5511111111cc11100000001000000000000000000000000000000000000000000000000
 77ccccc0cccccc770000000000000000000000000000000000000000d551111111cccc1100000001000000000000000000000000000000000000000000000000
 76ccccc0cccc77770000000000000000000000000000000000000000d55111111cc11cc10000010d010000000000000000000000000000000000000000000000
@@ -1996,11 +2171,11 @@ __map__
 0000000000001111111100000000000000000000000000000000000010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000040414100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0047484800000000000000424343430022222222222222222300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0057000000000000000000430000000025252525252532323300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0057000000000000000000430000000025252525252640414100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000040414100430000000025252525252641000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0058000000000041000000430000000025252525252641000010101010100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000025252532323341000034353535360000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0057000000004041414100430000000025252525252532323300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0057000000004100000000430000000025252525252640414100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000004100000000430000000025252525252641000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0058000000004100000000430000000025252525252641000010101010100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000004100000000000000000025252532323341000034353535360000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000025252600000041000025000000000010000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 2222222222222317172122222222222225252600000041000025000000001340000013400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 2525252525252600002425252525252525252600000041000025000000001341000013410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
