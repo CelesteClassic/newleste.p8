@@ -1112,10 +1112,10 @@ function kill_player(obj)
     del(fruitrain,f)
   end
   --- </fruitrain> ---
-  delay_restart=15
-  -- <transition>
-  transition:play()
-  -- </transition>
+  --delay_restart=15
+  -- <transition> --
+  co_trans=cocreate(transition)
+  -- </transition> --
 end
 
 -- [room functions]
@@ -1254,11 +1254,6 @@ function _update()
       return
     end
   end)
-
-  -- <transition>
-  transition:update()
-  -- </transition>
-
 end
 
 -- [drawing functions]
@@ -1365,9 +1360,9 @@ function _draw()
     ui_timer-=1
   end
 
-  -- <transition>
-  transition:draw()
-  -- </transition>
+  -- <transition> --
+  if (co_trans and costatus(co_trans) != "dead") coresume(co_trans)
+  -- </transition> --
 end
 
 function draw_object(_ENV)
@@ -1411,43 +1406,28 @@ function tile_at(x,y)
   return mget(lvl_x+x,lvl_y+y)
 end
 
---<transition>--
-transition = {
-  -- state:
-  --  1 | wiping in
-  -- -1 | wiping out
-  --  0 | idle
-  state=0,
-  play=function(_ENV)
-    state = state==0 and 1 or state
-    x=-20
-  end,
-  update=function(_ENV)
-    if (state==0) return
-    if x>148 then
-      if state==1 then
-        state=-1
-        play(_ENV)
-      else
-        state=0
-      end
-    end
-  end,
-  draw=function(_ENV)
-    if (state==0) return
-    _g.camera()
-    _g.color(0)
-    local x20=x+20
-    if state==1 then
-      _g.po1tri(x,0,x20,0,x,127)
-      if (x>0) _g.rectfill(0,0,x,127)
-    else
-      _g.po1tri(x20,0,x20,127,x,127)
-      if (x<108) _g.rectfill(x20,0,127,127)
-    end
-    x+=14
+-- <transition> --
+function transition()
+  for x=-20,127,14 do
+    color(0)
+    po1tri(x,-1,x+20,-1,x,127)
+    rectfill(-1,0,x,127)
+    yield()
   end
-}
+
+  delay_restart=1
+  for t=0,5 do
+    cls(0)
+    yield()
+  end
+
+  for x=-20,127,14 do
+    color(0)
+    po1tri(x+20,-1,x+20,127,x,127)
+    rectfill(x+20,0,128,127)
+    yield()
+  end
+end
 
 -- triangle functions
 function po1tri(x0,y0,x1,y1,x2,y2)

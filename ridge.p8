@@ -1235,10 +1235,10 @@ function kill_player(obj)
     del(fruitrain,f)
   end
   --- </fruitrain> ---
-  delay_restart=15
-  -- <transition>
-  transition:play()
-  -- </transition>
+  --delay_restart=15
+  -- <transition> --
+  co_trans=cocreate(transition)
+  -- </transition> --
 end
 
 -- [room functions]
@@ -1378,11 +1378,6 @@ function _update()
       return
     end
   end)
-
-  -- <transition>
-  transition:update()
-  -- </transition>
-
 end
 
 -- [drawing functions]
@@ -1493,9 +1488,9 @@ function _draw()
     ui_timer-=1
   end
 
-  -- <transition>
-  transition:draw()
-  -- </transition>
+  -- <transition> --
+  if (co_trans and costatus(co_trans) != "dead") coresume(co_trans)
+  -- </transition> --
 end
 
 function draw_object(_ENV)
@@ -1544,45 +1539,21 @@ function tile_at(x,y)
   return mget(lvl_x+x,lvl_y+y)
 end
 
---<transition>--
-transition = {
-  -- state:
-  --  1 | wiping in
-  -- -1 | wiping out
-  --  0 | idle
-  state=0,
-  play=function(_ENV)
-    state = state==0 and 1 or state
-    x=-64
-  end,
-  update=function(_ENV)
-    if (state==0) return
-    if state==1 and x>128 then
-      state=-1
-      play(_ENV)
-    elseif state==-1 and x>192 then
-      state=0
-    end
-    x+=14
-  end,
-  draw=function(_ENV)
-    if (state==0) return
-    _g.camera()
-    _g.color(0)
-    local x20=x+20
-    if state==1 then
-      for yo=-2,128,10 do
-        _g.po1tri(x,yo,x+64,yo+5,x,yo+10)
+-- <transition> --
+function transition()
+  for wi in all{true,false} do
+    for x=-96,(wi and 127 or 181),14 do
+      camera()
+      color(0)
+      for yo=-1,128,10 do
+        po1tri(x+(wi and 0 or 20),yo,x+(wi and 64 or -44),yo+5,x+(wi and 0 or 20),yo+10)
       end
-      if (x>0) _g.rectfill(0,0,x,127,0)
-    else
-      for yo=-2,128,10 do
-        _g.po1tri(x20,yo,x20-64,yo+5,x20,yo+10)
-      end
-      if (x<108) _g.rectfill(x20,0,127,127,0)
+      rectfill(wi and -1 or x+20,0,wi and x or 128,127)
+      yield()
     end
+    if (wi) delay_restart=1
   end
-}
+end
 
 -- triangle functions
 function po1tri(x0,y0,x1,y1,x2,y2)

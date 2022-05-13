@@ -1453,8 +1453,10 @@ function kill_player(obj)
     del(fruitrain,f)
   end
   --- </fruitrain> ---
-  delay_restart=15
-  transition:play()
+  --delay_restart=15
+  -- <transition> --
+  co_trans=cocreate(transition)
+  -- </transition> --
 end
 
 -- [room functions]
@@ -1599,11 +1601,6 @@ function _update()
       return
     end
   end)
-
-  -- <transition>
-  transition:update()
-  -- </transition>
-
 end
 
 -- [drawing functions]
@@ -1754,9 +1751,9 @@ function _draw()
     ui_timer-=1
   end
 
-  -- <transition>
-  transition:draw()
-  -- </transition>
+  -- <transition> --
+  if (co_trans and costatus(co_trans) != "dead") coresume(co_trans)
+  -- </transition> --
 end
 
 function draw_object(_ENV)
@@ -1838,57 +1835,52 @@ function spikes_at(x1,y1,x2,y2,xspd,yspd)
 end
 
 -- <transition> --
-transition = {
-  -- state:
-  --  1 | wiping in
-  -- -1 | wiping out
-  --  0 | idle
-  state=0,
-  tw = 6,
-  play=function(_ENV)
-    state = state==0 and 1 or state
-    pixelw = 128/(tw-1)
-    circles = {}
-    local ctotal = tw*tw
-    for i=0,ctotal-1 do
-      local c = {
-        x=i%tw * pixelw + _g.rnd(6)-3,
-        y=i\tw * pixelw + _g.rnd(6)-3,
-        delay=i%tw * 2 + _g.rnd(4)-2,
-        radius=state==1 and 0 or pixelw
-      }
-      add(circles, c)
-    end
-  end,
-  update=function(_ENV)
-    if (state==0) return
-    for i=1,#circles do
-      local c = circles[i]
-      if c.delay > 0 then
-        c.delay -= 1
-      else
-        c.radius += state*3
-      end
-    end
-    local lastr = circles[#circles].radius
-    if state==1 and lastr > pixelw*0.7 then
-      state=-1
-      play(_ENV)
-    elseif lastr < 0 then
-      state=0
-    end
-  end,
-  draw=function(this)
-    if (this.state==0) return
-    camera()
-    for i=1,#this.circles do
-      local c = this.circles[i]
-      if c.radius > 0 then
-        circfill(c.x, c.y, c.radius, 0)
-      end
+function transition(wipein)
+  local circles = {}
+  local n=0
+  for x=0,7 do
+    for y=0,7 do
+      c={}
+      c.pos = vector((x - 0.8 + rnd(0.6)) * 20, (y - 0.8 + rnd(0.6)) * 20)
+      c.delay = rnd(1.5) + (wipein and (6 - x) or x)
+      c.radius = (wipein and (2 * (15 - c.delay)) or 0)
+      circles[n]=c
+      n+=1
     end
   end
-}
+
+  for t=1,15 do
+    camera()
+    for i=0,#circles do
+      if not wipein then
+        circles[i].delay -= 1
+        if circles[i].delay <= 0 then
+          circles[i].radius += 2
+        end
+      elseif circles[i].radius > 0 then
+        circles[i].radius -= 2
+      else
+        circles[i].radius = 0
+      end
+    end
+
+    for i=0,#circles do
+      if (circles[i].radius>0) circfill(circles[i].pos.x, circles[i].pos.y, circles[i].radius, 0)
+    end
+    yield()
+  end
+
+  if not wipein then
+    delay_restart=1
+    for t=1,3 do
+      cls(0)
+      yield()
+    end
+
+    co_trans=cocreate(transition)
+    coresume(co_trans, true)
+  end
+end
 -- </transition> --
 -->8
 --[map metadata]
