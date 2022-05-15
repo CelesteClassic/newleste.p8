@@ -78,9 +78,8 @@ dead_particles={}
 -- [player entity]
 
 player={
-  layer=2,
   init=function(_ENV)
-    djump, hitbox, collides = max_djump, rectangle(1,3,6,5), true
+    djump, hitbox, collides,layer = max_djump, rectangle(1,3,6,5), true,2
 
     --<fruitrain>--
     -- ^ refers to setting berry_timer and berry_count to 0
@@ -338,8 +337,8 @@ end
 -- [other entities]
 
 player_spawn={
-  layer=2,
   init=function(_ENV)
+    layer=2
     sfx(15)
     sprite=3
     target=y
@@ -535,8 +534,8 @@ fall_floor={
 }
 
 smoke={
-  layer=3,
   init=function(_ENV)
+    layer=3
     spd,flip=vector(0.3+rnd(0.2),-0.1),vector(maybe(),maybe())
     x+=-1+rnd(2)
     y+=-1+rnd(2)
@@ -707,8 +706,8 @@ key={
   end
 }
 keydoor={
-  layer=0, --might cause visual problems? idk lol
   init=function(_ENV)
+    layer=0 --might cause visual problems? idk lol
     if key_door_used[fruit_id] then
       destroy_object(_ENV)
     end
@@ -774,8 +773,8 @@ function spr_r(n,x,y,s,a)
 end
 
 sawblade={
-  layer=0,
   init=function(_ENV)
+    layer=0
     hitbox, axis = rectangle(2,2,12,12), sprite<=73 and "x" or "y"
     r, l = _ENV[axis], _ENV[axis]
     if sprite%2==0 then
@@ -811,14 +810,14 @@ sawblade={
     if t==40 then
       dir*=-1
       t=0
-    end 
+    end
     local hit=player_here()
     if hit then
       kill_player(hit)
     end
   end,
   draw=function(_ENV)
-    if abs(ang-0.6)<0.01 then 
+    if abs(ang-0.6)<0.01 then
       spr(74,x,y,2,2)
     else
       spr_r(72,x,y,16,ang/4+(ang<0.6 and 0 or 0.75))
@@ -828,8 +827,8 @@ sawblade={
 --</sawblade>--
 --<red_bubble>--
 red_bubble_particle={
-  layer=0,
   init=function(_ENV)
+    layer=0
     outline=false
     spd=vector(0.3-rnd(0.3),0.1)
     x+=-1+rnd(2)
@@ -965,8 +964,8 @@ red_bubble={
 --</red_bubble>--
 
 dash_switch={
-  layer=0,
   init=function(_ENV)
+    layer=0
     solid_obj=true
 
     ogy=y
@@ -1044,8 +1043,8 @@ dash_switch={
 }
 
 switch_door={
-  layer=0,
   init=function(_ENV)
+    layer=0
     hitbox.h=22
     ogy=y
     delay=0
@@ -1147,8 +1146,8 @@ theo_crystal={
 }
 
 theo_door={
-  layer=0,
   init=function(_ENV)
+    layer=0
     hitbox.h=22
     ogy=y
     state=0
@@ -1596,10 +1595,10 @@ function _draw()
   --3: foreground layer
   local layers={{},{},{}}
   foreach(objects,function(_ENV)
-    if type.layer==0 then
+    if layer==0 then
       draw_object(_ENV) --draw below terrain
     else
-      add(layers[type.layer or 1],_ENV) --add object to layer, default draw below player
+      add(layers[layer or 1],_ENV) --add object to layer, default draw below player
     end
   end)
   -- draw terrain

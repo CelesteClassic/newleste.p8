@@ -81,9 +81,8 @@ dead_particles={}
 -- [player entity]
 
 player={
-  layer=2,
   init=function(_ENV)
-    djump, hitbox, collides = max_djump, rectangle(1,3,6,5), true
+    djump, hitbox, collides,layer = max_djump, rectangle(1,3,6,5), true,2
 
     --<fruitrain>--
     -- ^ refers to setting berry_timer and berry_count to 0
@@ -331,8 +330,8 @@ end
 -- [other entities]
 
 player_spawn={
-  layer=2,
   init=function(_ENV)
+    layer=2
     sfx(15)
     sprite=3
     target=y
@@ -521,8 +520,8 @@ fall_floor={
 }
 
 smoke={
-  layer=3,
   init=function(_ENV)
+    layer=3
     spd,flip=vector(0.3+rnd(0.2),-0.1),vector(maybe(),maybe())
     x+=-1+rnd(2)
     y+=-1+rnd(2)
@@ -990,8 +989,8 @@ arrow_platform={
 }
 
 bg_flag={
-  layer=0,
   init=function(_ENV)
+    layer=0
     t=0
     wind=prev_wind_spd
     wvel=0
@@ -1430,10 +1429,10 @@ function _draw()
   --3: foreground layer
   local layers={{},{},{}}
   foreach(objects,function(_ENV)
-    if type.layer==0 then
+    if layer==0 then
       draw_object(_ENV) --draw below terrain
     else
-      add(layers[type.layer or 1],_ENV) --add object to layer, default draw below player
+      add(layers[layer or 1],_ENV) --add object to layer, default draw below player
     end
   end)
   -- draw terrain
