@@ -339,40 +339,9 @@ player={
 
   draw=function(_ENV)
     -- draw player hair and sprite
-    for t=1,2 do
-      for p in all(dream_particles) do
-        if p.type==t and t==2 then
-          local c = p.t < 4 and 1 or p.t < 7 and 13 or 12
-          local s = (10-p.t)/4
-          for i=0,15 do
-            pal(i,c)
-          end
-          sspr(8, 0, 8, 8, p.x-s/2, p.y-s/2, 8+s, 8+s) -- draw player afterimage
-        elseif p.type==t and t==1 then
-          local c = p.t < 2 and 1 or p.t < 3 and 13 or 12
-          circfill(p.x, p.y, p.t/2, c) --draw trails
-        end
-        pal()
-      end
-    end
-    if dreaming then
-      local gfx = {76,76,76, 77,77,77, 78, 79,79,79}
-      local cs = {7,12,12,1,1,12,1}
-      local sprite = gfx[(flr(dream_time)%#gfx)+1]
-      if dream_time < 3 then sprite=75 end
-      local sx, sy = (sprite % 16) * 8, flr(sprite \ 16) * 8
-      local size = flr(rnd(5))<2 and 4 or 0
-      for i=0,15 do
-        pal(i,12)
-      end
-      draw_obj_sprite(_ENV)
-      local c = cs[(flr(dream_time-1)%#cs)+1]
-      local size = dream_time==1 and 0 or dream_time==2 and 5 or size
-      local w = dream_time<3 and 4 or 2
-      pal(7,c)
-      sspr(sx, sy, 8, 8, x-w, y-size/2, 8+w*2, 8+size) -- draw flickering sprite
-      pal()
-    else
+    -- <dream_block> --
+    draw_dreams(_ENV,1,12)
+    if not dreaming then
       pal(8,djump==1 and 8 or 12)
       draw_hair(_ENV)
       draw_obj_sprite(_ENV)
@@ -380,6 +349,44 @@ player={
     end
   end
 }
+
+function draw_dreams(_ENV,cdark,clight)
+  for t=1,2 do
+    for p in all(dream_particles) do
+      if p.type==t and t==2 then
+        local c = p.t < 4 and 1 or p.t < 7 and 13 or clight
+        local s = (10-p.t)/4
+        for i=0,15 do
+          pal(i,c)
+        end
+        sspr(8, 0, 8, 8, p.x-s/2, p.y-s/2, 8+s, 8+s) -- draw player afterimage
+      elseif p.type==t and t==1 then
+        local c = p.t < 2 and 1 or p.t < 3 and 13 or clight
+        circfill(p.x, p.y, p.t/2, c) --draw trails
+      end
+      pal()
+    end
+  end
+  if dreaming then
+    local gfx = {76,76,76, 77,77,77, 78, 79,79,79}
+    local cs = {7,clight,clight,cdark,cdark,clight,cdark}
+    local sprite = gfx[(flr(dream_time)%#gfx)+1]
+    if dream_time < 3 then sprite=75 end
+    local sx, sy = (sprite % 16) * 8, flr(sprite \ 16) * 8
+    local size = flr(rnd(5))<2 and 4 or 0
+    for i=0,15 do
+      pal(i,clight)
+    end
+    draw_obj_sprite(_ENV)
+    local c = cs[(flr(dream_time-1)%#cs)+1]
+    local size = dream_time==1 and 0 or dream_time==2 and 5 or size
+    local w = dream_time<3 and 4 or 2
+    pal(7,c)
+    sspr(sx, sy, 8, 8, x-w, y-size/2, 8+w*2, 8+size) -- draw flickering sprite
+    pal()
+  end
+end
+--</dream_block>--
 
 function create_hair(_ENV)
   hair={}
@@ -739,9 +746,18 @@ badeline={
       add(sm,s)
     end
     smokes={}
-    add(states,{tr.x,tr.y,tr.flip.x,tr.sprite or 1,sm})
+
+    local dream_particles_copy={}
+    foreach(tr.dream_particles, function(p)
+      local q={}
+      for k,v in pairs(p) do
+        q[k]=v
+      end
+      add(dream_particles_copy,q)
+    end)
+    add(states,{tr.x,tr.y,tr.flip.x,tr.sprite or 1,sm,tr.dreaming,tr.dream_time,dream_particles_copy,tr.layer})
     if #states>=30 then
-      x,y,flip.x,sprite,sm=unpack(states[1])
+      x,y,flip.x,sprite,sm,dreaming,dream_time,dream_particles,layer=unpack(states[1])
       del(states,states[1])
       for s in all(sm) do
         init_smoke(unpack(s))
@@ -760,16 +776,20 @@ badeline={
   end,
   draw=function(_ENV)
     if timer>=30 then
-      pal(8,2)
-      pal(15,6)
-      pal(3,1)
-      pal(1,8)
-      pal(7,5)
-      draw_hair(_ENV)
-      draw_obj_sprite(_ENV)
-      pal()
+      draw_dreams(_ENV,2,8)
+      if not dreaming then
+        pal(8,2)
+        pal(15,6)
+        pal(3,1)
+        pal(1,8)
+        pal(7,5)
+        pal(12,8)
+        draw_hair(_ENV)
+        draw_obj_sprite(_ENV)
+        pal()
+      end
     end
-	end
+  end
 }
 function bade_track(_ENV,o)
   o.tracked=true
