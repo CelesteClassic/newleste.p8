@@ -52,7 +52,7 @@ function
 --]]
     end
 
-    -- bit cache is between 16 and 
+    -- bit cache is between 16 and
     -- 31 bits long with the next
     -- bit always aligned to the
     -- lsb of the fractional part
@@ -87,7 +87,7 @@ function
 
     -- header
 
-    local 
+    local
         w,h_1,      -- w,h-1
         eb,el,pr,
         x,y,
@@ -167,13 +167,13 @@ function _init()
   	poke(0x8000+i/2, tonum("0x"..sub(bg_build_hex,i+1,i+2)))
   end
   px9_decomp(0,0,0x8000,pget,pset)
-  memcpy(0x8000,0x6000,0x1fff)
+  memcpy(0x8000,0x6000,0x2000)
 
   for i=0,#bg_tree_hex,2 do
   	poke(0xa000+i/2, tonum("0x"..sub(bg_tree_hex,i+1,i+2)))
   end
   px9_decomp(0,0,0xa000,pget,pset)
-  memcpy(0xa000,0x6000,0x1fff)
+  memcpy(0xa000,0x6000,0x2000)
 --</background>
 end
 
@@ -1430,7 +1430,7 @@ function _draw()
     end)
 
   --<background>
-  memcpy(0x0000,0x8000,0x1fff)
+  memcpy(0x0000,0x8000,0x2000)
  	palt(8,true)
  	palt(0,false)
  	spr(0, flr(draw_x/3), lvl_id, 16, 16)
@@ -1449,10 +1449,10 @@ function _draw()
 	    end
   	end
   end)
- 	memcpy(0x0000,0xa000,0x1fff)
- 	spr(0, flr(draw_x/4), lvl_id*2, 16, 16)
- 	spr(0, flr(draw_x/4)+128, lvl_id*2, 16, 16)
- 	reload(0x0000,0x0000,0x1fff)
+ 	memcpy(0x0000,0xa000,0x2000)
+ 	--spr(0, flr(draw_x/4), lvl_id*2, 16, 16)
+ 	--spr(0, flr(draw_x/4)+128, lvl_id*2, 16, 16)
+ 	reload(0x0000,0x0000,0x2000)
  	palt()
  	--</background>
 
