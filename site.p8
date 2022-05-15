@@ -146,7 +146,7 @@ player={
     end
     if dreaming and not check(dream_block,0,0) then
       dreaming=false
-      dream_block.layer=3
+      layer=2 -- back to drawing behing dream block
       init_smoke=_init_smoke
       spd=vector(mid(dash_target_x,-2,2),
                       mid(dash_target_y,-2,2))
@@ -1083,9 +1083,7 @@ dream_block={
       hit.dreaming=true
       hit.init_smoke=function() end
       hit.djump=max_djump
-      dream_block.layer=1 --this is a hack to make dream blocks appear in front of the player usually, but behind when the player is dashing
-      -- this might cause too much jank with badelines
-      -- TODO: check and fix this if needed
+      hit.layer=3 -- draw player in front of dream blocks while inside
       if dtimer>0 then
         dtimer-=1
         if dtimer==0 then
