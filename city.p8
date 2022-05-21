@@ -654,30 +654,23 @@ lifeup={
   end
 }
 --<zip_mover> --
-function spr_r(s,x,y,a)
-  x+=1
-  y+=1 --idk why this is
-  local sx,sy=s%16*8,s\16*8 --bad tokens but lazy
-  local ca,sa=cos(a),sin(a)
-  local dx,dy=ca,sa
-  local x0,y0=3.5*(sa-ca)+4,-3.5*(ca+sa)+4
-  x0*=2
-  y0*=2
-  for _x=0,15 do
-    local srcx,srcy=x0,y0
-    for _y=0,15 do
-      if band(bor(srcx,srcy),-16)==0 then
-        local c=sget(sx+srcx,sy+srcy)
-        if c!=0 then
-          pset(x+_x,y+_y,c)
-        end
+function spr_r(n,x,y,s,a)
+  local sx,sy,ca,sa,ds=
+  n%16*8,n\16*8,
+  cos(a),sin(a),
+  s-1>>1
+  for dx=-ds,ds do
+    for dy=-ds,ds do
+      local srcx,srcy=
+      round(ds+dx*ca-dy*sa),
+      round(ds+dx*sa+dy*ca)
+      local c=sget(sx+srcx,sy+srcy)
+      if c~=0 and srcx\s|srcy\s==0 then
+	pset(x+dx+ds,y+dy+ds,c)
       end
-      srcx,srcy=srcx-dy,srcy+dx
     end
-    x0,y0=x0+dx,y0+dy
   end
 end
-
 
 function mynorm(dx,dy)
 	dx>>=8
@@ -835,8 +828,8 @@ zip_mover={
       pal()
       --tline(0,0,128,0,0,start.y/8+0.5--[[+ang*10%4/8]],0.125,0)
       -- gears
-      spr_r(101,start.x+hitbox.w/2-8,start.y,ang)
-      spr_r(101,target.x+hitbox.w/2-8,target.y,ang)
+      spr_r(101,start.x+hitbox.w/2-8,start.y,16,ang)
+      spr_r(101,target.x+hitbox.w/2-8,target.y,16,ang)
 
       --particles
       for p in all(particles) do
