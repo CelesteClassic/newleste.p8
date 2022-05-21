@@ -59,18 +59,6 @@ function _init()
     poke(0xa000+2*i,(v<<4)&0x30|(v>>2)&0x3)
     poke(0xa000+2*i+1,v&0x30|(v>>6)&0x3)
   end
-
-  -- for i=0,#bg_build_hex,2 do
-  -- 	poke(0x8000+i/2, tonum("0x"..sub(bg_build_hex,i+1,i+2)))
-  -- end
-  -- px9_decomp(0,0,0x8000,pget,pset)
-  -- memcpy(0x8000,0x6000,0x2000)
-
-  -- for i=0,#bg_tree_hex,2 do
-  -- 	poke(0xa000+i/2, tonum("0x"..sub(bg_tree_hex,i+1,i+2)))
-  -- end
-  -- px9_decomp(0,0,0xa000,pget,pset)
-  -- memcpy(0xa000,0x6000,0x2000)
 --</background>
 end
 
@@ -1311,58 +1299,61 @@ function _draw()
 
   -- draw bg color
   cls()
-    foreach(particles,function(_ENV)
-    	if l==2 then
-  	    x+=spd-_g.cam_spdx
-  	    y+=_g.sin(off)-_g.cam_spdy
-  	    y%=128
-  	    off+=_g.min(0.05,spd/32)
-  	    _g.rectfill(128-x+_g.draw_x,y+_g.draw_y,128-x+s+_g.draw_x,y+s+_g.draw_y,c)
-  	    if x>132 then
-  	      x,y=-4,_g.rnd128()
-  	    elseif x<-4 then
-  	      x,y=128,_g.rnd128()
-  	    end
-    	end
-    end)
+  foreach(particles,function(_ENV)
+    if l==2 then
+      x+=spd-_g.cam_spdx
+      y+=_g.sin(off)-_g.cam_spdy
+      y%=128
+      off+=_g.min(0.05,spd/32)
+      _g.rectfill(128-x+_g.draw_x,y+_g.draw_y,128-x+s+_g.draw_x,y+s+_g.draw_y,c)
+      if x>132 then
+        x,y=-4,_g.rnd128()
+      elseif x<-4 then
+        x,y=128,_g.rnd128()
+      end
+    end
+  end)
 
   --<background>
-        memcpy(0x0000,0x8000,0x2000)
- 	palt(2,true)
- 	palt(0,false)
-        pal(1,0)
-        pal(3,14)
- 	spr(0, flr(draw_x/3), lvl_id, 16, 16)
- 	spr(0, flr(draw_x/3)+128, lvl_id, 16, 16)
-        pal()
-        foreach(particles,function(_ENV)
-  	if l==1 then
-	    x+=spd-_g.cam_spdx
-	    y+=_g.sin(off)-_g.cam_spdy
-	    y%=128
-	    off+=_g.min(0.05,spd/32)
-	    _g.rectfill(128-x+_g.draw_x,y+_g.draw_y,128-x+s+_g.draw_x,y+s+_g.draw_y,c)
-	    if x>132 then
-	      x,y=-4,_g.rnd128()
-	    elseif x<-4 then
-	      x,y=128,_g.rnd128()
-	    end
-  	end
-  end)
- 	memcpy(0x0000,0xa000,0x2000)
-        palt(2,true)
-        palt(0,false)
-        pal(3,14)
- 	spr(0, flr(draw_x/4), lvl_id*2, 16, 16)
- 	spr(0, flr(draw_x/4)+128, lvl_id*2, 16, 16)
- 	reload(0x0000,0x0000,0x2000)
- 	palt()
- 	--</background>
 
-		-- draw bg terrain
-		pal(11,0)
+  memcpy(0xc000,0x0000,0x2000)
+  memcpy(0x0000,0x8000,0x2000)
+  palt(2,true)
+  palt(0,false)
+  pal(1,0)
+  pal(3,14)
+  spr(0, flr(draw_x/3), lvl_id, 16, 16)
+  spr(0, flr(draw_x/3)+128, lvl_id, 16, 16)
+  pal()
+  foreach(particles,function(_ENV)
+    if l==1 then
+      x+=spd-_g.cam_spdx
+      y+=_g.sin(off)-_g.cam_spdy
+      y%=128
+      off+=_g.min(0.05,spd/32)
+      _g.rectfill(128-x+_g.draw_x,y+_g.draw_y,128-x+s+_g.draw_x,y+s+_g.draw_y,c)
+      if x>132 then
+        x,y=-4,_g.rnd128()
+      elseif x<-4 then
+        x,y=128,_g.rnd128()
+      end
+    end
+  end)
+  memcpy(0x0000,0xa000,0x2000)
+  palt(2,true)
+  palt(0,false)
+  pal(3,14)
+  spr(0, flr(draw_x/4), lvl_id*2, 16, 16)
+  spr(0, flr(draw_x/4)+128, lvl_id*2, 16, 16)
+  -- reload(0x0000,0x0000,0x2000)
+  memcpy(0x0000,0xc000,0x2000)
+  palt()
+  --</background>
+
+  -- draw bg terrain
+  pal(11,0)
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,4)
-		pal()
+  pal()
 
   -- draw outlines
   for i=0,15 do pal(i,0) end
