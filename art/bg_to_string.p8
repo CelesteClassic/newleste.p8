@@ -6,175 +6,38 @@ function num2hex(v)
   return sub(tostr(v,true),5,6)
 end
 
-function 
-px9_comp(x0,y0,w,h,dest,vget)
-
-    local dest0=dest
-    local bit=1 
-    local byte=0
-
-    local function vlist_val(l, val)
-        -- find position and move
-        -- to head of the list
-
---[ 2-3x faster than block below
-        local v,i=l[1],1
-        while v!=val do
-            i+=1
-            v,l[i]=l[i],v
-        end
-        l[1]=val
-        return i
---]]
-
---[[ 8 tokens smaller than above
-        for i,v in ipairs(l) do
-            if v==val then
-                add(l,deli(l,i),1)
-                return i
-            end
-        end
---]]
+function hex2base256(str)
+  local r=""
+  for i=1,#str,2 do
+    number=tonum("0x"..sub(str,i,i+1))
+    if sub(r,-2)=="\\0" and number>=ord("0") and number<=ord("9") then
+      r..="00"
     end
-
-    function putbit(bval)
-        if (bval) byte+=bit 
-        poke(dest, byte) bit<<=1
-        if (bit==256) then
-            bit=1 byte=0
-            dest += 1
-        end
-    end
-
-    function putval(val, bits)
-        for i=0,bits-1 do
-            putbit(val&1<<i > 0)
-        end
-    end
-
-    function putnum(val)
-        local bits = 0
-        repeat
-            bits += 1
-            local mx=(1<<bits)-1
-            local vv=min(val,mx)
-            putval(vv,bits)
-            val -= vv
-        until vv<mx
-    end
-
-
-    -- first_used
-
-    local el={}
-    local found={}
-    local highest=0
-    for y=y0,y0+h-1 do
-        for x=x0,x0+w-1 do
-            c=vget(x,y)
-            if not found[c] then
-                found[c]=true
-                add(el,c)
-                highest=max(highest,c)
-            end
-        end
-    end
-
-    -- header
-
-    local bits=1
-    while highest >= 1<<bits do
-        bits+=1
-    end
-
-    putnum(w-1)
-    putnum(h-1)
-    putnum(bits-1)
-    putnum(#el-1)
-    for i=1,#el do
-        putval(el[i],bits)
-    end
-
-
-    -- data
-
-    local pr={} -- predictions
-
-    local dat={}
-
-    for y=y0,y0+h-1 do
-        for x=x0,x0+w-1 do
-            local v=vget(x,y)  
-
-            local a=0
-            if (y>y0) a+=vget(x,y-1)
-
-            -- create vlist if needed
-            local l=pr[a]
-            if not l then
-                l={}
-                for i=1,#el do
-                    l[i]=el[i]
-                end
-                pr[a]=l
-            end
-
-            -- add to vlist
-            add(dat,vlist_val(l,v))
-           
-            -- and to running list
-            vlist_val(el, v)
-        end
-    end
-
-    -- write
-    -- store bit-0 as runtime len
-    -- start of each run
-
-    local nopredict
-    local pos=1
-
-    while pos <= #dat do
-        -- count length
-        local pos0=pos
-
-        if nopredict then
-            while dat[pos]!=1 and pos<=#dat do
-                pos+=1
-            end
-        else
-            while dat[pos]==1 and pos<=#dat do
-                pos+=1
-            end
-        end
-
-        local splen = pos-pos0
-        putnum(splen-1)
-
-        if nopredict then
-            -- values will all be >= 2
-            while pos0 < pos do
-                putnum(dat[pos0]-2)
-                pos0+=1
-            end
-        end
-
-        nopredict=not nopredict
-    end
-
-    if (bit!=1) dest+=1 -- flush
-
-    return dest-dest0
+    r..=num2base256(number)
+  end
+  return r
 end
 
-
-l = px9_comp(0,0,128,128,0x8000,sget)
-s = ""
-for m=0,l do
-	s=s..num2hex(peek(0x8000+m))
+function num2base256(number,prev)
+  return number==0 and "\\0" or number==10 and "\\n" or number==13 and "\\r" or number==34 and [[\"]] or number==92 and [[\\]] or chr(number)
 end
-?#s
-printh(s,"@clip")
+
+h = ""
+for m=0,0x1fff,2 do
+  local s=0
+  for o=0,2 do
+    local l=peek(m+o)
+    -- print(l)
+    for b in all({flr(l>>4),l&0xf}) do
+      -- print(b)
+      s+=(({[0]=1,[8]=2,[14]=3})[b])<<(2*o) 
+    end
+  end
+  h=h..num2hex(s)
+end
+print(#h)
+print(#hex2base256(h))
+printh(hex2base256(h,"@clip"))
 __gfx__
 88888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888
 88888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888

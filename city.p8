@@ -20,127 +20,9 @@ function rectangle(x,y,w,h)
   return {x=x,y=y,w=w,h=h}
 end
 
--- [globals]
--- x0,y0 where to draw to
--- src   compressed data address
--- vget  read function (x,y)
--- vset  write function (x,y,v)
 
-function
-    px9_decomp(x0,y0,src,vget,vset)
-
-    local function vlist_val(l, val)
-        -- find position and move
-        -- to head of the list
-
---[ 2-3x faster than block below
-        local v,i=l[1],1
-        while v!=val do
-            i+=1
-            v,l[i]=l[i],v
-        end
-        l[1]=val
---]]
-
---[[ 7 tokens smaller than above
-        for i,v in ipairs(l) do
-            if v==val then
-                add(l,deli(l,i),1)
-                return
-            end
-        end
---]]
-    end
-
-    -- bit cache is between 16 and
-    -- 31 bits long with the next
-    -- bit always aligned to the
-    -- lsb of the fractional part
-    local cache,cache_bits=0,0
-    function getval(bits)
-        if cache_bits<16 then
-            -- cache next 16 bits
-            cache+=%src>>>16-cache_bits
-            cache_bits+=16
-            src+=2
-        end
-        -- clip out the bits we want
-        -- and shift to integer bits
-        local val=cache<<32-bits>>>16-bits
-        -- now shift those bits out
-        -- of the cache
-        cache=cache>>>bits
-        cache_bits-=bits
-        return val
-    end
-
-    -- get number plus n
-    function gnp(n)
-        local bits=0
-        repeat
-            bits+=1
-            local vv=getval(bits)
-            n+=vv
-        until vv<(1<<bits)-1
-        return n
-    end
-
-    -- header
-
-    local
-        w,h_1,      -- w,h-1
-        eb,el,pr,
-        x,y,
-        splen,
-        predict
-        =
-        gnp"1",gnp"0",
-        gnp"1",{},{},
-        0,0,
-        0
-        --,nil
-
-    for i=1,gnp"1" do
-        add(el,getval(eb))
-    end
-    for y=y0,y0+h_1 do
-        for x=x0,x0+w-1 do
-            splen-=1
-
-            if(splen<1) then
-                splen,predict=gnp"1",not predict
-            end
-
-            local a=y>y0 and vget(x,y-1) or 0
-
-            -- create vlist if needed
-            local l=pr[a]
-            if not l then
-                l={}
-                for e in all(el) do
-                    add(l,e)
-                end
-                pr[a]=l
-            end
-
-            -- grab index from stream
-            -- iff predicted, always 1
-
-            local v=l[predict and 1 or gnp"2"]
-
-            -- update predictions
-            vlist_val(l, v)
-            vlist_val(el, v)
-
-            -- set
-            vset(x,y,v)
-
-        end
-    end
-end
-
-bg_build_hex = "fffffff0ffff0f1d3afcffffffff7f2dc2ffff2f0cffffdf10feff3f81ffff5fe0ffffff0978f8fff79150fefffb888480ffbf3e0807ffff995ff9ff0fe1ff16c67ffcff03f0bfe3606060fcff7f64f8ffff04f0ffff0784ff23ffff888bff15ff7f2b00c0ff908181f1bf0fe1e0ffff0bf8dff1ff8ff91ff2ff1fc06ffcce5ffcdff95bc2ffbfe55f4628000e191818ff6bca2ffc2f16feff50e4e017feff370f01bf27feffbf81f1f0ff5ff85f0d2fffff8c3f187f7087430606c6c39ffc6fc3ff98bff97f80808080ffb5e0ffff0ff89dffffc56f84ff290fff47fe0720143ce177feff800c0c8c974a18e1772e414040c0ff1f18b938f81ff03f25fc5f38f9df84ffffdfe07f06c2c1ff7fe17f2e7f0fff170e6e1010107033c6c5bffc3fc3f8dff02084ff05ff2f5c80ff11270f0000000080ff19e1603cfccb0bfe5fe17ff201fc2f0507ff7f8393f1080202027e10fcff9f1f0480ff4f6228e01000000000c041f91ff007ff138180f1bf49f2c9afe15f7e0f4029ff03c833fc1a2ae1ff17fe7ffc6f020a161e414040c04b12e31000000000c03e801f39f8ff8ffccec3270dff1bcac9ff009203fc89101e39b8f89b871179f83ff01b071f27bff00f7f70060000000047013ff0f0bf09400012c28ffcccc70f22e07fc4ff8fff7004c29f08f8df92104242f89df10317ff377ee077000000b0c21f5f00b700000000f8ff2ffcc37ffc2f40003e7e23fc0772802b1cfcc1efdc7c24849010fe1fdc5c9ce15ffee17fc3cf84bff91f107ee0ff10fe4638b8f87f714b38f88d250efe230be3136101030738c00902feff05ff03c61863fcc5ff8d8003844a023e7ee0ff2909212484ff5783ff2f3ff07fe22f9ee19393ff1bffff63e2ff2b0878f98d1f083840f88f1ff87f92104242f81fc9c127c202fe6f12feff00ff777ee07fcf2ffcc0ff8a8fdff8dfb0e1ff2b08f8ff176ce19393ff3f2b07ff7f4512424808ff5f7ee0ffc007f0bf0fe34458c0ff6ee17fc55f6400febf8200091cfcc6ff27247cfcc0ff5312424808bf1070807049f8ffff81217c72f23fe107fef713e3ffaff01bff1b0e3e7ee0ff2008f8ff53080bf8bff1ffff1f24849010febffcc0ff814f12feffbf80ffbf2427ff1310f0f21be3ffc4ff3f21218484f0ffe507feff38c202fe277c32feffbf80517ee3ffca0ffc1f40c0ffffaf72f2bf25218484f0ff17f981ffbfc30ffcff718405fc4f40c0cb6ffcff6512424808ff3f7ee4ffff8ff881ffff6fe0ffbff17f0001ffffff0fc8ff1fe5ffff8f40c0ffffff03f2ff47f9ffff2310f0ffffff6000"
-bg_tree_hex = "fffffff0ffff0f1d7afcffffffffffffffbfeee1ffff17f8ffff8625feff3f81ffff5f9024f99f27feff08ffffbf10c6ff1bfcff99c4ff9aff3f220fffe720c9ff9f906b91ff2de5ff3f9428e3ff1a96f8ff0789f0f13f0d07ffff86ff79e2ff0f043cfc6fe5e37fcf1f49fedfe1ffceff9f093f25fe4fe19724ff43b993fcc3ff1fe5e5ff2df827c9ff0f8c467ee2ffc4ff7f18fe6e24ff2370f2bf0d951fc3ff8cffffc068f88584ff4de29f24ff4bfeff86000fff5fb993fc204df27f59f827c9ff90ffffc1ff5f903f92fc6fe5bf24ff3bfe9627c91f89ff53e27f9078c32f49be06053ff00ff80dfc0f78c10f84ffc7f007c24f8cdf879370f247e2e287f017e1e5e0f70aa7843fe4e5907ff82549f945fe174854805ff821fc4692fcc14ffc3fa42c2c31b939f992bcfc463938c3ff25f1f04b928f1ff949fee587707220fccbc7cf899b5f27fe1cba70f153e49137c9270705e33f067e487cfcdff891239083bff8335c85233cfc96a4f243923f2278f9f821b17004490e02c2c7ff894f10fe373202707086f086ff120b08ff5b4605652c3119ff1f1efeaf8c2bf1087939f93f2cf203e1e10037fff2f124f921947f1321848b235c9cfccdc78ffc0f28e1e4081fff677ee24fb0f0c3f047b8f81f708591e10d7ff2f14f105efe8f9cfc015e7ee18ff04f38f85ff00700fee0e7f00b7ff2ffe0660c1cfc4bc17fbca0fc3fc2c1c7c18f7c14e10f1e0e4efe2761dcfcc49f8471f06738f83f70708303fc1fc2c1df0807f89333fcc9c1bffc1f38b8183ff00bff67c64b3878b9f91f7082378cff1fe30f30fea58c100efeff18e1274e0e3e7ee17fc86ffcc0c51ffc1efe9701bff007bff2f24ff85ff2bfe757feff04f81f05fc3afc4fc349f95f718393ff69c0180fff63ca18ff87f00bbff1ff01bff1f233e1e55ffe1f94937ff981938bff0dfff172f0ffff132b"
+bg_build_base256 = "ちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちなちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちにちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちヤちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちなちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちなちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちなちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちャ◝ちちちちちちちちちちちちちちちちちちちちちちちちちちちちちち]◝なちちちちちちちちちちちちちちちちちちちちちちちちちちちちむu○なちちちちちちちちちちちちちちちちちちちちちちちちちちちちソレ◝なちちちちちちちちちちちちちちちちちちちちちちちちちちむ◝◝◝◝◝にちちちちちちちちちちちちちちちなちちちちちちちちちソu◝◝◝◝ヤちちちちちちちちちちちちちちむなちちちちちちちちちソu]シu]フちちちちちちちちちちちちちちむなちちちちちちちちちソu]シu]フちちちちちちちちちちちちちちむゆちちちちちちちちちソu]シu]フちちちちちちちちちちちちちちむ◜ちちちちちちちちちソu]シu]フちちちちちちちちちちちちちちむ◝ちちちちちちちちちソu◝◝◝◝ヤちちちちちちちちちちちちちちャ◝なちちちちちちちちソu◝◝◝◝ヤちちちちちちちちちちちちちち}}なちちちちちちちちソu]シu]フちちちちちちちちちちちちちむu}なちちちちちちちちソu]シu]フちちちちちちちちちちちちちむu◝なちちちちちちちちソu]シu]フちちちちちちちちちちちちちむu◝なちちちむ◝◝◝◝トu]シu]フちちちちちちちちちちちちちむu}なちちちッ◝◝◝◝トu◝◝◝◝ヤちちちちちちちちちちちちちむu}なちちちちャ◝◝◝トu◝◝◝◝ヤちちちちちちちちちちちちちむu◝なちちちちちャちミタu]シu]フちちちちちちちちちちちちむ◝◝◝◝ヤちちちちャちミソu]シu]フちちちちちちちちちちちちソUワ◝◝◝ちちちちャちミソu]シu]フちちちちちちちちちちちちソUWUワレちちちちャちマソu]シu]フちちちちちちちちちちちちソUWUワレちちちちャちちソu◝◝◝◝ヤちちちちちちちちちちちちソUWUワレちちちちマちちソu◝◝◝◝ヤちちちちちちちちちちちちソUワ◝◝◝◝ちちちちちちソu]シu]フち◝◝◝◝◝にちちちちちソUワ◝◝◝◝なちちちちちソu]シu]フャ◝◝◝◝◝ヤちちちちちソUWトワレ}なちちちちちソu]シu]フむ◝◝◝◝◝ヤちちちちちソUWトワレ}なちちちちちソu]シu]フ◝◝◝◝◝◝ヤちちちちちソUWトワレ}なちちちちちソu◝◝◝◝ヤむ◝◝◝◝◝ヤちちちちちソUワ◝◝◝◝なちちちちちソu◝◝◝◝ヤちャちミちマちちちちちちソUワ◝◝◝◝なちちちちちソu]シu]フちャ◝ゆちにちちちちちちソUWトワレ}なちちちちちソu]シu]フち{ちち◝ちちちちちちちソUWトワレ}なちちちちッテu]シu]フちャちちちちちちちちちちソUWトワレ}なちちちちッテu]シu]フちャちちちちちちちちちちソUワ◝◝◝◝なちちちちちテu◝◝◝◝ヤちャちちちちちちちちちちソUワ◝◝◝◝なちちちちちテUUUUUeち{ちちちちちちちち◝にソUWトワレ}なちむヤむ◝◝◝◝◝◝◝ヤちャちちちちちちちち◝ヤソUWトワレ}なちャ◝ソレ◝◝◝◝◝◝◝ちャちちちちちちちむツメソUWトワレ}なむ◝◝テレレレレレレレレちャちちちちちちちッ◝ヤソUワ◝◝◝◝なッ◝◝テレレレレレレレレち{ちちちちちちちソツメソUワ◝◝◝◝なッ◝◝ソレ◝◝◝◝◝◝◝ちャちちちちちちちャ◝ヤソUWトワレ}なッ◝ッソレ◝◝◝◝◝◝◝ちャちちちちちちちツツメソUWトワレ}なむヤミソレレレレレレレレち◝なちちちちちち◝◝ヤソUWトワレ}なちャつソレレレレレレレレワ◝にちちちちちつ◝◝ヤソUワ◝◝◝◝なちッにソレ◝◝◝◝◝◝◝WUフちちちちちミ◝むヤソUワ◝◝◝◝なちむにソレ◝◝◝◝◝◝◝ワ◝ヤちちちちちミミちにソUWトワレ}なちッなソレレレレレレレレwwフちちちちッ◝ミちにソUWトワレ}なちッなソレレレレレレレレワ◝ヤちちちちャ◝ミちなソUWトワレ}なちャにソレ◝◝◝◝◝◝◝WwフちちちちタWミちちソUワ◝◝◝◝なち◝ヤソUUワ◝◝◝◝◝WワヤちちちャトW◝ちちZUUUワ◝◝なャ◝◝◝◝◝ョレレレレレWwフちちち◝◝◝◝◝◝◝◝◝◝ョレ}な]◝◝◝◝◝ョレレレレレワ◝ヤちちちマャ◝◝◝◝◝◝◝◝ョレ}な]◝◝◝◝◝ョ◝◝◝◝◝wWフちちちマタW◝◝◝◝◝◝◝ョレ}な]_Wワuuョ◝◝◝◝◝ワ_フちむ◝ヤタW◝◝◝◝◝◝◝ョ◝◝な]_WワuuョレレレレレwWフちちモモタW______◝ョ◝◝な]_Wワuuョレレレレレワ◝ヤちッ◝◝◝◝______◝ョレ}な]◝◝◝◝◝ョ◝◝◝◝◝Wwフち[U◝◝◝◝◝◝◝◝◝◝ョレ}な]_Wワuuョ◝◝◝◝◝Wワヤち[U_UU]UUUUUワョレ}◝]_WワuuョトUUUUUUヤち[U_UU◝◝◝◝◝◝◝ョ◝◝◝]_Wワuuョ○◝◝◝◝◝◝ワち[U◝◝◝◝◝◝◝◝◝◝ョ◝◝な]◝◝◝◝◝ョツU◝◝◝◝◝フな[U_]W◝レ◝レ◝レ◝ョレ}な]◝◝◝◝◝ョツU◝◝◝◝◝ワ◝_U_]Wトuトuトu◝ョレ}な]◝◝◝◝◝ョツU_シUシレフマ[U◝◝◝トuトuトu◝ョレ}な]_WワuuョツU_シUシレフむ[U◝◝◝トuトuトu◝ョ◝◝な]_WワuuョツU◝◝◝◝◝フち_U_UUトuトuトu◝ョ◝◝な]_WワuuョツU◝◝◝◝◝フむ[U_UUトuトuトu◝ョレ}◝]◝◝◝◝◝ョツU_シUシレワ◝_U◝◝◝トuトuトu◝ョレ}◝]_WワuuョツU_シUシレフち[U_]Wトuトuトu◝ョレ}な]_WワuuョツU_シUシレフち[U_]Wトuトuトu◝ョ◝◝な]_WワuuョツU_シUシレワ◝_U◝◝◝トuトuトu◝ョ◝◝な]◝◝◝◝◝ョツU_シUシレフむ[U◝◝◝トuトuトu◝ョレ}な]◝◝◝◝◝ョツU_シUシレワヤ[U_UUトuトuトu◝ョレ}な]◝◝◝◝◝ョツU_シUシレフち[U_UUトuトuトu◝ョレ}な]_WワuuョツU_シUシレフち[U◝◝◝トuトuトu◝ョ◝◝ヤ]_WワuuョツU_シUシレワち_U_]Wトuトuトu◝ョ◝◝に]_WワuuョツU◝◝◝◝◝フゆ[U_]Wトuトuトu◝ョレ}な]◝◝◝◝◝ョツU◝◝◝◝◝フミ[U◝◝◝トuトuトu◝ョレ}な]_WワuuョツU_シUシレフつ[U◝◝◝トuトuトu◝ョレ}な]_WワuuョツU_シUシレフな[U_UUトuトuトu◝ョ◝◝な]_WワuuョツU_シUシレワち[U_UUトuトuトu◝ョ◝◝な]◝◝◝◝◝ョツU_シUシレフち[U◝◝◝トuトuトu◝ョレ}な]◝◝◝◝◝ョツU_シUシレフち[U_]Wトuトuトu◝ョレ}◝]◝◝◝◝◝ョツU_シUシレワ◝_U_]Wトuトuトu◝ョレ}◝]_WワuuョツU_シUシレワ◝_U◝◝◝トuトuトu◝ョ◝◝な]_WワuuョツU_シUシレワ◝_U◝◝◝トuトuトu◝ョ◝◝な]_WワuuョツU_シUシレワ◝_U_UUトuトuトu◝ョレ}な]◝◝◝◝◝ョ◝◝◝◝◝◝◝◝◝_U_UUトuトuトu◝ョレ}な]_Wワuuョ◝◝◝◝◝◝◝◝◝_U◝◝◝トuトuトu◝ョレ}な]_Wワuuョ◝◝◝◝◝◝◝◝◝_U_]Wトuトuトu◝ョ◝◝]]_Wワuuョ◝◝◝◝◝◝◝◝◝_U_]Wトuトuトu◝ョ◝◝◝]◝◝◝◝◝ョ◝◝◝◝◝◝◝◝◝_U◝◝◝トuトuトu◝ョレ}◝]◝◝◝◝◝ョ◝◝◝◝◝◝◝◝◝_U◝◝◝トuトuトu◝ョレ}◝]◝◝◝◝◝ョ◝◝◝◝◝◝◝◝◝_U_UUトuトuトu◝ョレ}◝]_Wワuuョ◝◝◝◝◝◝◝◝◝_U_UUトuトuトu◝ョ◝◝◝]_Wワuuョ◝◝◝◝◝◝◝◝◝_U◝◝◝トuトuトu◝ョ◝◝◝]_Wワuuョ◝◝◝◝◝◝◝◝◝_U_]Wトuトuトu◝ョレ}◝]◝◝◝◝◝ョ◝◝◝◝◝◝◝◝◝_U_]Wトuトuトu◝ョレ}◝]_Wワuuョ◝◝◝◝◝◝◝◝◝◝◝◝◝◝トuトuトu◝ョレ}◝]_Wワuuョ◝◝◝◝◝◝◝◝◝◝◝◝◝◝トuトuトu◝ョ◝◝◝]_Wワuuョ◝◝◝◝◝◝◝◝◝◝◝◝◝◝トuトuトu◝ョ◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝トuトuトu◝ョレ}◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝トuトuトu◝ョレ}◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝トuトuトu◝ョレ}◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝トuトuトu◝ョ◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝トuトuトu◝ョ◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝トuトuトu◝ョレ}◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝トuトuトu◝ョレ}◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝トuトuトu◝ョレ}◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝トuトuトu◝ョ◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝トuトuトu◝ョ◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝トuトuトu◝ョレ}◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝トuトuトu◝ョレ}◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝トuトuトu◝ョレ}◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝"
+bg_tree_base256 = "ちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちむちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちむちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちあすちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちあすちちちちちちちちちちちちちちちちちちちちちちちちちちちちちちソしちちちちちちちちちちちちちマちちちちちちちちちちちちちちちちソしちちちちちちちちちちちちちマちちちちちちちちちちちちちちちち[しちちちちちちちちちちちちちkちちちちちちちちちちちちちちちちYeちちちちちちちちちちちちちkちちちちちちちちちちちちちちちち]eちちちちちちちちちちちちち]ちちちちちちちちちちちちちちちむUUなちちちちちちちちちちちむUちちちちちちちちちちちちちちちッ]レにちちちちちちちちちちちあUすちちちちちちちちちちちちちちャ◝◝にちちちちちちちちちちちソUすちちちちちちちちちちちちちちャ◝◝とちちちちちちちちちちちZUしちちちちちちちちちちちちちち[◝トしちちちちちちちちちちち[Uしちちちちちちちちちちちちちち]UUeちちちちちちちちちちちYUeちちちちちちちちちちちちちち]UUeちちちちちちちちちちちYUUちちちちつちちちちちちちちむUUUUちちちちちちちちちちち]UUすちちちつちちちちちちちちむUUUUちちちちちちちちちちちUUuなちちちたちちちちちちちちソUUUUすちちちちちちちちちち_レ◝ちちちちたちちちちちちちちソUUUUすちちちちちちちちちちャ◝◝ちちちちmちちちちちちちちッ]Uu◝なちちちちちちちちちちットUちちちちmちちちちちちちちッ◝◝◝◝なちちちちちちちちちちソUUすちちち]ちちちちちちちちむ◝◝◝トちちちちちちちちちちちZUUすちちちUちちちちちちちちむ}◝_Uちちちちちちちちちちち[UUしちちむUすちちちちちちちッUUUUすちちちちちちちちちち[UUしちちむUすちちちちちちちソUUUUすちちちちちちちちちち]UUeちちあUすちちちちちちち[UUUUしちちちちちちちちちち]UUeちちソUしちちちなちちち[UUUUeちちちちちちむちちむUUUUちちャUフちちちすちちち]UUUUフちちちちちちむちちッUUUワちちャ◝ヤちちむすちちむ_UUUuヤちちちちちちソちちッ]Uu◝ちちッ◝にちちむすちちむ◝]UU◝にちちちちちち[ちちッ◝◝◝ヤちちッ◝しちちあすちちち◝◝◝◝◝しちちちちちちYすッッ◝◝◝mちちソUしちちソしちちち◝◝◝◝]しちちちちちち]すャよトUUeちち[Ueちちソしちちち]レ◝UUeちちちちちちUす◝◝UUUUちち[UeちちZしちちむUUUUUeちちちなちむUへ◝◝UUUUちちYUeちちZeちちむUUUUUレちちちなちソUレ◝トUUUUすち]UUちち[eちにソUUUUレ◝ちちちとちソUレ◝トUUUUすちUUUちち[Uッ◝ソUUUレ◝◝ちちちしちャUu◝_UUUUしむUUUすちYu◝◝◝]Uレ◝◝ヤちなむeちャ_ワ◝_UUUUしむUUuなち_ワ◝◝◝◝◝◝◝トeッにむeち{◝◝◝]UUUUeむ_ワ◝なち◝◝◝◝◝◝◝◝トUe◝ヤあUち]◝◝◝]UUUUeむ◝◝◝なち◝◝◝◝◝◝◝トUUU◝◝おUちUUレ◝]UUUUUャ◝◝_すち◝_◝◝◝UUUUUU◝◝トUすUUu◝UUUUUU◝u_Uせち]Uワ◝トUUUUUUワ◝_UすUUu◝UUUUUu◝UUUせむUUワ◝トUUUUUUワ◝_UせUUuトUUUUUワトUUUフむUUレ◝_UUUUUUレ◝トuヤUUUトUUUUレ◝トUUUワソUUレ◝_UUUUUUレ◝◝◝◝]UU◝]UU◝◝◝トUUUレトUUu◝]UUUUUUu◝◝◝}トUU◝◝◝◝◝◝◝_UUUレトUUu◝UUUUUUUu◝◝トu◝]u◝◝◝◝◝トU_UUUレ_UUワ◝UUUUUUUU◝_Uu◝◝◝◝◝◝_UUUトUUUワ◝Uレ◝◝UUUUUUUUワ]UUワ◝◝◝_UUUUU◝トUワ◝◝◝◝ト◝_UUUUUUu◝]UUu◝}◝_UUUUUワ◝◝◝◝◝◝◝]◝◝UUUUUレ◝◝UUUUUu◝]UUUUUワ◝◝◝◝◝◝_U◝◝◝UUUワ◝◝◝UUUUUu◝]UUUUUUワ◝◝u◝]UU◝◝◝◝◝◝◝◝◝◝UUレUUU◝UUUUUUUUUUuトUUUシu◝◝◝◝◝トU◝トレ◝UUU◝UUUUUUUUUUuトUUUシUレ◝◝◝トUUワ◝◝◝UUUトUUUUUUUUUUuトUUUWUUu◝トUUUワ◝◝◝UUUシUUUUUUUUUUU_UUUWUUUUUUUUレ◝◝]UUUWUUUUUUUUUUU_UUUWUUUUUUUUレ_UUUUUWUUUUUUUUUUU_UUU_UUUUUUUUu]UUUUU_UUUUUUUUUUUトUUワ_UUUUUUUUuUUU_UU_UUUUUUUUUUUワトu◝_UUUUUUUUuUUU◝トuトUUUUUUU]UUU◝◝◝◝トUUUUUUUUレUUU◝◝◝◝_UUUUUu_UUワ◝◝◝◝◝]UUUUUUU◝]Uu◝◝◝◝◝トUUU◝◝_Uレ◝◝◝◝◝◝◝◝UUUUU◝◝トUワ◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝◝"
 
 objects,got_fruit, --tables
 freeze,delay_restart,sfx_timer,music_timer,ui_timer, --timers
@@ -163,17 +45,32 @@ function _init()
   load_level(1)
 
 --<background>
-  for i=0,#bg_build_hex,2 do
-  	poke(0x8000+i/2, tonum("0x"..sub(bg_build_hex,i+1,i+2)))
-  end
-  px9_decomp(0,0,0x8000,pget,pset)
-  memcpy(0x8000,0x6000,0x2000)
+  memset(0x8000,0,0x2000)
+  for i=0,#bg_build_base256-1 do
+    local v=ord(sub(bg_build_base256,i+1,i+1))
 
-  for i=0,#bg_tree_hex,2 do
-  	poke(0xa000+i/2, tonum("0x"..sub(bg_tree_hex,i+1,i+2)))
+    poke(0x8000+2*i,(v<<4)&0x30|(v>>2)&0x3)
+    poke(0x8000+2*i+1,v&0x30|(v>>6)&0x3)
   end
-  px9_decomp(0,0,0xa000,pget,pset)
-  memcpy(0xa000,0x6000,0x2000)
+
+  for i=0,#bg_tree_base256-1 do
+    local v=ord(sub(bg_tree_base256,i+1,i+1))
+
+    poke(0xa000+2*i,(v<<4)&0x30|(v>>2)&0x3)
+    poke(0xa000+2*i+1,v&0x30|(v>>6)&0x3)
+  end
+
+  -- for i=0,#bg_build_hex,2 do
+  -- 	poke(0x8000+i/2, tonum("0x"..sub(bg_build_hex,i+1,i+2)))
+  -- end
+  -- px9_decomp(0,0,0x8000,pget,pset)
+  -- memcpy(0x8000,0x6000,0x2000)
+
+  -- for i=0,#bg_tree_hex,2 do
+  -- 	poke(0xa000+i/2, tonum("0x"..sub(bg_tree_hex,i+1,i+2)))
+  -- end
+  -- px9_decomp(0,0,0xa000,pget,pset)
+  -- memcpy(0xa000,0x6000,0x2000)
 --</background>
 end
 
@@ -1430,12 +1327,15 @@ function _draw()
     end)
 
   --<background>
-  memcpy(0x0000,0x8000,0x2000)
- 	palt(8,true)
+        memcpy(0x0000,0x8000,0x2000)
+ 	palt(2,true)
  	palt(0,false)
+        pal(1,0)
+        pal(3,14)
  	spr(0, flr(draw_x/3), lvl_id, 16, 16)
  	spr(0, flr(draw_x/3)+128, lvl_id, 16, 16)
- 	  foreach(particles,function(_ENV)
+        pal()
+        foreach(particles,function(_ENV)
   	if l==1 then
 	    x+=spd-_g.cam_spdx
 	    y+=_g.sin(off)-_g.cam_spdy
@@ -1450,8 +1350,11 @@ function _draw()
   	end
   end)
  	memcpy(0x0000,0xa000,0x2000)
- 	--spr(0, flr(draw_x/4), lvl_id*2, 16, 16)
- 	--spr(0, flr(draw_x/4)+128, lvl_id*2, 16, 16)
+        palt(2,true)
+        palt(0,false)
+        pal(3,14)
+ 	spr(0, flr(draw_x/4), lvl_id*2, 16, 16)
+ 	spr(0, flr(draw_x/4)+128, lvl_id*2, 16, 16)
  	reload(0x0000,0x0000,0x2000)
  	palt()
  	--</background>
@@ -1541,6 +1444,7 @@ function _draw()
   -- </transition>
 
   pal(14,129,1)
+  ::ret::
 end
 
 function draw_object(_ENV)
