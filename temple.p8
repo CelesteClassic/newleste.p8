@@ -1195,26 +1195,18 @@ theo_door={
 
 swap_block={
   init=function(_ENV)
-    solid_obj=true
-    startx=x
-    starty=y
-    timer=-1
-    animation_timer=0
-    arrivaltime=-100
-    particles={}
-    hitbox=sprite==72 and rectangle(0,0,24,16) or rectangle(0,0,16,24)
+    solid_obj, startx, starty, timer, animation_timer, arrivaltime, particles, hitbox=true, x, y, -1, 0, -100, {}, sprite==72 and rectangle(0,0,24,16) or rectangle(0,0,16,24)
     for ox=-1,1 do
       for oy=-1,1 do
-        if (ox==0 or oy==0) and tile_at(x\8+ox,y\8+oy)==73 then
+        if ox|oy==0 and tile_at(x\8+ox,y\8+oy)==73 then
           dirx,diry=ox,oy
         end
       end
     end
-    targetx=x
+    targetx, targety=x, y+diry*8
     while tile_at(targetx\8,y\8)!=74 and dirx!=0 do
       targetx+=8*dirx
     end
-    targety=y+diry*8
     while tile_at(x\8,targety\8)!=74 and diry!=0 do
       targety+=8*diry
     end
@@ -1225,8 +1217,7 @@ swap_block={
       animation_timer=0
     end
     if timer>=0 then
-      spd.x=mid(appr(spd.x,6*dirx,2),targetx-x,x-targetx)
-      spd.y=mid(appr(spd.y,6*diry,2),targety-y,y-targety)
+      spd=vector(mid(appr(spd.x,6*dirx,2),targetx-x,x-targetx), mid(appr(spd.y,6*diry,2),targety-y,y-targety))
       timer+=1
       if spd.x!=0 or spd.y!=0 then
         arrivaltime=timer --once detination is reached, arrivaltime will not change anymore
@@ -1243,16 +1234,14 @@ swap_block={
         end
       end
       if timer==30 then
-        timer=-1
-        arrivaltime=-100
+        timer, arrivaltime=-1, -100
       end
     else
-      spd.x=mid(appr(spd.x,-2*dirx,0.25),startx-x,x-startx)
-      spd.y=mid(appr(spd.y,-2*diry,0.25),starty-y,y-starty)
+      spd=vector(mid(appr(spd.x,-2*dirx,0.25),startx-x,x-startx), mid(appr(spd.y,-2*diry,0.25),starty-y,y-starty))
     end
     foreach(particles, function(p)
-      p.x+=rnd(0.5)*(p.dx~=0 and p.dx or rnd(2)-1)
-      p.y+=rnd(0.5)*(p.dy~=0 and p.dy or rnd(2)-1)
+      p.x+=p.dx~=0 and p.dx*rnd(0.5) or 0.5-rnd()
+      p.y+=p.dy~=0 and p.dy*rnd(0.5) or 0.5-rnd()
       p.c=rnd()<0.2 and p.c or 10+rnd(2)
       p.t-=1
       if p.t==0 then
@@ -1275,7 +1264,7 @@ swap_block={
       end
       for i=u+8,d-8,8 do
         spr(90,l,i)
-        spr(90,r,i,1,1,true,false)
+        spr(90,r,i,1,1,true)
       end
       foreach(particles, function(p)
         pset(p.x,p.y,p.c)
@@ -1292,7 +1281,7 @@ swap_block={
     end
 
     --can maybe tweak the values here to look a bit smoother
-    s=animation_timer%12
+    local s=animation_timer%12
     local cx,cy=x+hitbox.w/2, y+hitbox.h/2
     if s>=4 and s<6 then
       pal(8,10)
@@ -1315,7 +1304,7 @@ swap_block={
     end
     if timer>=0 and timer<4 then
       local r=timer
-      circfill(x+hitbox.w/2,y+hitbox.h/2,r,10)
+      circfill(cx,cy,r,10)
     end
     pal()
 
