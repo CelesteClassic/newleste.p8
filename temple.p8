@@ -1313,7 +1313,10 @@ swap_block={
     elseif s>=4 then
       rectfill(cx-1,cy-1,cx,cy,7)
     end
-
+    if timer>=0 and timer<4 then
+      local r=timer
+      circfill(x+hitbox.w/2,y+hitbox.h/2,r,10)
+    end
     pal()
 
   end
