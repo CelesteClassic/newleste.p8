@@ -674,7 +674,7 @@ fuzz={
     -- hitbox
     hitbox=rectangle(1,1,5,5)
     -- get type of fuzzy
-    axis=(sprite==62 and "x") or (sprite==61 and "y") or "theta"
+    axis=(sprite==62 and "x") or (sprite==61 and "y") --or "theta"
     r, l, dir = _ENV[axis], _ENV[axis], 1
     if axis=="x" and not fget(tile_at((x/8)+1,y/8),0) and not fget(tile_at((x/8)+1,y/8),6) or axis=="y" and not fget(tile_at(x/8,(y/8)+1),0) and not fget(tile_at(x/8,(y/8)+1),6) then
         dir = -1
@@ -694,88 +694,85 @@ fuzz={
     scale=(r-l)/32 --scale speed by distance
     t=0 -- movement based on time
 
-    -- create fuzzy drawer if needed
-    for o in all(objects) do 
-      if o.type==fuzzy_drawer then 
-        return 
-      end 
-    end
-    init_object(fuzzy_drawer,0,0)
-  end,
-  update=function(_ENV)
-    -- flip
-    t+=1
-    if t==27 then
-      dir*=-1
-      t=0
-      flip.x,flip.y=axis=="x" and dir == -1,axis=="y" and dir == 1
-    end
-    -- move
-    spd[axis]=mid(appr(spd[axis],2*dir*scale,0.4*scale),l-_ENV[axis],r-_ENV[axis])
-    -- kill player
-    local hit=player_here()
-    if hit then 
-      kill_player(hit)
-    end
-  end,
-  draw=function(_ENV) end, -- fix sprite rendering
-  draw_1=function(_ENV)
-    -- draw large red outline
-    palt(15,true)
-    palt(0,false)
-    for i=0,15 do pal(i,2) end
-    for dx=-2,2 do for dy=-2,2 do if abs(dx)~=2 or abs(dy)~=2 then
-      camera(draw_x+dx,draw_y+dy) spr(sprite,x,y,1,1,flip.x,flip.y)
-    end end end
-    pal()
-    camera(draw_x,draw_y)
-    palt(15,false)
-    palt(0,true)
-  end,
-  draw_2=function(_ENV)
-    -- small black outline and sprite
-    palt(15,true)
-    palt(0,false)
-    for i=0,15 do pal(i,0) end
-    for dx=-1,1 do for dy=-1,1 do if abs(dx)~=1 or abs(dy)~=1 then
-      camera(draw_x+dx,draw_y+dy) spr(sprite,x,y,1,1,flip.x,flip.y)
-    end end end
-    pal()
-    camera(draw_x,draw_y)
-    palt(15,true)
-    palt(0,false)
-    spr(sprite,x,y,1,1,flip.x,flip.y)
-    palt(15,false)
-    palt(0,true)
+    spd.x,spd.y=0,0
+
+    add(fuzzy_drawer.fuzzies,_ENV)
+    destroy_object(_ENV)
   end
 }
 
 still_fuzz={
-  layer=0,
   init=function(_ENV)
     outline=false
     hitbox=rectangle(1,1,5,5)
     collides=true
     flip.x,flip.y=maybe(),maybe()
-    --flip.y = (spr==45 and is_solid(0,-2)) or (spr==46 and is_solid(0,3)) or ((spr==62 or spr==63) and maybe())
-    --flip.x = (spr==47 and is_solid(-2,0)) or (spr==61 and is_solid(2,0)) or ((spr==62 or spr==63) and maybe())
-    --maybe do dynamic eyes
-    for o in all(objects) do 
-      if o.type==fuzzy_drawer then 
-        return 
-      end 
-    end
-    init_object(fuzzy_drawer,0,0)
-  end,
-  draw=function(this) end
+    add(fuzzy_drawer.fuzzies,_ENV)
+    destroy_object(_ENV)
+  end
 }
 
 fuzzy_drawer={
-  layer=0,
-  init=function(_ENV) outline=false end,
-  draw=function(_ENV)
-    foreach(objects, function(o) if o.type==fuzz or o.type==still_fuzz then fuzz.draw_1(o) end end)
-    foreach(objects, function(o) if o.type==fuzz or o.type==still_fuzz then fuzz.draw_2(o) end end)
+  fuzzies={},
+  init=function()
+    fuzzy_drawer.fuzzies,layer,outline={},0,false
+  end,
+  update=function()
+    for f in all(fuzzy_drawer.fuzzies) do
+      if f.sprite ~= 63 then -- moving fuzzies
+        -- flip
+        f.t+=1
+        if f.t==27 then
+          f.dir*=-1
+          f.t=0
+          f.flip.x,f.flip.y=f.axis=="x" and f.dir == -1,f.axis=="y" and f.dir == 1
+        end
+        -- move
+        if (f.axis=="x") f.spd.x = mid(appr(f.spd.x,2*f.dir*f.scale,0.4*f.scale),f.l-f.x,f.r-f.x)
+        if (f.axis=="y") f.spd.y = mid(appr(f.spd.y,2*f.dir*f.scale,0.4*f.scale),f.l-f.y,f.r-f.y)
+        --f.spd[f.axis]=mid(appr(f.spd[f.axis],2*f.dir*f.scale,0.4*f.scale),f.l-f[axis],f.r-f[axis])
+        f.move(f.spd.x,f.spd.y,1);
+      end
+    end
+    foreach(objects,function(o)
+      if o.type==player then
+        for s in all(fuzzy_drawer.fuzzies) do
+          if s.objcollide(o,0,0) then
+            kill_player(o)
+            break
+          end
+        end
+      end
+    end)
+  end,
+  draw=function()
+    -- draw large red outline
+    palt(15,true)
+    palt(0,false)
+    for i=0,15 do pal(i,2) end
+    for dx=-2,2 do for dy=-2,2 do if dx&dy==0 then
+        camera(draw_x+dx,draw_y+dy) foreach(fuzzy_drawer.fuzzies, function(f) spr(f.sprite,f.x,f.y,1,1,f.flip.x,f.flip.y) end)
+    end end end
+    --pal()
+    --camera(draw_x,draw_y)
+    --palt(15,false)
+    --palt(0,true)
+    -- small black outline and sprite
+    --palt(15,true)
+    --palt(0,false)
+    for i=0,15 do pal(i,0) end
+    for dx=-1,1 do for dy=-1,1 do if dx&dy==0 then
+      camera(draw_x+dx,draw_y+dy) 
+      foreach(fuzzy_drawer.fuzzies, function(f) spr(f.sprite,f.x,f.y,1,1,f.flip.x,f.flip.y) end)
+    end end end
+    pal()
+    camera(draw_x,draw_y)
+    palt(15,true)
+    palt(0,false)
+    foreach(fuzzy_drawer.fuzzies, function(f) spr(f.sprite,f.x,f.y,1,1,f.flip.x,f.flip.y) end)
+    palt(15,false)
+    palt(0,true)
+    print(#fuzzy_drawer.fuzzies,0,0)
   end
 }
 --- </fuzzies> ---
@@ -1090,6 +1087,10 @@ function load_level(id)
       end
     end
   end
+
+  --- <fuzzies> ---
+  init_object(fuzzy_drawer,0,0)
+  --- </fuzzies> ---
 
   -- entities
   for tx=0,lvl_w-1 do
