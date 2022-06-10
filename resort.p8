@@ -753,13 +753,13 @@ fuzzy_drawer={
     for dx=-2,2 do for dy=-2,2 do if dx&dy==0 then
         camera(draw_x+dx,draw_y+dy) foreach(fuzzy_drawer.fuzzies, function(f) spr(f.sprite,f.x,f.y,1,1,f.flip.x,f.flip.y) end)
     end end end
-    --pal()
-    --camera(draw_x,draw_y)
-    --palt(15,false)
-    --palt(0,true)
+    pal()
+    camera(draw_x,draw_y)
+    palt(15,false)
+    palt(0,true)
     -- small black outline and sprite
-    --palt(15,true)
-    --palt(0,false)
+    palt(15,true)
+    palt(0,false)
     for i=0,15 do pal(i,0) end
     for dx=-1,1 do for dy=-1,1 do if dx&dy==0 then
       camera(draw_x+dx,draw_y+dy) 
