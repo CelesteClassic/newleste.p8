@@ -602,7 +602,7 @@ fly_fruit={
       init_smoke(6)
 
       local f=init_object(fruit,x,y,10) --if this happens to be in the exact location of a different fruit that has already been collected, this'll cause a crash
-      --todo: fix this if needed
+      --TODO: fix this if needed
       f.fruit_id=fruit_id
       fruit.update(f)
       --- </fruitrain> ---
@@ -631,7 +631,7 @@ lifeup={
   end,
   draw=function(_ENV)
     --<fruitrain>--
-    ?sprite<=5 and sprite.."000" or "1up",x-4,y-4,7+flash%2
+    ?sprite<=5 and sprite.."000" or "1UP",x-4,y-4,7+flash%2
     --<fruitrain>--
   end
 }
@@ -883,7 +883,7 @@ switch_block={
     end
   end,
   draw=function(_ENV)
-    --todo: put this into a function to save tokens with fall_plat
+    --TODO: put this into a function to save tokens with fall_plat
     local x,y=x,y
     if delay>3 then
       x+=rnd(2)-1
