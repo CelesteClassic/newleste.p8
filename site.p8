@@ -1687,7 +1687,7 @@ transition = {
 --[map metadata]
 
 --@conf
---[[param_names = {"badeline num"}
+--[[param_names = {"badeline num", "comment"}
 autotiles = {{52, 54, 53, 39, 33, 35, 34, 55, 49, 51, 50, 48, 36, 38, 37, 32, 29, 30, 31, 41, 42, 43, nil, nil, nil, nil, nil, 56, 45, 46, 47, 80, 44, 81, [41] = 61, [42] = 62, [43] = 63, [0] = 48, [44] = 57, [45] = 58, [46] = 59, [56] = 40, [57] = 60}, {29, 31, 30, 29, 29, 31, 30, 61, 61, 63, 62, 45, 45, 47, 46, 48, 52, 53, 54, 32, 41, 42, 43, nil, nil, nil, nil, 39, 33, 34, 35, 56, 80, 44, 81, nil, nil, nil, nil, 48, 36, 37, 38, [45] = 57, [46] = 58, [47] = 59, [52] = 55, [53] = 49, [0] = 29, [54] = 50, [55] = 51, [57] = 40, [58] = 60}, {41, 43, 42, 41, 41, 43, 42, 57, 57, 59, 58, 80, 80, 81, 46, 44, 48, 52, 53, 54, 32, 56, nil, nil, nil, nil, nil, 60, 39, 33, 34, 35, 29, 30, 31, nil, nil, nil, nil, 40, 48, 36, 37, 38, 45, 46, 47, [53] = 49, [54] = 49, [55] = 50, [0] = 41, [56] = 51, [57] = 61, [58] = 62, [59] = 63}}
 ]]
 --@begin
@@ -1695,40 +1695,40 @@ autotiles = {{52, 54, 53, 39, 33, 35, 34, 55, 49, 51, 50, 48, 36, 38, 37, 32, 29
 --"x,y,w,h,exit_dirs,badeline num"
 --exit directions "0b"+"exit_left"+"exit_bottom"+"exit_right"+"exit_top" (default top- 0b0001)
 levels={
-  "0,0,1.4375,1,0b0001,1",
-  "1.4375,0,2,1,0b0010,1",
-  "3.4375,0,1.5625,1,0b0010,0",
-  "5,0,1,1,0b0010,1",
-  "6,0,1,1,0b1000,1",
-  "0,1,2.1875,1,0b1000,0",
-  "2,3,1,1,0b0001,2",
-  "0,2,1,2,0b0001,3",
-  "5,1,1,1,0b0001,0",
-  "1,3,1,1,0b0010,0",
-  "3,1,1,1,0b0001,2",
-  "6,1,1,1,0b0001,3",
-  "4,1,1,1,0b0001,3",
-  "7,0,1,4,0b0010,5",
-  "1,2,1,1,0b0010,0",
-  "3,2,1,1,0b0001,1",
-  "2,2,1,1,0b0001,1",
-  "4,2,3,1,0b0010,2",
-  "3.875,5.375,1,3,0b0100,4",
-  "1.125,5.375,2.375,1.25,0b0001,1",
-  "0,6.8125,2.4375,1.25,0b0001,3",
-  "0.125,8.25,1,1,0b0001,1",
-  "1.1875,8.25,1,1.0625,0b0010,1",
-  "0.125,9.375,2,1,0b0010,0",
-  "3.5625,9.375,1,1,0b0001,0",
-  "4.6875,9.3125,2,1,0b1000,0",
-  "6.8125,9.3125,1,1,0b0001,0",
-  "0.0625,10.5625,1,2,0b0010,1",
-  "1.3125,10.5,1,1,0b0001,1",
-  "2.5625,10.5,1,2,0b1000,1",
-  "3.6875,10.4375,1,1,0b0010,3",
-  "0.0625,12.6875,2,1,0b1001,0",
-  "0.125,13.8125,3,1,0b0100,0",
-  "3.25,12.8125,1,2,0b0010,0"
+  "0,0,1.4375,1,0b0001,1,bg tilling at end could be tweaked",
+  "1.4375,0,2,1,0b0010,1,needs a bit of polish/slightly more interesting terrain (maybe good bg tiling is enough); last dream block should be wider",
+  "3.4375,0,1.5625,1,0b0010,0,",
+  "5,0,1,1,0b0010,1,maybe slightly modify block target",
+  "6,0,1,1,0b1000,1,0",
+  "0,1,2.1875,1,0b1000,0,needs to be retiled; a bit big/empty rn could be compactified; not sure about cam trigger",
+  "2,3,1,1,0b0001,2,i wonder if there is a way to telegraph the block movement. on the other hand kinda funny moment.",
+  "0,2,1,2,0b0001,3,left side needs polish; lags but might not w/ new dreamblocks",
+  "5,1,1,1,0b0001,0,left dreamblock looks a bit smol",
+  "1,3,1,1,0b0010,0,left side needs slight retiling; block should go all the way left",
+  "3,1,1,1,0b0001,2,needs some bg tilling to look less weird; berry is maybe a tad too tight",
+  "6,1,1,1,0b0001,3,feels like it's missing something, but maybe it's fine.",
+  "4,1,1,1,0b0001,3,can remove dash crystal and/or add one at the end.",
+  "7,0,1,4,0b0010,5,should use a cam trigger so falls are less blind; 2nd berry is too hard (add a roundabout?); badeline num seems maybe excessive; probably need to nerf length/ending",
+  "1,2,1,1,0b0010,0,0",
+  "3,2,1,1,0b0001,1,lacks substance",
+  "2,2,1,1,0b0001,1,might be better as a non badline level",
+  "4,2,3,1,0b0010,2,berry exit needs a nerf; also can cheese berry by just tanking a death; ending dream block layout can maybe be more interesting",
+  "3.875,5.375,1,3,0b0100,4,like this less than the 1st vertical chase level. maybe should split into 2+ levels (send back to designer?); ending of long dreamblock should be more lenient",
+  "1.125,5.375,2.375,1.25,0b0001,1,wayyyy to open. needs significat rework",
+  "0,6.8125,2.4375,1.25,0b0001,3,too gimmicky. start is kinda neat, but i don't like the rest",
+  "0.125,8.25,1,1,0b0001,1,feels like a concept level but works surprisingly well. just need to make it a little bit more interesting. big berry potential",
+  "1.1875,8.25,1,1.0625,0b0010,1,gimmick level, don't think there's anything to do with ti.",
+  "0.125,9.375,2,1,0b0010,0,needs tweaks ofr both tiling and terrain. overall good tho",
+  "3.5625,9.375,1,1,0b0001,0,mirror room- needs mirror (also don't love terrain - might just rework this once we have mirror)",
+  "4.6875,9.3125,2,1,0b1000,0,don't love berry route; don't like camtriggers; decent concept but lacking polish",
+  "6.8125,9.3125,1,1,0b0001,0,non berry route kinda lacking(replace berry with token?);  pretty good concept -  but missing some polish",
+  "0.0625,10.5625,1,2,0b0010,1,not sure about token block phasing through wall",
+  "1.3125,10.5,1,1,0b0001,1,0",
+  "2.5625,10.5,1,2,0b1000,1,exit needs to be better telegraphed; not sure about cam trigger (maybe put it after the dream block so it's less zoomy?)",
+  "3.6875,10.4375,1,1,0b0010,3,a lot of potential, but not interesting enough rn",
+  "0.0625,12.6875,2,1,0b1001,0,tiling around berry feels a tad weird",
+  "0.125,13.8125,3,1,0b0100,0,not sure about tiling of first blue block; need to figure out what's gonna happen to the berry if doing level duplication stuff",
+  "3.25,12.8125,1,2,0b0010,0,seems like it's built for branching paths, but we aren't doing those?"
 }
 
 --<camtrigger>--
