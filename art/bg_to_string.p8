@@ -25,12 +25,10 @@ end
 h = ""
 for m=0,0x1fff,2 do
   local s=0
-  for o=0,2 do
+  for o=0,1 do
     local l=peek(m+o)
-    -- print(l)
-    for b in all({flr(l>>4),l&0xf}) do
-      -- print(b)
-      s+=(({[0]=1,[8]=2,[14]=3})[b])<<(2*o) 
+    for i,b in ipairs({flr(l>>4),l&0xf}) do
+      s+=(({[0]=1,[8]=2,[14]=3})[b])<<(2*(2*o+i-1))
     end
   end
   h=h..num2hex(s)
