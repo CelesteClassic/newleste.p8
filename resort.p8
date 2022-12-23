@@ -714,65 +714,90 @@ still_fuzz={
 
 fuzzy_drawer={
   fuzzies={},
-  init=function()
+  pos={},
+  init=function(_ENV)
     fuzzy_drawer.fuzzies,layer,outline={},0,false
   end,
-  update=function()
-    for f in all(fuzzy_drawer.fuzzies) do
-      if f.sprite ~= 63 then -- moving fuzzies
-        -- flip
-        f.t+=1
-        if f.t==27 then
-          f.dir*=-1
-          f.t=0
-          f.flip.x,f.flip.y=f.axis=="x" and f.dir == -1,f.axis=="y" and f.dir == 1
+  update=function(_ENV)
+    if (#fuzzy_drawer.fuzzies!=0) then
+      for f in all(fuzzy_drawer.fuzzies) do
+        if f.sprite ~= 63 then -- moving fuzzies
+          -- flip
+          f.t+=1
+          if f.t==27 then
+            f.dir*=-1
+            f.t=0
+            f.flip.x,f.flip.y=f.axis=="x" and f.dir == -1,f.axis=="y" and f.dir == 1
+          end
+          -- move
+          if (f.axis=="x") f.spd.x = mid(appr(f.spd.x,2*f.dir*f.scale,0.4*f.scale),f.l-f.x,f.r-f.x)
+          if (f.axis=="y") f.spd.y = mid(appr(f.spd.y,2*f.dir*f.scale,0.4*f.scale),f.l-f.y,f.r-f.y)
+          --f.spd[f.axis]=mid(appr(f.spd[f.axis],2*f.dir*f.scale,0.4*f.scale),f.l-f[axis],f.r-f[axis])
+          f.move(f.spd.x,f.spd.y,1);
         end
-        -- move
-        if (f.axis=="x") f.spd.x = mid(appr(f.spd.x,2*f.dir*f.scale,0.4*f.scale),f.l-f.x,f.r-f.x)
-        if (f.axis=="y") f.spd.y = mid(appr(f.spd.y,2*f.dir*f.scale,0.4*f.scale),f.l-f.y,f.r-f.y)
-        --f.spd[f.axis]=mid(appr(f.spd[f.axis],2*f.dir*f.scale,0.4*f.scale),f.l-f[axis],f.r-f[axis])
-        f.move(f.spd.x,f.spd.y,1);
       end
-    end
-    foreach(objects,function(o)
-      if o.type==player then
-        for s in all(fuzzy_drawer.fuzzies) do
-          if s.objcollide(o,0,0) then
-            kill_player(o)
-            break
+      foreach(objects,function(o)
+        if o.type==player then
+          for s in all(fuzzy_drawer.fuzzies) do
+            if s.objcollide(o,0,0) then
+              kill_player(o)
+              break
+            end
           end
         end
-      end
-    end)
+      end)
+    end
   end,
-  draw=function()
-    -- draw large red outline
-    palt(15,true)
-    palt(0,false)
-    for i=0,15 do pal(i,2) end
-    for dx=-2,2 do for dy=-2,2 do if dx&dy==0 then
-        camera(draw_x+dx,draw_y+dy) foreach(fuzzy_drawer.fuzzies, function(f) spr(f.sprite,f.x,f.y,1,1,f.flip.x,f.flip.y) end)
-    end end end
-    pal()
-    camera(draw_x,draw_y)
-    palt(15,false)
-    palt(0,true)
-    -- small black outline and sprite
-    palt(15,true)
-    palt(0,false)
-    for i=0,15 do pal(i,0) end
-    for dx=-1,1 do for dy=-1,1 do if dx&dy==0 then
-      camera(draw_x+dx,draw_y+dy) 
-      foreach(fuzzy_drawer.fuzzies, function(f) spr(f.sprite,f.x,f.y,1,1,f.flip.x,f.flip.y) end)
-    end end end
-    pal()
-    camera(draw_x,draw_y)
-    palt(15,true)
-    palt(0,false)
-    foreach(fuzzy_drawer.fuzzies, function(f) spr(f.sprite,f.x,f.y,1,1,f.flip.x,f.flip.y) end)
-    palt(15,false)
-    palt(0,true)
-    print(#fuzzy_drawer.fuzzies,0,0)
+  draw=function(_ENV)
+    if (#fuzzy_drawer.fuzzies!=0) then
+      -- new fuzzy outlines/shape by toitle
+      memcpy(0x8000,0,0x1fff)
+      --move sprites to unused memory address
+      poke(0x5f55,0)
+      --set spritesheet as drawbuffer
+      cls() --clear spritesheet
+      local circs={}
+      --for j=0,1 do
+      --j = 0, draw outline
+      --j = 1, draw fill
+          srand"8"
+          for b in all(fuzzy_drawer.fuzzies) do
+              for i=1,8 do
+                  local aa,dd = rnd()+time()/4,rnd"2"+1
+                  --circfill(b.x+cos(aa)*dd+4,b.y+sin(aa)*dd+4,3+rnd"3"-j,8-j*7)
+                  circs[#circs+1]={b.x+cos(aa)*dd+4,b.y+sin(aa)*dd+4}
+              end
+          end
+
+      for c in all(circs) do
+        circfill(c[1],c[2],5,8)
+      end
+      for c in all(circs) do
+        circfill(c[1],c[2],4,3)
+      end
+      fillp()
+
+      poke(0x5f5e,0x22)
+
+      for i=1,128 do
+          circfill((rnd"128"+time()*(rnd"8"+8))%136-4,i,3,2)
+      end
+
+      poke(0x5f5e,0xff)
+      --reset bitplane
+
+      poke(0x5f55,0x60)
+      --reset draw buffer location
+      pal(split"1,2,0,4,5,6,7,8,9,14,11,12,13,14,15")
+      palt"0b1010000000000000"
+
+      spr(0,0,0,16,16)
+      --draw spritesheet
+      pal()
+      --reset pal
+      memcpy(0,0x8000,0x1fff)
+      --bring back original sprites
+    end
   end
 }
 --- </fuzzies> ---
