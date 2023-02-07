@@ -766,7 +766,7 @@ fuzzy_drawer={
     if (#fuzzy_drawer.fuzzies!=0) then
       eyes={}
       for f in all(fuzzy_drawer.fuzzies) do
-        f.t+=1
+        if (f.spawned and f.t < 100 or f.axis == "x" or f.axis == "y") f.t+=1
         if f.sprite ~= 63 then -- moving fuzzies
           -- flip
           if f.t==27 then
@@ -829,7 +829,8 @@ fuzzy_drawer={
         for i=1,(b.spawned and 2 or 8) do
           local aa,dd = rnd()+time()/4,rnd"2"+1
           --circfill(b.x+cos(aa)*dd+4,b.y+sin(aa)*dd+4,3+rnd"3"-j,8-j*7)
-          circs[#circs+1]={b.x+cos(aa)*dd+4,b.y+sin(aa)*dd+4,b.spawned and min(b.t/2,5) or 5}
+          --if (b.spawned) b.t += 0.75*(5 - b.t)
+          circs[#circs+1]={b.x+cos(aa)*dd+4,b.y+sin(aa)*dd+4,b.spawned and round(5 + (-6 * 0.333333333^b.t)) or 5}
           if (rnd"10"<3) dots[#dots+1]={b.x+4+cos(aa)*dd+rnd"4",b.y+2+sin(aa)*dd+rnd"4"}
         end
       end
