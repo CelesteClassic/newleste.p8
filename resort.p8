@@ -675,21 +675,24 @@ fuzz={
     -- hitbox
     hitbox=rectangle(0,0,8,8)
     -- get type of fuzzy
-    axis=(sprite==62 and "x") or (sprite==61 and "y") or (sprite==64 and "r+") or (sprite==65 and "r-")
+    --axis=(sprite==62 and "x") or (sprite==61 and "y") or (sprite==64 and "r+") or (sprite==65 and "r-")
+    local a={"y","x",nil,"r+","r-"}
+    axis=a[sprite-60]
 
     if (axis=="x" or axis=="y") then -- sliding fuzzies only
       r, l, dir = _ENV[axis], _ENV[axis], 1
-      if axis=="x" and not fget(tile_at((x/8)+1,y/8),6) or axis=="y" and not fget(tile_at(x/8,(y/8)+1),6) then
+      local b,c=x/8,y/8
+      if axis=="x" and not fget(tile_at(b+1,c),6) or axis=="y" and not fget(tile_at(b,c+1),6) then
           dir = -1
       end
       -- get endpoints
-      while axis=="x" and r<lvl_pw and not fget(tile_at(r\8,y\8),6) or
-            axis=="y" and r<lvl_ph and not fget(tile_at(x\8,r\8),6) do
+      while axis=="x" and r<lvl_pw and not fget(tile_at(r\8,c),6) or
+            axis=="y" and r<lvl_ph and not fget(tile_at(b,r\8),6) do
           r+=8
       end
       r-=2 -- keep halfway in wall
-      while axis=="x" and l>=0 and not fget(tile_at(l\8,y\8),6) or
-            axis=="y" and l>=0 and not fget(tile_at(x\8,l\8),6) do
+      while axis=="x" and l>=0 and not fget(tile_at(l\8,c),6) or
+            axis=="y" and l>=0 and not fget(tile_at(b,l\8),6) do
           l-=8
       end
       l+=2 -- keep halfway in wall
@@ -721,10 +724,11 @@ still_fuzz={
       spawned = false
     end
     local o = spawned and 5 or 4
-    if (fget(tile_at((x/8)+1,y/8),6)) x+=o
-    if (fget(tile_at((x/8)-1,y/8),6)) x-=o
-    if (fget(tile_at(x/8,(y/8)+1),6)) y+=o
-    if (fget(tile_at(x/8,(y/8)-1),6)) y-=o
+    local b,c=x/8,y/8
+    if (fget(tile_at(b+1,c),6)) x+=o
+    if (fget(tile_at(b-1,c),6)) x-=o
+    if (fget(tile_at(b,c+1),6)) y+=o
+    if (fget(tile_at(b,c-1),6)) y-=o
     outline=false
     t=0
     --flip.x,flip.y=maybe(),maybe()
@@ -745,17 +749,15 @@ fuzz_spawn={
     dir_x = sprite==68 and 1 or sprite==69 and -1 or 0
     dir_y = sprite==66 and 1 or sprite==67 and -1 or 0
     size=0
+    -- get size of fuzzy spawner
+    size+=1
+    while (size<(dir_x~=0 and lvl_pw or lvl_ph) and mget((x/8)+(dir_y~=0 and size or 0),(y/8)+(dir_x~=0 and size or 0))~=70) do
+      size+=1
+      add(player_was_here,false)
+    end
+    hitbox=rectangle(dir_x==-1 and 4 or dir_y~=0 and 3 or 0,dir_y==1 and 4 or dir_x~=0 and 3 or 0,dir_y~=0 and size*8 or 4,dir_x~=0 and size*8 or 4)
   end,
   update=function(_ENV)
-    -- get size of fuzzy spawner
-    if size==0 then
-      size+=1
-      while (size<(dir_x~=0 and lvl_pw or lvl_ph) and mget((x/8)+(dir_y~=0 and size or 0),(y/8)+(dir_x~=0 and size or 0))~=70) do
-        size+=1
-        add(player_was_here,false)
-      end
-      hitbox=rectangle(dir_x==-1 and 4 or dir_y~=0 and 3 or 0,dir_y==1 and 4 or dir_x~=0 and 3 or 0,dir_y~=0 and size*8 or 4,dir_x~=0 and size*8 or 4)
-    end
     seed+=rnd"0.1"
     seed2+=rnd"0.1"
     -- check for individual collisions
@@ -772,12 +774,8 @@ fuzz_spawn={
         if (player_was_here[i]==0) init_object(still_fuzz,x+(dir_y~=0 and i*8-5 or 0),y+(dir_x~=0 and i*8-5 or 0),63)
       end
     end
-
-    --if (player_was_here and not player_here() and t==-1) t=5
   end,
   draw=function(_ENV)
-    --rect(x+hitbox.x,y+hitbox.y,x+hitbox.x+hitbox.w,y+hitbox.y+hitbox.h,7)
-    --if (hidden) return
     for i=1,size*2+1 do
       local pwh=player_was_here[max(1,round(i/2-1))]
       if pwh~=-1 then
@@ -790,23 +788,6 @@ fuzz_spawn={
         end
       end
     end
-
-    -- show fuzzy hitboxes
-    --for i=1,size do
-    --  if player_was_here[i]!=-1 then
-    --    -- really messy way of checking for player colliding with each section, not sure of a better way though
-    --    rect(x + (dir_y~=0 and i*8-5 or dir_x==-1 and 4 or 0),y+(dir_x~=0 and i*8-5 or dir_y==1 and 4 or 0),x + (dir_y~=0 and (i+1)*8-5 or dir_x==-1 and 8 or 4),y+(dir_x~=0 and (i+1)*8-5 or dir_y==1 and 8 or 4),player_was_here[i] and 11 or not player_was_here and 8 or 7)
-    --  end
-    --  local p = check(player,dir_x==-1 and -4 or 0,dir_y==1 and -4 or 0)
-    --    if (p~=nil) local c = ( dir_x==-1 or p.right()>=x + (dir_y~=0 and i*8-5 or dir_x==-1 and 4 or 0) ) and ( dir_y==1 or p.bottom()>=y+(dir_x~=0 and i*8-5 or dir_y==1 and 4 or 0) ) and ( dir_x==1 or p.left()<=x + (dir_y~=0 and (i+1)*8-5 or dir_x==-1 and 8 or 4) ) and ( dir_y==-1 or p.top()<=y+(dir_x~=0 and (i+1)*8-5 or dir_y==1 and 8 or 4) )
-    --    
-    --    if (p~=nil) then
-    --      print("R",0,i*10,( dir_x==-1 or p.right()>=x + (dir_y~=0 and i*8-5 or dir_x==-1 and 4 or 0) ) and 11 or 8)
-    --      print("B",10,i*10,( dir_y==1 or p.bottom()>=y+(dir_x~=0 and i*8-5 or dir_y==1 and 4 or 0) ) and 11 or 8)
-    --      print("L",20,i*10,( dir_x==1 or p.left()<=x + (dir_y~=0 and (i+1)*8-5 or dir_x==-1 and 8 or 4) ) and 11 or 8)
-    --      print("T"..tostr(player_was_here[i]),30,i*10,( dir_y==-1 or p.top()<=y+(dir_x~=0 and (i+1)*8-5 or dir_y==1 and 8 or 4) ) and 11 or 8)
-    --  end
-    --end
   end
 }
 
@@ -828,24 +809,17 @@ fuzzy_drawer={
           if f.t==27 then
             if (f.axis=="x" or f.axis=="y") f.dir*=-1
             f.t=0
-            --f.flip.x,f.flip.y=f.axis=="x" and f.dir == -1,f.axis=="y" and f.dir == 1
           end
           -- move
           f.spd.x = (f.axis == "x" and mid(appr(f.spd.x,2*f.dir*f.scale,0.4*f.scale),f.l-f.x,f.r-f.x)) or (f.axis=="r+" and cos(-f.t)*2) or (f.axis=="r-" and cos(f.t)*2) or 0
           f.spd.y = (f.axis == "y" and mid(appr(f.spd.y,2*f.dir*f.scale,0.4*f.scale),f.l-f.y,f.r-f.y)) or (f.axis=="r+" and sin(-f.t)*2) or (f.axis=="r-" and sin(f.t)*2) or 0
-          --f.spd[f.axis]=mid(appr(f.spd[f.axis],2*f.dir*f.scale,0.4*f.scale),f.l-f[axis],f.r-f[axis])
           f.move(f.spd.x,f.spd.y,1);
 
           -- eyes
           if (f.axis=="x" or f.axis == "y") f.eye_offset = appr(f.eye_offset,(f.t<20 and f.dir or -f.dir)*4*f.scale,1)
-          --eyes[#eyes+1]={f.x + (f.axis=="x" and 4+f.eye_offset or f.axis=="r+" and cos(-f.t) or f.axis =="r-" and cos(f.t) or 1), f.y + (f.axis=="y" and 4+f.eye_offset*.7 or f.axis=="r+" and sin(-f.t) or f.axis=="r-" and sin(f.t) or 0)}
-          --eyes[#eyes+1]={f.x + (f.axis=="x" and 4+f.eye_offset or f.axis=="r+" and 4+cos(-f.t)-cos((-time()-10)/2)*4 or 6), f.y + (f.axis=="y" and 4+f.eye_offset*.7 or f.axis=="r+" and 4+sin(-f.t)-sin((-time()-10)/2)*4 or 5)}
 
           eyes[#eyes+1]={f.x + 4 + (f.axis=="x" and f.eye_offset or f.axis=="r+" and cos(-f.t-3.141592)*4 or f.axis=="r-" and cos(f.t-3.141592)*4 or -3), f.y + 4 + (f.axis=="y" and f.eye_offset*.7 or f.axis=="r+" and sin(-f.t-3.141592)*4 or f.axis=="r-" and sin(f.t-3.141592)*4 or -4)}
           eyes[#eyes+1]={f.x + 4 + (f.axis=="x" and f.eye_offset or f.axis=="r+" and cos(-f.t+3.141592)*4 or f.axis=="r-" and cos(f.t+3.141592)*4 or 2), f.y + 4 + (f.axis=="y" and f.eye_offset*.7 or f.axis=="r+" and sin(-f.t+3.141592)*4 or f.axis=="r-" and sin(f.t+3.141592)*4 or 1)}
-          --eyes[#eyes+1]={f.x + 4 + cos(-f.t+3.141592)*4, f.y + 4 + sin(-f.t+3.141592)*4}
-          --eyes[#eyes+1]={f.x + (f.axis=="x" and 4+f.eye_offset or f.axis=="r+" and flr(4+cos((-time())/2-0.75*3.1415)*3.1415) or 1), f.y + (f.axis=="y" and 4+f.eye_offset*.7 or f.axis=="r+" and flr(4+sin((-time())/2-0.75*3.1415)*3.1415) or 0)}
-          --eyes[#eyes+1]={f.x + (f.axis=="x" and 4+f.eye_offset or f.axis=="r+" and flr(4+cos((-time())/2+0.75*3.1415)*3.1415) or 6), f.y + (f.axis=="y" and 4+f.eye_offset*.7 or f.axis=="r+" and flr(4+sin((-time())/2+0.75*3.1415)*3.1415) or 5)}
         end
         --if (f.sprite==63 and rnd"10"<5) eyes[#eyes+1]={f.x+(f.eyes[1]+4),f.y+f.eyes[2]+4}
       end
@@ -884,8 +858,6 @@ fuzzy_drawer={
         --eyes[#eyes+1]={b.x-2*b.eyes[1],b.y-2*b.eyes[2]}
         for i=1,(b.spawned and 6 or 8) do
           local aa,dd = rnd()+time()/(b.spawned and 6 or 4),rnd"2"+(b.spawned and 0.25 or 1)
-          --circfill(b.x+cos(aa)*dd+4,b.y+sin(aa)*dd+4,3+rnd"3"-j,8-j*7)
-          --if (b.spawned) b.t += 0.75*(5 - b.t)
           circs[#circs+1]={b.x+cos(aa)*dd+4,b.y+sin(aa)*dd+4,b.spawned and round(4 + (-5 * 0.333333333^b.t)) or 5}
           if (rnd"10"<3) dots[#dots+1]={b.x+4+cos(aa)*dd+rnd"4",b.y+2+sin(aa)*dd+rnd"4"}
         end
