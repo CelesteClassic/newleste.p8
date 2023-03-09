@@ -30,7 +30,7 @@ _pal --for outlining
 =
 {},{},
 0,0,0,0,-99,
-0,0,0,0,0.25,0,0,
+0,0,0,0,0.1,0,0,
 pal
 
 
@@ -78,9 +78,8 @@ dead_particles={}
 -- [player entity]
 
 player={
-  layer=2,
   init=function(_ENV)
-    djump, hitbox, collides = max_djump, rectangle(1,3,6,5), true
+    djump, hitbox, collides,layer = max_djump, rectangle(1,3,6,5), true,2
 
     --<fruitrain>--
     -- ^ refers to setting berry_timer and berry_count to 0
@@ -311,8 +310,8 @@ end
 -- [other entities]
 
 player_spawn={
-  layer=2,
   init=function(_ENV)
+    layer=2
     sfx(15)
     sprite=3
     target=y
@@ -539,30 +538,6 @@ moving_platform = {
 
 -- </moving platform> --
 
-  init=function(_ENV)
-    delta,dir=0,sprite==9 and 0 or is_solid(-1,0) and 1 or -1
-  end,
-  update=function(_ENV)
-    delta*=0.75
-    local hit=player_here()
-    if hit then
-      hit.move(dir==0 and 0 or x+dir*4-hit.x,dir==0 and y-hit.y-4 or 0,1)
-      hit.spd=vector(
-      dir==0 and hit.spd.x*0.2 or dir*3,
-      dir==0 and -3 or -1.5
-      )
-      hit.dash_time,hit.dash_effect_time,delta,hit.djump=0,0,4,max_djump
-    end
-  end,
-  draw=function(_ENV)
-    local delta=flr(delta)
-    if dir==0 then
-      sspr(72,0,8,8-flr(delta),x,y+delta)
-    else
-      sspr(64,0,8-delta,8,dir==-1 and x+delta or x,y,8-delta,8,dir==1)
-    end
-  end
-}
 
 refill={
   init=function(_ENV)
@@ -645,8 +620,8 @@ fall_floor={
 }
 
 smoke={
-  layer=3,
   init=function(_ENV)
+    layer=3
     spd,flip=vector(0.3+rnd(0.2),-0.1),vector(maybe(),maybe())
     x+=-1+rnd(2)
     y+=-1+rnd(2)
@@ -1135,10 +1110,10 @@ function _draw()
   --3: foreground layer
   local layers={{},{},{}}
   foreach(objects,function(_ENV)
-    if type.layer==0 then
+    if layer==0 then
       draw_object(_ENV) --draw below terrain
     else
-      add(layers[type.layer or 1],_ENV) --add object to layer, default draw below player
+      add(layers[layer or 1],_ENV) --add object to layer, default draw below player
     end
   end)
   -- draw terrain

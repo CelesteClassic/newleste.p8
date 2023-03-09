@@ -30,7 +30,7 @@ _pal --for outlining
 =
 {},{},
 0,0,0,0,-99,
-0,0,0,0,0.25,0,0,
+0,0,0,0,0.1,0,0,
 pal
 
 
@@ -78,9 +78,8 @@ dead_particles={}
 -- [player entity]
 
 player={
-  layer=2,
   init=function(_ENV)
-    djump, hitbox, collides = max_djump, rectangle(1,3,6,5), true
+    djump, hitbox, collides,layer = max_djump, rectangle(1,3,6,5), true,2
 
     --<fruitrain>--
     -- ^ refers to setting berry_timer and berry_count to 0
@@ -118,8 +117,8 @@ player={
 
     -- spike collision / bottom death
     if is_flag(0,0,-1) or
-	    y>lvl_ph and not exit_bottom then
-	    kill_player(_ENV)
+    y>lvl_ph and not exit_bottom then
+      kill_player(_ENV)
     end
 
     if feather_state then
@@ -136,35 +135,35 @@ player={
       -- update tail
       local last=vector(x+4.5,y+4.5)
       foreach(tail,function(h)
-				h.x+=(last.x-h.x)/1.4
-				h.y+=(last.y-h.y)/1.4
-				last=h
-			end)
+        h.x+=(last.x-h.x)/1.4
+        h.y+=(last.y-h.y)/1.4
+        last=h
+      end)
 
 
       --bounce off objects
-    	if bouncetimer==0 then
-      	if is_solid(0, 2) or is_solid(0, -2) then
-        	movedir *=-1
-        	bouncetimer = 2
-        	init_smoke()
-				elseif is_solid(2, 0) or is_solid(-2, 0) then
-					movedir = round(movedir)+0.5-movedir
-					bouncetimer = 2
-					init_smoke()
-				end
-			end
-			--make sure we dont bounce too often
-    	if bouncetimer > 0 then
-      	bouncetimer-=1
-    	end
+      if bouncetimer==0 then
+        if is_solid(0, 2) or is_solid(0, -2) then
+          movedir *=-1
+          bouncetimer = 2
+          init_smoke()
+        elseif is_solid(2, 0) or is_solid(-2, 0) then
+          movedir = round(movedir)+0.5-movedir
+          bouncetimer = 2
+          init_smoke()
+        end
+      end
+      --make sure we dont bounce too often
+      if bouncetimer > 0 then
+        bouncetimer-=1
+      end
 
 
       -- feather particles
       local particle = {x=x+rnd(8)-4, y=y+rnd(8)-4, life=10+flr(rnd(5))}
-			particle.xspd = -spd.x/2-(x-particle.x)/4
-			particle.yspd = -spd.y/2-(y-particle.y)/4
-			add(feather_particles, particle)
+      particle.xspd = -spd.x/2-(x-particle.x)/4
+      particle.yspd = -spd.y/2-(y-particle.y)/4
+      add(feather_particles, particle)
 
       lifetime-=1
       if lifetime==0 or btn(❎) then
@@ -201,66 +200,66 @@ player={
       -- cursed token save: use else and goto here
 
       -- on ground checks
-    local on_ground=is_solid(0,1)
+      local on_ground=is_solid(0,1)
 
-          -- <fruitrain> --
+      -- <fruitrain> --
       if on_ground then
-      berry_timer+=1
+        berry_timer+=1
       else
-      berry_timer, berry_count=0, 0
+        berry_timer, berry_count=0, 0
       end
 
       for f in all(fruitrain) do
-      if f.type==fruit and not f.golden and berry_timer>5 and f then
+        if f.type==fruit and not f.golden and berry_timer>5 and f then
           -- to be implemented:
           -- save berry
           -- save golden
           berry_count+=1
-        _g.berry_count+=1
-        berry_timer, got_fruit[f.fruit_id]=-5, true
-        init_object(lifeup, f.x, f.y,berry_count)
+          _g.berry_count+=1
+          berry_timer, got_fruit[f.fruit_id]=-5, true
+          init_object(lifeup, f.x, f.y,berry_count)
           del(fruitrain, f)
-        destroy_object(f);
-        (fruitrain[1] or {}).target=_ENV
+          destroy_object(f);
+          (fruitrain[1] or {}).target=_ENV
         end
       end
       -- </fruitrain> --
 
       -- landing smoke
-    if on_ground and not was_on_ground then
-      init_smoke(0,4)
+      if on_ground and not was_on_ground then
+        init_smoke(0,4)
       end
 
       -- jump and dash input
-    local jump,dash=btn(🅾️) and not p_jump,btn(❎) and not p_dash
-    p_jump,p_dash=btn(🅾️),btn(❎)
+      local jump,dash=btn(🅾️) and not p_jump,btn(❎) and not p_dash
+      p_jump,p_dash=btn(🅾️),btn(❎)
 
       -- jump buffer
       if jump then
-      jbuffer=4
-    elseif jbuffer>0 then
-      jbuffer-=1
+        jbuffer=4
+      elseif jbuffer>0 then
+        jbuffer-=1
       end
 
       -- grace frames and dash restoration
       if on_ground then
-      grace=6
-      if djump<max_djump then
+        grace=6
+        if djump<max_djump then
           psfx(22)
-        djump=max_djump
+          djump=max_djump
         end
-    elseif grace>0 then
-      grace-=1
+      elseif grace>0 then
+        grace-=1
       end
 
       -- dash effect timer (for dash-triggered events, e.g., berry blocks)
-    dash_effect_time-=1
+      dash_effect_time-=1
 
       -- dash startup period, accel toward dash target speed
-    if dash_time>0 then
-      init_smoke()
-      dash_time-=1
-      spd=vector(
+      if dash_time>0 then
+        init_smoke()
+        dash_time-=1
+        spd=vector(
         appr(spd.x,dash_target_x,dash_accel_x),
         appr(spd.y,dash_target_y,dash_accel_y)
         )
@@ -269,104 +268,105 @@ player={
         local accel=on_ground and 0.6 or 0.4
 
         -- set x speed
-      spd.x=abs(spd.x)<=1 and
+        spd.x=abs(spd.x)<=1 and
         appr(spd.x,h_input,accel) or
         appr(spd.x,sign(spd.x),0.15)
 
         -- facing direction
-      if spd.x~=0 then
-        flip.x=spd.x<0
+        if spd.x~=0 then
+          flip.x=spd.x<0
         end
 
         -- y movement
         local maxfall=2
 
         -- wall slide
-      if is_solid(h_input,0) then
+        if is_solid(h_input,0) then
           maxfall=0.4
           -- wall slide smoke
-        if rnd()<0.2 then
-          init_smoke(h_input*6)
+          if rnd()<0.2 then
+            init_smoke(h_input*6)
           end
         end
 
         -- apply gravity
         if not on_ground then
-        spd.y=appr(spd.y,maxfall,abs(spd.y)>0.15 and 0.21 or 0.105)
+          spd.y=appr(spd.y,maxfall,abs(spd.y)>0.15 and 0.21 or 0.105)
         end
 
         -- jump
-      if jbuffer>0 then
-        if grace>0 then
+        if jbuffer>0 then
+          if grace>0 then
             -- normal jump
             psfx(18)
-          jbuffer,grace,spd.y=0,0,-2
-          init_smoke(0,4)
+            jbuffer,grace,spd.y=0,0,-2
+            init_smoke(0,4)
           else
             -- wall jump
-          local wall_dir=(is_solid(-3,0) and -1 or is_solid(3,0) and 1 or 0)
+            local wall_dir=(is_solid(-3,0) and -1 or is_solid(3,0) and 1 or 0)
             if wall_dir~=0 then
               psfx(19)
-            jbuffer,spd=0,vector(wall_dir*-2,-2)
+              jbuffer,spd=0,vector(wall_dir*-2,-2)
               -- wall jump smoke
-            init_smoke(wall_dir*6)
+              init_smoke(wall_dir*6)
             end
           end
         end
 
         -- dash
-      local d_full, d_half = 5, 3.5355339059 -- 5 * sqrt(2)
+        local d_full, d_half = 5, 3.5355339059 -- 5 * sqrt(2)
 
-      if djump>0 and dash then
-        init_smoke()
-        djump-=1
-        dash_time,_g.has_dashed,dash_effect_time=4, true, 10
+        if djump>0 and dash then
+          init_smoke()
+          djump-=1
+          dash_time,_g.has_dashed,dash_effect_time=4, true, 10
           -- calculate dash speeds
-        spd=vector(h_input~=0 and
-        h_input*(v_input~=0 and d_half or d_full) or
-        (v_input~=0 and 0 or flip.x and -1 or 1)
+          spd=vector(h_input~=0 and
+          h_input*(v_input~=0 and d_half or d_full) or
+          (v_input~=0 and 0 or flip.x and -1 or 1)
           ,v_input~=0 and v_input*(h_input~=0 and d_half or d_full) or 0)
           -- effects
           psfx(20)
-        _g.freeze=2
+          _g.freeze=2
           -- dash target speeds and accels
-        dash_target_x,dash_target_y,dash_accel_x,dash_accel_y=
-        2*sign(spd.x), (spd.y>=0 and 2 or 1.5)*sign(spd.y),
-        spd.y==0 and 1.5 or 1.06066017177 , spd.x==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
+          dash_target_x,dash_target_y,dash_accel_x,dash_accel_y=
+          2*sign(spd.x), (spd.y>=0 and 2 or 1.5)*sign(spd.y),
+          spd.y==0 and 1.5 or 1.06066017177 , spd.x==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
 
-        -- emulate soft dashes
-        if h_input~=0 and ph_input==-h_input and oob(ph_input,0) then
-          spd.x=0
-        end
+          -- emulate soft dashes
+          if h_input~=0 and ph_input==-h_input and oob(ph_input,0) then
+            spd.x=0
+          end
 
-      elseif djump<=0 and dash then
+        elseif djump<=0 and dash then
           -- failed dash smoke
           psfx(21)
-        init_smoke()
+          init_smoke()
         end
       end
 
       -- animation
-    spr_off+=0.25
-    sprite = on_ground and (
-        btn(⬇️) and 6 or -- crouch
-        btn(⬆️) and 7 or -- look up
+      spr_off+=0.25
+      sprite = on_ground and (
+      btn(⬇️) and 6 or -- crouch
+      btn(⬆️) and 7 or -- look up
       spd.x*h_input~=0 and 1+spr_off%4 or 1) -- walk or stand
       or is_solid(h_input,0) and 5 or 3 -- wall slide or mid air
 
-    update_hair(_ENV)
+      update_hair(_ENV)
+
+      -- was on the ground, previous horizontal input (for soft dashes)
+      was_on_ground,ph_input=on_ground, h_input
+    end
 
     -- exit level (except summit)
     if (exit_right and left()>=lvl_pw or
-        exit_top and y<-4 or
-        exit_left and right()<0 or
-        exit_bottom and top()>=lvl_ph) and levels[lvl_id+1] then
-        next_level()
-      end
-
-    -- was on the ground, previous horizontal input (for soft dashes)
-    was_on_ground,ph_input=on_ground, h_input
+    exit_top and y<-4 or
+    exit_left and right()<0 or
+    exit_bottom and top()>=lvl_ph) and levels[lvl_id+1] then
+      next_level()
     end
+
   end,
 
   draw=function(_ENV)
@@ -426,8 +426,8 @@ end
 -- [other entities]
 
 player_spawn={
-  layer=2,
   init=function(_ENV)
+    layer=2
     sfx(15)
     sprite=3
     target=y
@@ -615,8 +615,8 @@ fall_floor={
 }
 
 smoke={
-  layer=3,
   init=function(_ENV)
+    layer=3
     spd,flip=vector(0.3+rnd(0.2),-0.1),vector(maybe(),maybe())
     x+=-1+rnd(2)
     y+=-1+rnd(2)
@@ -1119,10 +1119,10 @@ function kill_player(obj)
     del(fruitrain,f)
   end
   --- </fruitrain> ---
-  delay_restart=15
-  -- <transition>
-  tstate=0
-  -- </transition>
+  --delay_restart=15
+  -- <transition> --
+  co_trans=cocreate(transition)
+  -- </transition> --
 end
 
 -- [room functions]
@@ -1312,10 +1312,10 @@ function _draw()
   --3: foreground layer
   local layers={{},{},{}}
   foreach(objects,function(_ENV)
-    if type.layer==0 then
+    if layer==0 then
       draw_object(_ENV) --draw below terrain
     else
-      add(layers[type.layer or 1],_ENV) --add object to layer, default draw below player
+      add(layers[layer or 1],_ENV) --add object to layer, default draw below player
     end
   end)
   -- draw terrain
@@ -1360,29 +1360,9 @@ function _draw()
     ui_timer-=1
   end
 
-  -- <transition>
-  camera()
-  color(0)
-  if tstate>=0 then
-    local t20=tpos+20
-    if tstate==0 then
-      po1tri(tpos,0,t20,0,tpos,127)
-      if(tpos>0) rectfill(0,0,tpos,127)
-      if(tpos>148) then
-        tstate=1
-        tpos=-20
-      end
-    else
-      po1tri(t20,0,t20,127,tpos,127)
-      if(tpos<108) rectfill(t20,0,127,127)
-      if(tpos>148) then
-        tstate=-1
-        tpos=-20
-      end
-    end
-    tpos+=14
-  end
-  -- </transition>
+  -- <transition> --
+  if (co_trans and costatus(co_trans) != "dead") coresume(co_trans)
+  -- </transition> --
 end
 
 function draw_object(_ENV)
@@ -1427,10 +1407,31 @@ function tile_at(x,y)
 end
 
 --<transition>--
+function transition()
+  for y=-64,128,14 do
+    camera()
+    color(0)
+    po1tri(0,y,128,y,64,y+64)
+    rectfill(0,-1,127,y)
+    yield()
+  end
 
--- transition globals
-tstate=-1
-tpos=-20
+  delay_restart=1
+  for t=1,5 do
+    cls(0)
+    yield()
+  end
+
+  for y=-64,128,14 do
+    camera()
+    color(0)
+    local y64=y+64
+    po1tri(0,y,0,y64,64,y64)
+    po1tri(128,y,128,y64,64,y64)
+    rectfill(0,y64,127,128)
+    yield()
+  end
+end
 
 -- triangle functions
 function po1tri(x0,y0,x1,y1,x2,y2)
