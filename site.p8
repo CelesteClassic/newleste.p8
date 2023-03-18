@@ -82,7 +82,7 @@ for i=0,10 do
     x=rnd128(),
     y=rnd128(),
     off=rnd(1),
-    spdy=rnd(0.5)+0.5
+    spdy=rnd(0.75)+0.5
   })
 end
 stars_active=true
@@ -1675,7 +1675,7 @@ function _draw()
         if c.y>128 then
           c.y=-8
           c.x=rnd(120)
-          c.spdy=rnd(0.5)+0.5
+          c.spdy=rnd(0.75)+0.5
         end
         pal()
       end
