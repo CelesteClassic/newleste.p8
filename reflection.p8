@@ -127,10 +127,19 @@ player={
         -- calculate direction and velocity
         movedir=appr_circ(movedir,atan2(h_input,v_input),0.04)
 
+<<<<<<< reflection.p8
         -- speed up if holding button
         k=1.5
       end
       spd = vector(k*cos(movedir), k*sin(movedir))
+=======
+        -- <fruitrain> --
+    if is_solid(0,1,true) then
+      berry_timer+=1
+    else
+      berry_timer, berry_count=0, 0
+    end
+>>>>>>> site.p8
 
       -- update tail
       local last=vector(x+4.5,y+4.5)
@@ -580,7 +589,7 @@ refill={
 
 fall_floor={
   init=function(_ENV)
-    solid_obj,state=true,0
+    solid_obj,state,unsafe_ground=true,0,true
   end,
   update=function(_ENV)
     -- idling
@@ -980,9 +989,9 @@ function init_object(_type,sx,sy,tile)
   function top() return y+hitbox.y end
   function bottom() return top()+hitbox.h-1 end
 
-  function is_solid(ox,oy)
+  function is_solid(ox,oy,require_safe_ground)
     for o in all(objects) do
-      if o!=_ENV and (o.solid_obj or o.semisolid_obj and not objcollide(o,ox,0) and oy>0) and objcollide(o,ox,oy)  then
+      if o!=_ENV and (o.solid_obj or o.semisolid_obj and not objcollide(o,ox,0) and oy>0) and objcollide(o,ox,oy) and not (require_safe_ground and o.unsafe_ground) then
         return true
       end
     end
