@@ -91,7 +91,7 @@ player={
                          spr_off,berry_timer,berry_count") do
       _ENV[var]=0
     end
-    create_hair(_ENV)
+    -- create_hair(_ENV)
   end,
   update=function(_ENV)
     if pause_player then
@@ -335,11 +335,18 @@ player_spawn={
     sfx(15)
     sprite=3
     target=y
-    y=min(y+48,lvl_ph)
     _g.cam_x,_g.cam_y=mid(x,64,lvl_pw-64),mid(y,64,lvl_ph-64)
-    spd.y=-4
-    state=0
-    delay=0
+    state,delay,flip.x=0,0,entrance_dir%2==1
+    --top entrance
+    if entrance_dir<=1 then
+      y,spd.y=lvl_ph,-4
+    elseif entrance_dir<=3 then
+      y,spd.y,state=-8,1,1
+    else
+      local dir = entrance_dir==4 and 1 or -1
+      spd,x=vector(1.7*dir,-2), x-24*dir
+    end
+
     create_hair(_ENV)
     djump=max_djump
     --- <fruitrain> ---
@@ -378,6 +385,7 @@ player_spawn={
       if delay<0 then
         destroy_object(_ENV)
         local p=init_object(player,x,y)
+        p.flip,p.hair=flip,hair
         --- <fruitrain> ---
         if (fruitrain[1]) fruitrain[1].target=p
         --- </fruitrain> ---
@@ -1018,7 +1026,7 @@ rubble={
     if timer==0 then
       destroy_object(_ENV)
     end
-    -- if timer==10 then 
+    -- if timer==10 then
     --   x=tx
     --   y=ty
     -- end
@@ -1304,7 +1312,7 @@ function load_level(id)
     _ENV[split"lvl_x,lvl_y,lvl_w,lvl_h"[i]]=tbl[i]*16
   end
 
-  lvl_pw,lvl_ph,wind_spd=lvl_w*8,lvl_h*8,tbl[6] or 0
+  lvl_pw,lvl_ph,wind_spd=lvl_w*8,lvl_h*8,tbl[7] or 0
 
   local exits=tonum(tbl[5]) or 0b0001
 
@@ -1313,6 +1321,7 @@ function load_level(id)
     _ENV[v]=exits&(0.5<<i)~=0
   end
 
+  entrance_dir=tonum(tbl[6]) or 0
 
   --reload map
   if diff_level then
@@ -1613,8 +1622,9 @@ end
 
 --@begin
 --level table
---"x,y,w,h,exit_dirs,wind_speed"
+--"x,y,w,h,exit_dirs,entrance_dir,wind_speed"
 --exit directions "0b"+"exit_left"+"exit_bottom"+"exit_right"+"exit_top" (default top- 0b0001)
+--entrace direction 012345->bfr (bottom facing right) bfl tfr tfl left right
 levels={
 	"0,0,1,1,?,0",
   "1,0,3,1,?,-0.6"
