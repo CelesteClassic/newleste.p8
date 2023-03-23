@@ -127,19 +127,10 @@ player={
         -- calculate direction and velocity
         movedir=appr_circ(movedir,atan2(h_input,v_input),0.04)
 
-<<<<<<< reflection.p8
         -- speed up if holding button
         k=1.5
       end
       spd = vector(k*cos(movedir), k*sin(movedir))
-=======
-        -- <fruitrain> --
-    if is_solid(0,1,true) then
-      berry_timer+=1
-    else
-      berry_timer, berry_count=0, 0
-    end
->>>>>>> site.p8
 
       -- update tail
       local last=vector(x+4.5,y+4.5)
@@ -212,7 +203,7 @@ player={
       local on_ground=is_solid(0,1)
 
       -- <fruitrain> --
-      if on_ground then
+      if is_solid(0,1,true) then
         berry_timer+=1
       else
         berry_timer, berry_count=0, 0
