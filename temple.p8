@@ -26,12 +26,14 @@ end
 objects,got_fruit, --tables
 freeze,delay_restart,sfx_timer,music_timer,ui_timer, --timers
 cam_x,cam_y,cam_spdx,cam_spdy,cam_gain,cam_offx,cam_offy, --camera values <camtrigger>
-_pal --for outlining
+_pal, --for outlining
+shake,screenshake
 =
 {},{},
 0,0,0,0,-99,
 0,0,0,0,0.1,0,0,
-pal
+pal,
+0,false
 
 
 local _g=_ENV --for writing to global vars
@@ -255,7 +257,7 @@ player={
         ,v_input~=0 and v_input*(h_input~=0 and d_half or d_full) or 0)
         -- effects
         psfx(20)
-        _g.freeze=2
+        _g.freeze,_g.shake=2,5
         -- dash target speeds and accels
         dash_target_x,dash_target_y,dash_accel_x,dash_accel_y=
         2*sign(spd.x), (spd.y>=0 and 2 or 1.5)*sign(spd.y),
@@ -378,7 +380,7 @@ player_spawn={
           delay-=1
         elseif y>target then
           -- clamp at target y
-          y,spd,state,delay=target,vector(0,0),2,5
+          y,spd,state,delay,_g.shake=target,vector(0,0),2,5,4
           init_smoke(0,4)
           sfx(16)
         end
@@ -1442,6 +1444,7 @@ function kill_player(obj)
   sfx_timer=12
   sfx(17)
   deaths+=1
+  shake=9
   destroy_object(obj)
   --dead_particles={}
   for dir=0,0.875,0.125 do
@@ -1576,6 +1579,11 @@ function _update()
     return
   end
 
+  -- screenshake toggle
+  if btnp(⬆️,1) then
+    screenshake=not screenshake
+  end
+
   -- restart (soon)
   if delay_restart>0 then
     cam_spdx,cam_spdy=0,0
@@ -1621,6 +1629,14 @@ function _draw()
 
   --set cam draw position
   draw_x,draw_y=round(cam_x)-64,round(cam_y)-64
+
+  if shake>0 then
+    shake-=1
+    if screenshake then
+      draw_x+=-2+rnd(5)
+      draw_y+=-2+rnd(5)
+    end
+  end
   camera(draw_x,draw_y)
 
   -- draw bg color
