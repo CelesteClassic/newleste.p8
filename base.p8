@@ -314,7 +314,13 @@ player_spawn={
     sfx(15)
     sprite=3
     target=y
-    _g.cam_x,_g.cam_y=mid(x,64,lvl_pw-64),mid(y,64,lvl_ph-64)
+
+    local offx,offy,c=0,0,check(camera_trigger,0,0)
+    if c then
+      offx,offy=c.offx,c.offy
+      _g.cam_offx,_g.cam_offy=offx,offy
+    end
+    _g.cam_x,_g.cam_y=mid(x+offx+4,64,lvl_pw-64),mid(y+offy+4,64,lvl_ph-64)
     state,delay,flip.x=0,0,entrance_dir%2==1
     --top entrance
     if entrance_dir<=1 then
@@ -853,6 +859,16 @@ function load_level(id)
     end
   end
 
+  --<camtrigger>--
+  --generate camera triggers
+  cam_offx,cam_offy=0,0
+  for s in all(camera_offsets[lvl_id]) do
+    local tx,ty,tw,th,offx_,offy_=unpack(split(s))
+    local _ENV=init_object(camera_trigger,tx*8,ty*8)
+    hitbox.w,hitbox.h,offx,offy=tw*8,th*8,offx_,offy_
+  end
+  --</camtrigger>--
+
   -- entities
   for tx=0,lvl_w-1 do
     for ty=0,lvl_h-1 do
@@ -863,19 +879,11 @@ function load_level(id)
     end
   end
 
+
   foreach(objects,function(_ENV)
     (type.end_init or time)(_ENV)
   end)
 
-  --<camtrigger>--
-  --generate camera triggers
-  cam_offx,cam_offy=0,0
-  for s in all(camera_offsets[lvl_id]) do
-    local tx,ty,tw,th,offx_,offy_=unpack(split(s))
-    local _ENV=init_object(camera_trigger,tx*8,ty*8)
-    hitbox.w,hitbox.h,offx,offy=tw*8,th*8,offx_,offy_
-  end
-  --</camtrigger>--
 end
 
 -- [main update loop]
