@@ -101,9 +101,6 @@ player={
     create_hair(_ENV)
     dream_particles={}
 
-    --<dream_block>--
-    _init_smoke=init_smoke
-    --</dream_block>--
   end,
   update=function(_ENV)
     if pause_player then
@@ -111,14 +108,14 @@ player={
     end
 
     -- <dream_block> --
-    for p in all(dream_particles) do
+    foreach(dream_particles,function(p)
       p.x+=p.dx
       p.y+=p.dy
       p.t-=1
       if p.t <= 0 then
         del(dream_particles, p)
       end
-    end
+    end)
     if dreaming then
       dream_time+=1
       if dream_time%5==0 then
@@ -139,16 +136,12 @@ player={
         t=7,
         type=1
       })
-    end
-    if dreaming and not check(dream_block,0,0) then
-      dreaming=false
-      layer=2 -- back to drawing behing dream block
-      init_smoke=_init_smoke
-      spd=vector(mid(dash_target_x,-2,2),
-                      mid(dash_target_y,-2,2))
-      dash_time,dash_effect_time=0,0
-      if spd.x~=0 then
-        grace=4
+      if not check(dream_block,0,0) then
+        -- back to drawing behing dream block
+        layer,init_smoke,spd,dash_time,dash_effect_time,dreaming=2,_init_smoke,vector(mid(dash_target_x,-2,2),mid(dash_target_y,-2,2)),0,0--,false
+        if spd.x~=0 then
+          grace=4
+        end
       end
     end
     -- </dream_block> --
@@ -346,36 +339,39 @@ player={
 }
 
 function draw_dreams(_ENV,cdark,clight)
-  for t=1,2 do
-    for p in all(dream_particles) do
-      if p.type==t and t==2 then
-        local c = p.t < 4 and 1 or p.t < 7 and 13 or clight
-        local s = (10-p.t)/4
-        for i=0,15 do
-          pal(i,c)
-        end
-        sspr(8, 0, 8, 8, p.x-s/2, p.y-s/2, 8+s, 8+s) -- draw player afterimage
-      elseif p.type==t and t==1 then
-        local c = p.t < 2 and 1 or p.t < 3 and 13 or clight
-        circfill(p.x, p.y, p.t/2, c) --draw trails
-      end
-      pal()
+  foreach(dream_particles,function(_ENV)
+    if type==1 then
+      _g.circfill(x, y, t/2, _g.split"1,13"[t] or clight) --draw trails
     end
-  end
+  end)
+
+  foreach(dream_particles,function(p)
+    if p.type==2 then
+      local s = 2.5-p.t/4
+      for i=0,15 do
+        pal(i,split"1,1,1,13,13,13"[p.t] or clight)
+      end
+      sspr(8, 0, 8, 8, p.x-s/2, p.y-s/2, 8+s, 8+s) -- draw player afterimage
+    end
+  end)
+  pal()
+
   if dreaming then
-    local gfx = {76,76,76, 77,77,77, 78, 79,79,79}
-    local cs = {7,clight,clight,cdark,cdark,clight,cdark}
-    local sprite = gfx[(flr(dream_time)%#gfx)+1]
-    if dream_time < 3 then sprite=75 end
-    local sx, sy = (sprite % 16) * 8, flr(sprite \ 16) * 8
-    local size =rnd()<0.4 and 4 or 0
+    --TODO: optimize more
     for i=0,15 do
       pal(i,clight)
     end
     draw_obj_sprite(_ENV)
-    local c = cs[(flr(dream_time-1)%#cs)+1]
-    local size = dream_time==1 and 0 or dream_time==2 and 5 or size
-    local w = dream_time<3 and 4 or 2
+    local gfx = split"76,76,76, 77,77,77, 78, 79,79,79"
+    local sprite = gfx[dream_time%#gfx+1]
+    local sx, sy = sprite % 16 * 8,sprite \ 16 * 8
+    local cs = {clight,clight,cdark,cdark,clight,cdark}--[0]=7
+    local c = cs[dream_time%#cs] or 7
+    local size = split"0,5"[dream_time] or rnd()<0.4 and 4 or 0
+    local w = 2
+    if dream_time<3 then
+      w,sprite=4,75
+    end
     pal(7,c)
     sspr(sx, sy, 8, 8, x-w, y-size/2, 8+w*2, 8+size) -- draw flickering sprite
     pal()
@@ -720,45 +716,41 @@ badeline={
         break
       end
     end
-    states={}
-    timer=0
-
+    states,timer={},0
+    --TODO: rn hitbox is 8x8, need to test if a hitbox matching the player obj is more fitting
   end,
   update=function(_ENV)
-    local tr,states=tracking,states
-    if tr.type==player_spawn and tr.state==2 and tr.delay<0 then
-      for o in all(objects) do
+    if tracking.type==player_spawn then
+      --search for player to replace player spawn
+      foreach(objects, function(o)
         if o.type==player then
           bade_track(_ENV,o)
-          tr=o
-          break
         end
-      end
-    elseif tr.type==badeline and tr.timer<30 then
+      end)
+    elseif tracking.type==badeline and tracking.timer<30 then
       return
     end
     if timer<70 then
       timer+=1
     end
-    local sm={}
-    for s in all(smokes) do
-      add(sm,s)
-    end
+
+    local curr_smokes,dream_particles_copy,states=smokes,{},states
     smokes={}
 
-    local dream_particles_copy={}
-    foreach(tr.dream_particles, function(p)
-      local q={}
-      for k,v in pairs(p) do
-        q[k]=v
-      end
-      add(dream_particles_copy,q)
-    end)
-    add(states,{tr.x,tr.y,tr.flip.x,tr.sprite or 1,sm,tr.dreaming,tr.dream_time,dream_particles_copy,tr.layer})
+    do
+      local _ENV=tracking
+      foreach(dream_particles, function(p)
+        local q=add(dream_particles_copy,{})
+        for k,v in pairs(p) do
+          q[k]=v
+        end
+      end)
+      add(states,{x,y,flip.x,sprite or 1,curr_smokes,dreaming,dream_time,dream_particles_copy,layer})
+    end
+
     if #states>=30 then
-      x,y,flip.x,sprite,sm,dreaming,dream_time,dream_particles,layer=unpack(states[1])
-      del(states,states[1])
-      for s in all(sm) do
+      x,y,flip.x,sprite,curr_smokes,dreaming,dream_time,dream_particles,layer=unpack(deli(states,1))
+      for s in all(curr_smokes) do
         init_smoke(unpack(s))
       end
     end
@@ -768,7 +760,7 @@ badeline={
     if timer>=30 then
       update_hair(_ENV)
     end
-    local hit=check(player,0,0)
+    local hit=player_here()
     if hit and timer>=70 then
       kill_player(hit)
     end
@@ -777,12 +769,7 @@ badeline={
     if timer>=30 then
       draw_dreams(_ENV,2,8)
       if not dreaming then
-        pal(8,2)
-        pal(15,6)
-        pal(3,1)
-        pal(1,8)
-        pal(7,5)
-        pal(12,8)
+        pal(split"8,2,1,4,5,6,5,2,9,10,11,8,13,14,6")
         draw_hair(_ENV)
         draw_obj_sprite(_ENV)
         pal()
@@ -791,9 +778,7 @@ badeline={
   end
 }
 function bade_track(_ENV,o)
-  o.tracked=true
-  tracking=o
-  hitbox=o.hitbox
+  o.tracked,tracking=true,o
   local f=o.init_smoke
   o.init_smoke=function(...)
     add(smokes,{...})
@@ -803,48 +788,49 @@ end
 
 fall_plat={
   init=function(_ENV)
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==67 do
+    while right()<lvl_pw-1 and tile_at(right()\8+1,y/8)==67 do
       hitbox.w+=8
     end
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==67 do
+    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()\8+1)==67 do
       hitbox.h+=8
     end
-    collides=true
-    solid_obj=true
-    timer=0
+    collides,solid_obj,timer=true,true,0
   end,
   update=function(_ENV)
+    --states:
+    -- nil - before activation
+    -- 0 - shaking
+    -- 1 - falling
+    -- 2 - done
     if not state and check(player,0,-1) then
-      state = 0  -- shake
-      timer = 10
+      -- shake
+      state,timer = 0,10
     elseif timer>0 then
       timer-=1
       if timer==0 then
-        state=finished and 2 or 1
+        state+=1
         spd.y=0.4
       end
     elseif state==1 then
       if spd.y==0 then
-        state=0
         for i=0,hitbox.w-1,8 do
           init_smoke(i,hitbox.h-2)
         end
         timer=6
-        finished=true
       end
       spd.y=appr(spd.y,4,0.4)
     end
   end,
   draw=function(_ENV)
     local x,y=x,y
-    if state==0 then
+    if timer>0 then
       x+=rnd(2)-1
       y+=rnd(2)-1
     end
     local r,d=x+hitbox.w-8,y+hitbox.h-8
-    for i=x,r,r-x do
-      for j=y,d,d-y do
-        spr(41+(i==x and 0 or 2) + (j==y and 0 or 16),i,j,1.0,1.0)
+    for i in all{x,r} do
+      for j in all{y,d} do
+        spr(41+(i==x and 0 or 2) + (j==y and 0 or 16),i,j)
       end
     end
     for i=x+8,r-8,8 do
@@ -884,8 +870,8 @@ touch_switch={
     off%=4
   end,
   draw=function(_ENV)
-    palt(0,false)
-    palt(8,true)
+    --set color 8 as transparent
+    palt(0x0a0)
     if controller.active then
       sprite=68
       pal(12,2)
@@ -897,6 +883,7 @@ touch_switch={
       end
     end
     draw_obj_sprite(_ENV)
+    --pal() resets transparancy, but when outlining it won't so need to explicitly call palt()
     palt()
     pal()
   end
@@ -904,10 +891,10 @@ touch_switch={
 switch_block={
   init=function(_ENV)
     solid_obj=true
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==72 do
+    while right()<lvl_pw-1 and tile_at(right()\8+1,y/8)==72 do
       hitbox.w+=8
     end
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==87 do
+    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()\8+1)==87 do
       hitbox.h+=8
     end
     delay,end_delay=0,0
@@ -931,9 +918,8 @@ switch_block={
     if missing==0 and not active then
       active=true
       for s in all(switches) do
-        for i=1,2 do
-          s.init_smoke()
-        end
+        s.init_smoke()
+        s.init_smoke()
       end
       delay=20
     end
@@ -980,8 +966,8 @@ switch_block={
     end
 
     local r,d=x+hitbox.w-8,y+hitbox.h-8
-    for i=x,r,r-x do
-      for j=y,d,d-y do
+    for i in all{x,r} do
+      for j in all{y,d} do
         spr(71,i,j,1.0,1.0,i~=x,j~=y)
       end
     end
@@ -1007,21 +993,21 @@ switch_target={}
 -- <touch_switch> --
 
 
+--<dream_block>--
 function calc_seg(seg)
   local t=dream_blocks_active and time() or 0
   if (seg[2]) return (sin(t/seg[2]+seg[2])+sin(t/seg[3]+seg[3])+2)/2
   return 0
 end
 
---<dream_block>--
 dream_blocks_active=true
 dream_block={
   init=function(_ENV)
     layer=3
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==65 do
+    while right()<lvl_pw-1 and tile_at(right()\8+1,y/8)==65 do
       hitbox.w+=8
     end
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==65 do
+    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()\8+1)==65 do
       hitbox.h+=8
     end
     kill_timer=0
@@ -1030,7 +1016,7 @@ dream_block={
       add(particles,
       {x=rnd(hitbox.w-1)+x,
       y=rnd(hitbox.h-1)+y,
-      z=rnd(1),
+      z=rnd(),
       c=split"3, 8, 9, 10, 12, 14"[flr(rnd(6))+1],
       s=rnd(),
       t=flr(rnd(10))})
@@ -1077,37 +1063,42 @@ dream_block={
     --[[hitbox.w+=2
     hitbox.h+=2]]
     local hit=player_here()
-    if hit then --could save a bunch of tokens by doing local this,_ENV=_ENV,hit, not gonna do it for now cause it's more confusing
-      hit.dash_effect_time=10
-      hit.dash_time=2
-      if hit.dash_target_y==-1.5 then
-        hit.dash_target_y=-2
+    if hit then
+      -- set the player as _ENV temporarily, to save a lot of tokens
+      local _ENV,this=hit,_ENV
+      dash_effect_time=10
+      dash_time=2
+      if dash_target_y==-1.5 then
+        dash_target_y=-2
       end
-      if hit.dash_target_x==0 then
-        hit.dash_target_y=sign(hit.dash_target_y)*2.5
+      if dash_target_x==0 then
+        dash_target_y=sign(dash_target_y)*2.5
       end
-      if hit.dash_target_y==0 then
-        hit.dash_target_x=sign(hit.dash_target_x)*2.5
+      if dash_target_y==0 then
+        dash_target_x=sign(dash_target_x)*2.5
       end
-      if not hit.dreaming then
-        hit.spd=vector(hit.dash_target_x*(hit.dash_target_y==0 and 2.5  or 1.7678),hit.dash_target_y*(hit.dash_target_x==0 and 2.5 or 1.7678))
-        hit.dream_time=0
+      if not dreaming then
+        spd=vector(dash_target_x*(dash_target_y==0 and 2.5  or 1.7678),dash_target_y*(dash_target_x==0 and 2.5 or 1.7678))
+        dream_time=0
+        dreaming=true
+        _init_smoke, init_smoke=init_smoke, function() end
       end
-      if abs(hit.spd.x)<abs(hit.dash_target_x) or abs(hit.spd.y)<abs(hit.dash_target_y) then
-        hit.move(hit.dash_target_x,hit.dash_target_y,0)
-        if hit.is_solid(hit.dash_target_x,hit.dash_target_y) then
+
+      --corner correction
+      if abs(spd.x)<abs(dash_target_x) or abs(spd.y)<abs(dash_target_y) then
+        move(dash_target_x,dash_target_y,0)
+        if is_solid(dash_target_x,dash_target_y) then
           kill_player(hit)
         end
       end
-      hit.dreaming=true
-      hit.init_smoke=function() end
-      hit.djump=max_djump
-      hit.layer=3 -- draw player in front of dream blocks while inside
-      if dtimer>0 then
-        dtimer-=1
-        if dtimer==0 then
-          dtimer=4
-          create_disp_shape(disp_shapes, hit.x+4, hit.y+4)
+
+      djump=max_djump
+      layer=3 -- draw player in front of dream blocks while inside
+      if this.dtimer>0 then
+        this.dtimer-=1
+        if this.dtimer==0 then
+          this.dtimer=4
+          create_disp_shape(this.disp_shapes, x+4, y+4)
         end
       end
     else
@@ -1126,7 +1117,9 @@ dream_block={
   draw=function(_ENV)
     rectfill(x+1,y+1,right()-1,bottom()-1,0)
 
-    local color_mapping={[3]=5,[8]=5,[9]=6,[10]=6,[12]=13,[14]=13}
+    if not dream_blocks_active then
+      pal(split"1,2,5,4,5,6,7,5,6,6,11,13,13,13,15")
+    end
     local big_particles={}
     foreach(particles, function(p)
       local px,py = (p.x+cam_x*p.z-65)%(hitbox.w-2)+1+x, (p.y+cam_y*p.z-65)%(hitbox.h-2)+1+y
@@ -1138,9 +1131,9 @@ dream_block={
       end
 
       if p.s<0.2 and p.t<=8 then
-        add(big_particles,{px,py,dream_blocks_active and p.c or color_mapping[p.c]})
+        add(big_particles,{px,py,p.c})
       else
-        pset(px,py,dream_blocks_active and p.c or color_mapping[p.c])
+        pset(px,py,p.c)
       end
     end)
     foreach(big_particles,function(p)
@@ -1148,6 +1141,7 @@ dream_block={
       line(px-1,py,px+1,py,pc)
       line(px,py-1,px,py+1,pc)
     end)
+    pal()
 
     color(7)
     -- draw outline pixel by pixel
@@ -1167,6 +1161,8 @@ dream_block={
     --   maxy=max(first.pos.y+first.r+4,last.pos.y+last.r+4)
     -- end
 
+    local outline_color = dream_blocks_active and 7 or 5
+
     for i=y,bottom(),hitbox.h-1 do
       -- line(x+1, i, right()-1,i)
 
@@ -1181,11 +1177,11 @@ dream_block={
         for j=lx,rx do
           local py=round(m*(j-lx)+ly)
           if #disp_shapes==0 then
-            pset(j,py,dream_blocks_active and 7 or 5)
+            pset(j,py,outline_color)
           else
             local d,dx,dy,ds=displace(disp_shapes,j,py)
             d=max((4-d), 0)
-            pset(j+dx*d*ds,py+dy*d*ds,dream_blocks_active and 7 or 5)
+            pset(j+dx*d*ds,py+dy*d*ds,outline_color)
           end
           if py!=i then
             line(j,py+sign(i-py),j,i,0)
@@ -1208,11 +1204,11 @@ dream_block={
         for j=ly,ry do
           local px=round(m*(j-ly)+lx)
           if #disp_shapes==0 then
-            pset(px,j,dream_blocks_active and 7 or 5)
+            pset(px,j,outline_color)
           else
             local d,dx,dy,ds=displace(disp_shapes,px,j)
             d=max((4-d), 0)
-            pset(px+dx*d*ds,j+dy*d*ds,dream_blocks_active and 7 or 5)
+            pset(px+dx*d*ds,j+dy*d*ds,outline_color)
           end
           if px!=i then
             line(px+sign(i-px),j,i,j,0)
@@ -1221,9 +1217,9 @@ dream_block={
       end
     end
 
-      for i=x+1,right()-1,hitbox.w-3 do
-        for j=y+1,bottom()-1,hitbox.h-3 do
-          pset(i,j,dream_blocks_active and 7 or 5)
+      for i in all{x+1,right()-1} do
+        for j in all{y+1,bottom()-1} do
+          pset(i,j,outline_color)
         end
       end
   end
@@ -1246,7 +1242,7 @@ end
 function displace(tbl, px,py)
   local d,ds,pox,poy,s = 10000,0,0,0,0
   for i in all(tbl) do
-    local ox,oy,r=i[1],i[2],i[3]
+    local ox,oy,r=unpack(i)
     if abs(px-ox)+abs(py-oy)<=20 then
       --cpu optimization - if the manhatten distance is far enough, we don't care anyway
       local td,ts,tpox,tpoy = sdf_circ(px,py, ox,oy,r)
@@ -1809,26 +1805,11 @@ end
 
 --<dream_block>
 
-function vec_len_sqr(a)
-  return a.x^2 + a.y^2
-end
-
--- function vec_len(a)
---   return sqrt(vec_len_sqr(a))
--- end
-
 function vec_len(x,y)
- local maskx,masky=x>>31,y>>31
- local a0,b0=(x+maskx)^^maskx,(y+masky)^^masky
- if a0>b0 then
-  return a0*0.9609+b0*0.3984
- end
- return b0*0.9609+a0*0.3984
+  local ang=atan2(x,y)
+  return x*cos(ang)+y*sin(ang)
 end
 
-function vec_sub(a,b)
-  return {a[1]-b[1],a[2]-b[2]}
-end
 --</dream_block>
 
 function tile_at(x,y)
