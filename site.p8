@@ -110,10 +110,6 @@ player={
     --</dream_block>--
   end,
   update=function(_ENV)
-    if pause_player then
-      return
-    end
-
     -- <dream_block> --
     for p in all(dream_particles) do
       p.x+=p.dx
@@ -158,7 +154,7 @@ player={
     -- </dream_block> --
 
     -- horizontal input
-    local h_input=btn(➡️) and 1 or btn(⬅️) and -1 or 0
+    local h_input=_g.pause_player and (h_input or 0) or btn(➡️) and 1 or btn(⬅️) and -1 or 0
 
     -- spike collision / bottom death
     if is_flag(0,0,-1) or
@@ -199,8 +195,12 @@ player={
     end
 
     -- jump and dash input
-    local jump,dash=btn(🅾️) and not p_jump,btn(❎) and not p_dash
-    p_jump,p_dash=btn(🅾️),btn(❎)
+    local j_input,d_input = j_input or false,d_input or false
+    if not _g.pause_player then
+    	j_input,d_input = btn(🅾️),btn(❎)
+    end
+    local jump,dash=j_input and not p_jump,d_input and not p_dash
+    p_jump,p_dash=j_input,d_input
 
     -- jump buffer
     if jump then
@@ -289,7 +289,7 @@ player={
         djump-=1
         dash_time,_g.has_dashed,dash_effect_time=4, true, 10
         -- vertical input
-        local v_input=btn(⬆️) and -1 or btn(⬇️) and 1 or 0
+        local v_input=_g.pause_player and 0 or btn(⬆️) and -1 or btn(⬇️) and 1 or 0
         -- calculate dash speeds
         spd=vector(h_input~=0 and
         h_input*(v_input~=0 and d_half or d_full) or
@@ -318,8 +318,8 @@ player={
     -- animation
     spr_off+=0.25
     sprite = on_ground and (
-      btn(⬇️) and 6 or -- crouch
-      btn(⬆️) and 7 or -- look up
+      not _g.pause_player and btn(⬇️) and 6 or -- crouch
+      not _g.pause_player and btn(⬆️) and 7 or -- look up
       spd.x*h_input~=0 and 1+spr_off%4 or 1) -- walk or stand
       or is_solid(h_input,0) and 5 or 3 -- wall slide or mid air
 
@@ -397,7 +397,7 @@ end
 
 
 function update_hair(_ENV)
-  local last=vector(x+(flip.x and 6 or 1),y+(btn(⬇️) and 4 or 2.9))
+  local last=vector(x+(flip.x and 6 or 1),y+(not _g.pause_player and btn(⬇️) and 4 or 2.9))
   for h in all(hair) do
     h.x+=(last.x-h.x)/1.5
     h.y+=(last.y+0.5-h.y)/1.5
@@ -405,9 +405,9 @@ function update_hair(_ENV)
   end
 end
 
-function draw_hair(_ENV)
+function draw_hair(_ENV,flip)
   for i,h in ipairs(hair) do
-    circfill(round(h.x),round(h.y),mid(4-i,1,2),8)
+    circfill(round(flip and 207-h.x+flip or h.x),round(h.y),mid(4-i,1,2),8)
   end
 end
 
@@ -1015,7 +1015,7 @@ function calc_seg(seg)
 end
 
 --<dream_block>--
-dream_blocks_active=true
+dream_blocks_active=false
 dream_block={
   init=function(_ENV)
     layer=3
@@ -1073,6 +1073,7 @@ dream_block={
       add(seg,{bottom()})
       add(ysegs,seg)
     end
+    outline_size=0
   end,
   update=function(_ENV)
     --[[hitbox.w+=2
@@ -1182,14 +1183,14 @@ dream_block={
         for j=lx,rx do
           local py=round(m*(j-lx)+ly)
           if #disp_shapes==0 then
-            pset(j,py,dream_blocks_active and 7 or 5)
+            	rectfill(j,py-outline_size,j,py+outline_size,dream_blocks_active and 7 or 5)
           else
             local d,dx,dy,ds=displace(disp_shapes,j,py)
             d=max((4-d), 0)
             pset(j+dx*d*ds,py+dy*d*ds,dream_blocks_active and 7 or 5)
           end
-          if py!=i then
-            line(j,py+sign(i-py),j,i,0)
+          if py!=i and outline_size==0 then
+          	line(j,py+sign(i-py),j,i,0)
           end
         end
       end
@@ -1209,13 +1210,13 @@ dream_block={
         for j=ly,ry do
           local px=round(m*(j-ly)+lx)
           if #disp_shapes==0 then
-            pset(px,j,dream_blocks_active and 7 or 5)
+            rectfill(px-outline_size,j,px+outline_size,j,dream_blocks_active and 7 or 5)
           else
             local d,dx,dy,ds=displace(disp_shapes,px,j)
             d=max((4-d), 0)
             pset(px+dx*d*ds,j+dy*d*ds,dream_blocks_active and 7 or 5)
           end
-          if px!=i then
+          if px!=i and outline_size==0 then
             line(px+sign(i-px),j,i,j,0)
           end
         end
@@ -1279,21 +1280,28 @@ end
 mirror={
   init=function(_ENV)
     outline=false
+    hitbox=rectangle(-5, -20, 42, 60)
+    reflect_off=0
+    mirror_col=12
   end,
   update=function(_ENV)
   end,
   draw=function(_ENV)
-    rectfill(x+3,y+7,x+28,y+23,12)
-    local p
-    for o in all(objects) do
-      if o.type==player then
-        p=o
-      end
+    if p and not player_here() and not cutscene and not _g.mirror_broken then
+      _g.pause_player=true
+      p.spd.x=0
+      p.dash_time=0
+      _g.cutscene=cocreate(mirror_cutscene)
+      _g.cutscene_env=_ENV
+    else
+      p=p or player_here()
     end
+    rectfill(x+3,y+7,x+28,y+23,mirror_col)
     if p then
       pal(split"8,2,1,4,5,6,5,2,9,10,11,8,13,14,15")
-      clip(x+3,y+7,26,17)
-      spr(p.sprite,2*x-p.x+24,p.y,1,1,not p.flip.x)
+      clip(x+3-cam_x+64,y+7-cam_y+64,26,17)
+      draw_hair(p,reflect_off)
+      spr(p.sprite,2*x-p.x+24+reflect_off,p.y,1,1,not p.flip.x)
       pal()
       clip()
     end
@@ -1304,6 +1312,106 @@ mirror={
     -- rect(x+3,y+7,x+20,y+15,7)
   end
 }
+
+function mirror_cutscene(_ENV)
+  wait(30)
+  p.flip.x=not p.flip.x
+  wait(20)
+  p.h_input=sgn(x+6-p.x)
+  while abs(p.x-(x+6))>1 do
+    yield()
+  end
+  p.h_input=0
+  p.spd.x=0
+  yield()
+  p.flip.x=false
+  wait(30)
+	_g.co_trans=cocreate(cutscene_transition)
+  wait(50)
+  for i=0,-3,-1 do reflect_off=i yield() end
+  wait(30)
+  mirror_col=7
+  wait(2)
+  mirror_col=12
+  wait(2)
+  mirror_col=7
+  wait(2)
+  mirror_col=12
+  wait(2)
+  mirror_col=7
+  wait(2)
+  mirror_col=12
+  wait(15)
+  reflect_off=-128
+  baddy = init_object(cutscene_badeline, 197-p.x, p.y)
+  baddy.flip.x=true
+  init_smoke(-4,0)
+  init_smoke(28,0)
+  wait(3,rectfill, x, y+5, x+32, y+23, 7)
+  wait(20)
+  baddy.h_input=-1
+  --wait(5)
+  --baddy.d_input=true
+  wait(10)
+  --baddy.d_input=false
+  baddy.j_input=true
+  wait(10)
+  baddy.d_input=true
+  wait(50)
+  destroy_object(baddy)
+  while _g.cam_offy>-60 do _g.cam_offy+=0.2*(-60-_g.cam_offy) yield() end
+  _g.dream_blocks_active=true
+  block = check(dream_block,0,-16)
+  block.outline_size=2
+	for _y=block.bottom()-1,block.top()+8,-0.50 do
+		rectfill(block.left()+1,block.top()+1,block.right()-1,_y,7)
+		if _y%2<1 then
+			for _x=0,block.hitbox.w,8 do block.init_smoke(_x-4,_y-block.top()-8) end
+		end
+		yield()
+	end
+	wait(3)
+	block.outline_size=1
+	wait(3)
+	block.outline_size=0
+	wait(20)
+	while _g.cam_offy<-0.05 do _g.cam_offy+=0.2*(0-_g.cam_offy) yield() end
+	_g.cam_offy=0
+	_g.mirror_broken=true
+end
+function wait(frames,func, ...) for i=1,frames do (func or stat)(...); yield() end end
+cutscene_badeline={
+  init=player.init,
+  update=player.update,
+  draw=function(_ENV)
+    pal(split"8,2,1,4,5,6,5,2,9,10,11,8,13,14,15")
+    draw_hair(_ENV)
+    draw_obj_sprite(_ENV)
+    pal()
+  end
+}
+function cutscene_transition()
+	for t=1,15 do
+    camera()
+    local fac=(1-(1-(t/15))^3)*15
+    rectfill(0, 0, 128, 0+fac, 0)
+    rectfill(0, 128-fac, 128, 128, 0)
+    yield()
+  end
+  for t=1,230 do
+  	camera()
+  	rectfill(0, 0, 128, 15, 0)
+    rectfill(0, 113, 128, 128, 0)
+  	yield()
+  end
+  for t=60,1,-1 do
+    camera()
+    local fac=(1-(1-(t/60))^3)*15
+    rectfill(0, 0, 128, 0+fac, 0)
+    rectfill(0, 128-fac, 128, 128, 0)
+    yield()
+  end
+end
 
 psfx=function(num)
   if sfx_timer<=0 then
@@ -1637,7 +1745,7 @@ function _update()
 
   -- update each object
   foreach(objects,function(_ENV)
-    move(spd.x,spd.y,type==player and 0 or 1);
+    move(spd.x,spd.y,(type==player or type==cutscene_badeline) and 0 or 1);
     (type.update or time)(_ENV)
     draw_seed=rnd()
   end)
@@ -1790,6 +1898,16 @@ function _draw()
     end
     rectfill(x-t,y-t,x+t,y+t,14+5*t%2)
   end)
+
+  if cutscene then
+    local _,e = coresume(cutscene, cutscene_env)
+    assert(not e, e)
+    if costatus(cutscene) == "dead" then
+      pause_player=false
+      cutscene=nil
+      cutscene_env=nil
+    end
+  end
 
   -- draw time
   if ui_timer>=-30 then
