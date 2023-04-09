@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 38
+version 41
 __lua__
 --newleste.p8 base cart
 
@@ -77,15 +77,17 @@ dead_particles={}
 
 --<stars>--
 stars={}
-for i=0,10 do
+for i=0,15 do
   add(stars,{
     x=rnd128(),
     y=rnd128(),
     off=rnd(1),
-    spdy=rnd(0.5)+0.5
+    spdy=rnd(0.5)+0.7,
+    size=rnd{1,2}
   })
 end
 stars_active=true
+stars_falling=true
 --</stars>--
 
 
@@ -1419,46 +1421,73 @@ function _draw()
   --<stars>--
   -- bg stars effect
   if stars_active then --stars_active is star condition, should probably set it somewhere
-    foreach(stars, function(c)
-      if stars_falling then
-        pal(7,6)
-        pal(6,12)
-        pal(13,12)
-      end
-      local x=c.x+draw_x
-      local y=c.y+draw_y
-      local s=flr(sin(c.off)*2)
-      if s==-2 then
-        pset(x,y,stars_falling and 12 or 7)
-      elseif s==-1 then
-        spr(73,x-3,y-3)
-      elseif s==0 then
-        line(x-5,y,x+5,y,13)
-        line(x,y-5,x,y+5,13)
-        spr(74,x-3,y-3)
-      else
-        sspr(72,40,16,16,x-7,y-7)
-      end
-      c.x+=-cam_spdx/4
-      c.y+=-cam_spdy/4
-      c.off+=0.01
-      if c.x>128 then
-        c.x=-8
-        c.y=rnd(120)
-      elseif c.x<-8 then
-        c.x=128
-        c.y=rnd(120)
-      end
-      if stars_falling then
-        c.y+=c.spdy
-        if c.y>128 then
-          c.y=-8
-          c.x=rnd(120)
-          c.spdy=rnd(0.5)+0.5
-        end
-        pal()
-      end
-    end)
+  	for dy=stars_falling and -4 or 0,0 do
+	    foreach(stars, function(c)
+	      if stars_falling then
+	        pal(7,6)
+	        pal(6,12)
+	        pal(13,12)
+	      end
+	      local x=c.x+draw_x
+	      local y=c.y+draw_y
+	      local s=flr(sin(c.off)*2)
+	      local _y = y+dy
+      	local _s = _y<y and s-1 or s
+      	if _y~=y then
+      		pal(7,1)
+       		pal(6,1)
+        	pal(13,1)
+      	else
+      		pal(7,6)
+       		pal(6,12)
+        	pal(13,12)
+      	end
+      	if c.size==2 then
+		      if _s<=-2 then
+		        pset(x,_y,stars_falling and (_y==y and 12 or 1) or 7)
+		      elseif _s==-1 then
+		        spr(73,x-3,_y-3)
+		      elseif _s==0 then
+		        line(x-5,_y,x+5,_y,13)
+		        line(x,_y-5,x,_y+5,13)
+		        spr(74,x-3,_y-3)
+		      else
+		       	sspr(72,40,16,16,x-7,_y-7)
+		      end
+	    	else
+	    		if _s<=-2 then
+		        pset(x,_y,stars_falling and (_y==y and 12 or 1) or 7)
+		      elseif _s==-1 then
+		        line(x-1,_y-1,x+1,_y+1,13)
+		        line(x-1,_y+1,x+1,_y-1,13)
+		      else
+		      	line(x-2,_y-2,x+2,_y+2,13)
+		        line(x-2,_y+2,x+2,_y-2,13)
+		      end
+	    	end
+	      if dy==0 then
+		      c.x+=(-cam_spdx/4)*(2-c.size)
+		      c.y+=(-cam_spdy/4)*(2-c.size)
+		      c.off+=0.01
+		      if c.x>128 then
+		        c.x=-8
+		        c.y=rnd(120)
+		      elseif c.x<-8 then
+		        c.x=128
+		        c.y=rnd(120)
+		      end
+		      if stars_falling then
+		        c.y+=c.spdy
+		        if c.y>128 then
+		          c.y=-8
+		          c.x=rnd(120)
+		          c.spdy=rnd(0.5)+0.5
+		        end
+		        pal()
+		      end
+		    end
+	    end)
+	  end
   end
   --</stars>--
 
@@ -1890,13 +1919,13 @@ dd5111dd55515551dd1155511555555d555551155155555151155555d5515555000000006ccccccc
 55511155d55155511111555111111118555551111155555111155555811155550555550066ccccc6cccccccc6ccccc660111cc106dddd11d666dd11ddd6611dd
 81111118d5515551555155511555155ddd555155515d5551551555ddd55155dd055555006ccc66c6666ccc666c66ccc61c111100ddddd1d666ddd1dddddd11dd
 5555515d8dd8ddd8dd58dd588ddd8dd8dddd585dd8dddd58d585dddd8d585dd800000000066666660666666666666660cc1000000dddd0ddddddd0ddddddd110
-0000000000000000577777777777777788cccc8888cccc8888cccc881dddd15ddddd51dd000d0000d00600d01111011115555555555555551500000055505500
+0000000000000000577777777777777788cccc8888cccc8888cccc881dddd15ddddd51dd000d0000100600101111011115555555555555551500000055505500
 00008000000b000077777777777777778c0000c88c0000c88c0000c8d555515555d551550d0d0d000d060d001111011115111111111111111500000011111000
 00b00000000000007777ccccccccccccc00cc00cc00c100cc00cc00cd55551555555515500d6d000006760001111011115000000000000001500000000000000
 0000000000000000777cc7ccccccccccc0c00c0cc010c10cc00cc00cd555111111111111dd676dd0667776600000011115000000000000001500000000000000
 0000b000080000b077ccc7ccccccccccc0cccc0cc01cc10cc00cc00c555111111111111100d6d000006760001110011115000000000000001500000000000000
 0b0000000000000077c77777ccccccccc00cc00cc00c100cc00cc00c55511111111111110d0d0d000d060d001110000015000000000000001500000000000000
-00000080000b000077cc777ccccccccc8c0000c88c0000c88c0000c81111111111111111000d0000d00600d01110111115000000000000001500000000000000
+00000080000b000077cc777ccccccccc8c0000c88c0000c88c0000c81111111111111111000d0000100600101110111115000000000000001500000000000000
 000000000000000077ccc7cccccccccc88cccc8888cccc8888cccc88d55111111111111100000000000000000000000015000000000000001500000000000000
 7cccccccccccccc71111101100111010111101110000000015555551d5511111111cc11100000001000000001111111100555505111011101110110001101110
 77ccccc0cccccc771111101101111010111101110001111050500505d551111111cccc1100000001000000001111111100001111111011101110110001101111
