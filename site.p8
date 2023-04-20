@@ -24,14 +24,16 @@ end
 
 
 objects,got_fruit, --tables
-freeze,delay_restart,sfx_timer,music_timer,ui_timer, --timers
+freeze,delay_restart,sfx_timer,ui_timer, --timers
 cam_x,cam_y,cam_spdx,cam_spdy,cam_gain,cam_offx,cam_offy, --camera values <camtrigger>
-_pal --for outlining
+_pal, --for outlining
+shake,screenshake
 =
 {},{},
-0,0,0,0,-99,
+0,0,0,-99,
 0,0,0,0,0.1,0,0,
-pal
+pal,
+0,false
 
 
 local _g=_ENV --for writing to global vars
@@ -39,7 +41,7 @@ local _g=_ENV --for writing to global vars
 -- [entry point]
 
 function _init()
-  max_djump,deaths,frames,seconds,minutes,music_timer,time_ticking,berry_count=1,0,0,0,0,0,true,0
+  max_djump,deaths,frames,seconds,minutes,time_ticking,berry_count=1,0,0,0,0,true,0
   music(0,0,7)
   load_level(1)
 end
@@ -47,29 +49,25 @@ end
 
 -- [effects]
 
-function rnd128()
-  return rnd(128)
-end
-
 clouds={}
 for i=0,16 do
   add(clouds,{
-    x=rnd128(),
-    y=rnd128(),
-    spd=1+rnd(4),
-    w=32+rnd(32)
+    x=rnd"128",
+    y=rnd"128",
+    spd=1+rnd"4",
+    w=32+rnd"32"
   })
 end
 
 particles={}
 for i=0,24 do
   add(particles,{
-    x=rnd128(),
-    y=rnd128(),
-    s=flr(rnd(1.25)),
-    spd=0.25+rnd(5),
+    x=rnd"128",
+    y=rnd"128",
+    s=flr(rnd"1.25"),
+    spd=0.25+rnd"5",
     off=rnd(),
-    c=6+rnd(2),
+    c=6+rnd"2",
   })
 end
 
@@ -79,10 +77,10 @@ dead_particles={}
 stars={}
 for i=0,15 do
   add(stars,{
-    x=rnd128(),
-    y=rnd128(),
-    off=rnd(1),
-    spdy=rnd(0.5)+0.7,
+    x=rnd"128",
+    y=rnd"128",
+    off=rnd(),
+    spdy=rnd"0.75"+0.5,
     size=rnd{1,2}
   })
 end
@@ -94,18 +92,17 @@ stars_falling=true
 -- [player entity]
 
 player={
-  layer=2,
   init=function(_ENV)
-    djump, hitbox, collides = max_djump, rectangle(1,3,6,5), true
+    djump, hitbox, collides,layer = max_djump, rectangle(1,3,6,5), true,2
 
     --<fruitrain>--
     -- ^ refers to setting berry_timer and berry_count to 0
-    for var in all(split"grace,jbuffer,dash_time,dash_effect_time,\z
-                         dash_target_x,dash_target_y,dash_accel_x,dash_accel_y,\z
-                         spr_off,berry_timer,berry_count") do
+    foreach(split"grace,jbuffer,dash_time,dash_effect_time,dash_target_x,dash_target_y,dash_accel_x,dash_accel_y,spr_off,berry_timer,berry_count", function(var)
       _ENV[var]=0
-    end
+    end)
     create_hair(_ENV)
+    dream_particles={}
+
   end,
   update=function(_ENV)
     if pause_player then
@@ -113,19 +110,46 @@ player={
     end
 
     -- <dream_block> --
-    if dreaming and not check(dream_block,0,0) then
-      dreaming=false
-      spd=vector(mid(dash_target_x,-2,2),
-                      mid(dash_target_y,-2,2))
-      dash_time,dash_effect_time=0,0
-      if spd.x~=0 then
-        grace=4
+    foreach(dream_particles,function(p)
+      p.x+=p.dx
+      p.y+=p.dy
+      p.t-=1
+      if p.t <= 0 then
+        del(dream_particles, p)
+      end
+    end)
+    if dreaming then
+      dream_time+=1
+      if dream_time%5==0 then
+        add(dream_particles,{ -- afterimage particles
+          x=x,
+          y=y,
+          dx=spd.x/8,
+          dy=spd.y/8,
+          t=10,
+          type=2
+        })
+      end
+      add(dream_particles,{ -- trail particles
+        x=x+4,
+        y=y+4,
+        dx=rnd"0.5"-0.25,
+        dy=rnd"0.5"-0.25,
+        t=7,
+        type=1
+      })
+      if not check(dream_block,0,0) then
+        -- back to drawing behing dream block
+        layer,init_smoke,spd,dash_time,dash_effect_time,dreaming=2,_init_smoke,vector(mid(dash_target_x,-2,2),mid(dash_target_y,-2,2)),0,0--,false
+        if spd.x~=0 then
+          grace=4
+        end
       end
     end
     -- </dream_block> --
 
     -- horizontal input
-    local h_input=btn(➡️) and 1 or btn(⬅️) and -1 or 0
+    local h_input=split"0,-1,1,1"[btn()%4+1]
 
     -- spike collision / bottom death
     if is_flag(0,0,-1) or
@@ -137,14 +161,14 @@ player={
     local on_ground=is_solid(0,1)
 
         -- <fruitrain> --
-    if on_ground then
+    if is_solid(0,1,true) then
       berry_timer+=1
     else
       berry_timer, berry_count=0, 0
     end
 
-    for f in all(fruitrain) do
-      if f.type==fruit and not f.golden and berry_timer>5 and f then
+    for i,f in inext,fruitrain do
+      if f.type==fruit and not f.golden and berry_timer>5 then
         -- to be implemented:
         -- save berry
         -- save golden
@@ -155,7 +179,7 @@ player={
         init_object(lifeup, f.x, f.y,berry_count)
         del(fruitrain, f)
         destroy_object(f);
-        (fruitrain[1] or {}).target=_ENV
+        (fruitrain[i] or {}).target=f.target
       end
     end
     -- </fruitrain> --
@@ -171,21 +195,19 @@ player={
 
     -- jump buffer
     if jump then
-      jbuffer=4
-    elseif jbuffer>0 then
-      jbuffer-=1
+      jbuffer=5
     end
+    jbuffer=max(jbuffer-1)
 
     -- grace frames and dash restoration
     if on_ground then
-      grace=6
+      grace=7
       if djump<max_djump then
-        psfx(22)
+        psfx"22"
         djump=max_djump
       end
-    elseif grace>0 then
-      grace-=1
     end
+    grace=max(grace-1)
 
     -- dash effect timer (for dash-triggered events, e.g., berry blocks)
     dash_effect_time-=1
@@ -233,14 +255,14 @@ player={
       if jbuffer>0 then
         if grace>0 then
           -- normal jump
-          psfx(18)
+          psfx"18"
           jbuffer,grace,spd.y=0,0,-2
           init_smoke(0,4)
         else
           -- wall jump
-          local wall_dir=(is_solid(-3,0) and -1 or is_solid(3,0) and 1 or 0)
-          if wall_dir~=0 then
-            psfx(19)
+          local wall_dir=is_solid(-3,0) and -1 or is_solid(3,0) and 1
+          if wall_dir then
+            psfx"19"
             jbuffer,spd=0,vector(wall_dir*-2,-2)
             -- wall jump smoke
             init_smoke(wall_dir*6)
@@ -249,36 +271,37 @@ player={
       end
 
       -- dash
-      local d_full, d_half = 5, 3.5355339059 -- 5 * sqrt(2)
+      if dash then
+        if djump>0 then
+          init_smoke()
+          djump-=1
+          dash_time,_g.has_dashed,dash_effect_time=4, true, 10
+          -- vertical input
+          local v_input=btn(⬆️) and -1 or btn(⬇️) and 1 or 0
+          -- calculate dash speeds
+          local dspd=h_input&v_input==0 and 5 or 3.5355339059
+          spd=vector(h_input~=0 and h_input*dspd or
+          v_input~=0 and 0 or flip.x and -1 or 1,
+          v_input*dspd)
+          -- effects
+          psfx"20"
+          _g.freeze,_g.shake=2,5
+          -- dash target speeds and accels
+          dash_target_x,dash_target_y,dash_accel_x,dash_accel_y=
+          2*sign(spd.x), split"-1.5,0,2"[v_input+2],
+          v_input==0 and 1.5 or 1.06066017177 , spd.x==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
 
-      if djump>0 and dash then
-        init_smoke()
-        djump-=1
-        dash_time,_g.has_dashed,dash_effect_time=4, true, 10
-        -- vertical input
-        local v_input=btn(⬆️) and -1 or btn(⬇️) and 1 or 0
-        -- calculate dash speeds
-        spd=vector(h_input~=0 and
-        h_input*(v_input~=0 and d_half or d_full) or
-        (v_input~=0 and 0 or flip.x and -1 or 1)
-        ,v_input~=0 and v_input*(h_input~=0 and d_half or d_full) or 0)
-        -- effects
-        psfx(20)
-        _g.freeze=2
-        -- dash target speeds and accels
-        dash_target_x,dash_target_y,dash_accel_x,dash_accel_y=
-        2*sign(spd.x), (spd.y>=0 and 2 or 1.5)*sign(spd.y),
-        spd.y==0 and 1.5 or 1.06066017177 , spd.x==0 and 1.5 or 1.06066017177 -- 1.5 * sqrt()
 
-        -- emulate soft dashes
-        if h_input~=0 and ph_input==-h_input and oob(ph_input,0) then
-          spd.x=0
+          -- emulate soft dashes
+          if ph_input==-h_input and oob(ph_input,0) then
+            spd.x=0
+          end
+
+        else
+          -- failed dash smoke
+          psfx"21"
+          init_smoke()
         end
-
-      elseif djump<=0 and dash then
-        -- failed dash smoke
-        psfx(21)
-        init_smoke()
       end
     end
 
@@ -306,12 +329,57 @@ player={
 
   draw=function(_ENV)
     -- draw player hair and sprite
-    pal(8,djump==1 and 8 or 12)
-    draw_hair(_ENV)
-    draw_obj_sprite(_ENV)
-    pal()
+    -- <dream_block> --
+    draw_dreams(_ENV,1,12)
+    if not dreaming then
+      pal(8,djump==1 and 8 or 12)
+      draw_hair(_ENV)
+      draw_obj_sprite(_ENV)
+      pal()
+    end
   end
 }
+
+function draw_dreams(_ENV,cdark,clight)
+  foreach(dream_particles,function(_ENV)
+    if type==1 then
+      _g.circfill(x, y, t/2, _g.split"1,13"[t] or clight) --draw trails
+    end
+  end)
+
+  foreach(dream_particles,function(p)
+    if p.type==2 then
+      local s = 2.5-p.t/4
+      for i=0,15 do
+        pal(i,split"1,1,1,13,13,13"[p.t] or clight)
+      end
+      sspr(8, 0, 8, 8, p.x-s/2, p.y-s/2, 8+s, 8+s) -- draw player afterimage
+    end
+  end)
+  pal()
+
+  if dreaming then
+    --TODO: optimize more
+    for i=0,15 do
+      pal(i,clight)
+    end
+    draw_obj_sprite(_ENV)
+    local gfx = split"98,98,98, 99,99,99, 100, 101,101,101"
+    local sprite = gfx[dream_time%#gfx+1]
+    local sx, sy = sprite % 16 * 8,sprite \ 16 * 8
+    local cs = {clight,clight,cdark,cdark,clight,cdark}--[0]=7
+    local c = cs[dream_time%#cs] or 7
+    local size = split"0,5"[dream_time] or rnd()<0.4 and 4 or 0
+    local w = 2
+    if dream_time<3 then
+      w,sprite=4,97
+    end
+    pal(7,c)
+    sspr(sx, sy, 8, 8, x-w, y-size/2, 8+w*2, 8+size) -- draw flickering sprite
+    pal()
+  end
+end
+--</dream_block>--
 
 function create_hair(_ENV)
   hair={}
@@ -323,25 +391,25 @@ end
 
 function update_hair(_ENV)
   local last=vector(x+(flip.x and 6 or 1),y+(btn(⬇️) and 4 or 2.9))
-  for h in all(hair) do
+  foreach(hair, function(h)
     h.x+=(last.x-h.x)/1.5
     h.y+=(last.y+0.5-h.y)/1.5
     last=h
-  end
+  end)
 end
 
 function draw_hair(_ENV)
-  for i,h in ipairs(hair) do
-    circfill(round(h.x),round(h.y),mid(4-i,1,2),8)
+  for i,h in inext,hair do
+    circfill(round(h.x),round(h.y),split"2,2,1,1,1"[i],8)
   end
 end
 
 -- [other entities]
 
 player_spawn={
-  layer=2,
   init=function(_ENV)
-    sfx(15)
+    layer=2
+    sfx"15"
     sprite=3
     target=y
     y=min(y+48,lvl_ph)
@@ -352,13 +420,14 @@ player_spawn={
     create_hair(_ENV)
     djump=max_djump
     --- <fruitrain> ---
-    for i=1,#fruitrain do
-      local f=init_object(fruit,x,y,fruitrain[i].sprite)
-      f.target=i==1 and _ENV or fruitrain[i-1]
-      f.r=fruitrain[i].r
-      f.fruit_id=fruitrain[i].fruit_id
-      fruitrain[i]=f
-    end
+    foreach(fruitrain, function(f)
+      --this gets called many times but saves tokens for checking if fruitrain is empty
+      fruitrain[1].target=_ENV
+
+      add(objects,f)
+      f.x,f.y=x,y
+      fruit.init(f)
+    end)
     --- </fruitrain> ---
   end,
   update=function(_ENV)
@@ -375,9 +444,9 @@ player_spawn={
           delay-=1
         elseif y>target then
           -- clamp at target y
-          y,spd,state,delay=target,vector(0,0),2,5
+          y,spd,state,delay,_g.shake=target,vector(0,0),2,5,4
           init_smoke(0,4)
-          sfx(16)
+          sfx"16"
         end
       end
     -- landing and spawning player object
@@ -386,9 +455,9 @@ player_spawn={
       sprite=6
       if delay<0 then
         destroy_object(_ENV)
-        local p=init_object(player,x,y)
+        local p=init_object(player,x,y);
         --- <fruitrain> ---
-        if (fruitrain[1]) fruitrain[1].target=p
+        (fruitrain[1] or {}).target=p
         --- </fruitrain> ---
       end
     end
@@ -428,13 +497,18 @@ spring={
   end,
   update=function(_ENV)
     delta*=0.75
+    --can save tokens by setting hit as _ENV
+    --but i'm not desperate enough yet
     local hit=player_here()
     if hit then
-      hit.move(dir==0 and 0 or x+dir*4-hit.x,dir==0 and y-hit.y-4 or 0,1)
-      hit.spd=vector(
-      dir==0 and hit.spd.x*0.2 or dir*3,
-      dir==0 and -3 or -1.5
-      )
+      if dir==0 then
+        hit.move(0,y-hit.y-4,1)
+        hit.spd.x*=0.2
+        hit.spd.y=-3
+      else
+        hit.move(x+dir*4-hit.x,0,1)
+        hit.spd=vector(dir*3,-1.5)
+      end
       hit.dash_time,hit.dash_effect_time,delta,hit.djump=0,0,4,max_djump
     end
   end,
@@ -443,7 +517,7 @@ spring={
     if dir==0 then
       sspr(72,0,8,8-delta,x,y+delta)
     else
-      sspr(64,0,8-delta,8,dir==-1 and x+delta or x,y,8-delta,8,dir==1)
+      spr(8,dir==-1 and x+delta or x,y,1-delta/8,1,dir==1)
     end
   end
 }
@@ -456,14 +530,14 @@ refill={
     if timer>0 then
       timer-=1
       if timer==0 then
-        psfx(12)
+        psfx"12"
         init_smoke()
       end
     else
       offset+=0.02
       local hit=player_here()
       if hit and hit.djump<max_djump then
-        psfx(11)
+        psfx"11"
         init_smoke()
         hit.djump,timer=max_djump,60
       end
@@ -474,7 +548,7 @@ refill={
       spr(15,x,y+sin(offset)+0.5)
 
     else
-      -- color(7)
+      -- color"7"
       -- line(x,y+4,x+3,y+7)
       -- line(x+4,y+7,x+7,y+4)
       -- line(x+7,y+3,x+4,y)
@@ -494,46 +568,44 @@ refill={
 
 fall_floor={
   init=function(_ENV)
-    solid_obj,state=true,0
+    solid_obj,state,unsafe_ground,delay=true,0,true,0
   end,
   update=function(_ENV)
+    --it looks like weird stuff goes on here with the decimal constants (mostly to ensure rounding correctly), but it should be equivalent to vanilla
+    --(and if i made an error, probably no one cares)
     -- idling
-    if state==0 then
-      for i=0,2 do
-        if check(player,i-1,-(i%2)) then
-          psfx(13)
-          state,delay=1,15
+    if delay>0 then
+      delay-=0.2
+    elseif state==0 then
+      for i=-1,1 do
+        if check(player,i,abs(i)-1) then
+          psfx"13"
+          state,delay=1,2.79
           init_smoke()
           break
         end
       end
     -- shaking
     elseif state==1 then
-      delay-=1
-      if delay<=0 then
-        state,delay,collideable=2,60--,false
-      end
+      state,delay,collideable=2,11.79--,false
     -- invisible, waiting to reset
     else
-      delay-=1
-      if delay<=0 and not player_here() then
-        psfx(12)
+      if not player_here() then
+        psfx"12"
         state,collideable=0,true
         init_smoke()
       end
     end
-  end,
-  draw=function(_ENV)
-    spr(state==1 and 26-delay/5 or state==0 and 23,x,y) --add an if statement if you use sprite 0
+    --if sprite 0 is not empty, need to fixup this
+    sprite=state==1 and 25.8-delay or state==0 and 23
   end
 }
 
 smoke={
-  layer=3,
   init=function(_ENV)
-    spd,flip=vector(0.3+rnd(0.2),-0.1),vector(maybe(),maybe())
-    x+=-1+rnd(2)
-    y+=-1+rnd(2)
+    layer,spd,flip=3,vector(0.3+rnd"0.2",-0.1),vector(rnd()<0.5,rnd()<0.5)
+    x+=-1+rnd"2"
+    y+=-1+rnd"2"
   end,
   update=function(_ENV)
     sprite+=0.2
@@ -565,7 +637,7 @@ fruit={
       local hit=player_here()
       if hit then
         hit.berry_timer,target,r=
-        0,#fruitrain==0 and hit or fruitrain[#fruitrain],#fruitrain==0 and 12 or 8
+        0,fruitrain[#fruitrain] or hit,fruitrain[1] and 8 or 12
         add(fruitrain,_ENV)
       end
     end
@@ -586,7 +658,7 @@ fly_fruit={
       sfx_delay-=1
       if sfx_delay==0 then
        _g.sfx_timer=20
-       sfx(10)
+       sfx"10"
       end
       spd.y=appr(spd.y,-3.5,0.25)
       if y<-16 then
@@ -622,7 +694,7 @@ fly_fruit={
 lifeup={
   init=function(_ENV)
     spd.y,duration,flash,_g.sfx_timer,outline=-0.25,30,0,20--,false
-    sfx(9)
+    sfx"9"
   end,
   update=function(_ENV)
     duration-=1
@@ -633,7 +705,7 @@ lifeup={
   end,
   draw=function(_ENV)
     --<fruitrain>--
-    ?sprite<=5 and sprite.."000" or "1UP",x-4,y-4,7+flash%2
+    ?split"1000,2000,3000,4000,5000,1up"[min(sprite,6)],x-4,y-4,7+flash%2
     --<fruitrain>--
   end
 }
@@ -646,36 +718,41 @@ badeline={
         break
       end
     end
-    states={}
-    timer=0
-
+    states,timer={},0
+    --TODO: rn hitbox is 8x8, need to test if a hitbox matching the player obj is more fitting
   end,
   update=function(_ENV)
-    local tr,states=tracking,states
-    if tr.type==player_spawn and tr.state==2 and tr.delay<0 then
-      for o in all(objects) do
+    if tracking.type==player_spawn then
+      --search for player to replace player spawn
+      foreach(objects, function(o)
         if o.type==player then
           bade_track(_ENV,o)
-          tr=o
-          break
         end
-      end
-    elseif tr.type==badeline and tr.timer<30 then
+      end)
+    elseif tracking.type==badeline and tracking.timer<30 then
       return
     end
     if timer<70 then
       timer+=1
     end
-    local sm={}
-    for s in all(smokes) do
-      add(sm,s)
-    end
+
+    local curr_smokes,dream_particles_copy,states=smokes,{},states
     smokes={}
-    add(states,{tr.x,tr.y,tr.flip.x,tr.sprite or 1,sm})
+
+    do
+      local _ENV=tracking
+      foreach(dream_particles, function(p)
+        local q=add(dream_particles_copy,{})
+        for k,v in pairs(p) do
+          q[k]=v
+        end
+      end)
+      add(states,{x,y,flip.x,sprite or 1,curr_smokes,dreaming,dream_time,dream_particles_copy,layer})
+    end
+
     if #states>=30 then
-      x,y,flip.x,sprite,sm=unpack(states[1])
-      del(states,states[1])
-      for s in all(sm) do
+      x,y,flip.x,sprite,curr_smokes,dreaming,dream_time,dream_particles,layer=unpack(deli(states,1))
+      for s in all(curr_smokes) do
         init_smoke(unpack(s))
       end
     end
@@ -685,28 +762,25 @@ badeline={
     if timer>=30 then
       update_hair(_ENV)
     end
-    local hit=check(player,0,0)
+    local hit=player_here()
     if hit and timer>=70 then
       kill_player(hit)
     end
   end,
   draw=function(_ENV)
     if timer>=30 then
-      pal(8,2)
-      pal(15,6)
-      pal(3,1)
-      pal(1,8)
-      pal(7,5)
-      draw_hair(_ENV)
-      draw_obj_sprite(_ENV)
-      pal()
+      draw_dreams(_ENV,2,8)
+      if not dreaming then
+        pal(split"8,2,1,4,5,6,5,2,9,10,11,8,13,14,6")
+        draw_hair(_ENV)
+        draw_obj_sprite(_ENV)
+        pal()
+      end
     end
-	end
+  end
 }
 function bade_track(_ENV,o)
-  o.tracked=true
-  tracking=o
-  hitbox=o.hitbox
+  o.tracked,tracking=true,o
   local f=o.init_smoke
   o.init_smoke=function(...)
     add(smokes,{...})
@@ -716,48 +790,49 @@ end
 
 fall_plat={
   init=function(_ENV)
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==67 do
+    while right()<lvl_pw-1 and tile_at(right()\8+1,y/8)==67 do
       hitbox.w+=8
     end
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==67 do
+    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()\8+1)==67 do
       hitbox.h+=8
     end
-    collides=true
-    solid_obj=true
-    timer=0
+    collides,solid_obj,timer=true,true,0
   end,
   update=function(_ENV)
+    --states:
+    -- nil - before activation
+    -- 0 - shaking
+    -- 1 - falling
+    -- 2 - done
     if not state and check(player,0,-1) then
-      state = 0  -- shake
-      timer = 10
+      -- shake
+      state,timer = 0,10
     elseif timer>0 then
       timer-=1
       if timer==0 then
-        state=finished and 2 or 1
+        state+=1
         spd.y=0.4
       end
     elseif state==1 then
       if spd.y==0 then
-        state=0
         for i=0,hitbox.w-1,8 do
           init_smoke(i,hitbox.h-2)
         end
         timer=6
-        finished=true
       end
       spd.y=appr(spd.y,4,0.4)
     end
   end,
   draw=function(_ENV)
     local x,y=x,y
-    if state==0 then
+    if timer>0 then
       x+=rnd(2)-1
       y+=rnd(2)-1
     end
     local r,d=x+hitbox.w-8,y+hitbox.h-8
-    for i=x,r,r-x do
-      for j=y,d,d-y do
-        spr(41+(i==x and 0 or 2) + (j==y and 0 or 16),i,j,1.0,1.0)
+    for i in all{x,r} do
+      for j in all{y,d} do
+        spr(41+(i==x and 0 or 2) + (j==y and 0 or 16),i,j)
       end
     end
     for i=x+8,r-8,8 do
@@ -797,8 +872,8 @@ touch_switch={
     off%=4
   end,
   draw=function(_ENV)
-    palt(0,false)
-    palt(8,true)
+    --set color 8 as transparent
+    palt(0x0a0)
     if controller.active then
       sprite=68
       pal(12,2)
@@ -810,6 +885,7 @@ touch_switch={
       end
     end
     draw_obj_sprite(_ENV)
+    --pal() resets transparancy, but when outlining it won't so need to explicitly call palt()
     palt()
     pal()
   end
@@ -817,10 +893,10 @@ touch_switch={
 switch_block={
   init=function(_ENV)
     solid_obj=true
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==72 do
+    while right()<lvl_pw-1 and tile_at(right()\8+1,y/8)==72 do
       hitbox.w+=8
     end
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==87 do
+    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()\8+1)==87 do
       hitbox.h+=8
     end
     delay,end_delay=0,0
@@ -844,9 +920,8 @@ switch_block={
     if missing==0 and not active then
       active=true
       for s in all(switches) do
-        for i=1,2 do
-          s.init_smoke()
-        end
+        s.init_smoke()
+        s.init_smoke()
       end
       delay=20
     end
@@ -893,8 +968,8 @@ switch_block={
     end
 
     local r,d=x+hitbox.w-8,y+hitbox.h-8
-    for i=x,r,r-x do
-      for j=y,d,d-y do
+    for i in all{x,r} do
+      for j in all{y,d} do
         spr(71,i,j,1.0,1.0,i~=x,j~=y)
       end
     end
@@ -918,12 +993,23 @@ switch_block={
 
 switch_target={}
 -- <touch_switch> --
+
+
+--<dream_block>--
+function calc_seg(seg)
+  local t=dream_blocks_active and time() or 0
+  if (seg[2]) return (sin(t/seg[2]+seg[2])+sin(t/seg[3]+seg[3])+2)/2
+  return 0
+end
+
+dream_blocks_active=true
 dream_block={
   init=function(_ENV)
-    while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==65 do
+    layer=3
+    while right()<lvl_pw-1 and tile_at(right()\8+1,y/8)==65 do
       hitbox.w+=8
     end
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()/8+1)==65 do
+    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()\8+1)==65 do
       hitbox.h+=8
     end
     kill_timer=0
@@ -932,45 +1018,89 @@ dream_block={
       add(particles,
       {x=rnd(hitbox.w-1)+x,
       y=rnd(hitbox.h-1)+y,
-      z=rnd(1),
-      c=split"3, 8, 9, 10, 12, 14"[flr(rnd(7))]})
+      z=rnd(),
+      c=split"3, 8, 9, 10, 12, 14"[flr(rnd(6))+1],
+      s=rnd(),
+      t=flr(rnd(10))})
     end
     dtimer=1
     disp_shapes={}
     outline=false
+    xsegs={}
+    ysegs={}
+    for i=1,2 do
+      local seg={{x},{x+4}}
+      local x_=x+10+flr(rnd(6))
+      while x_<right()-4 do
+        add(seg,{x_,rnd(3)+2,rnd(3)+2})
+        x_+=flr(rnd(6))+6
+      end
+      if seg[#seg][1]>right()-8 then
+        seg[#seg][1]=right()-4
+        seg[#seg][2]=nil
+      else
+        add(seg,{right()-4})
+      end
+      add(seg,{right()})
+      add(xsegs,seg)
+    end
+    for i=1,2 do
+      local seg={{y},{y+4}}
+      local y_=y+10+flr(rnd(6))
+      while y_<bottom()-4 do
+        add(seg,{y_,rnd(3)+2,rnd(3)+2})
+        y_+=flr(rnd(6))+6
+      end
+      if seg[#seg][1]>bottom()-8 then
+        seg[#seg][1]=bottom()-4
+        seg[#seg][2]=nil
+      else
+        add(seg,{bottom()-4})
+      end
+      add(seg,{bottom()})
+      add(ysegs,seg)
+    end
   end,
   update=function(_ENV)
     --[[hitbox.w+=2
     hitbox.h+=2]]
     local hit=player_here()
-    if hit then --could save a bunch of tokens by doing local this,_ENV=_ENV,hit, not gonna do it for now cause it's more confusing
-      hit.dash_effect_time=10
-      hit.dash_time=2
-      if hit.dash_target_y==-1.5 then
-        hit.dash_target_y=-2
+    if hit then
+      -- set the player as _ENV temporarily, to save a lot of tokens
+      local _ENV,this=hit,_ENV
+      dash_effect_time=10
+      dash_time=2
+      if dash_target_y==-1.5 then
+        dash_target_y=-2
       end
-      if hit.dash_target_x==0 then
-        hit.dash_target_y=sign(hit.dash_target_y)*2.5
+      if dash_target_x==0 then
+        dash_target_y=sign(dash_target_y)*2.5
       end
-      if hit.dash_target_y==0 then
-        hit.dash_target_x=sign(hit.dash_target_x)*2.5
+      if dash_target_y==0 then
+        dash_target_x=sign(dash_target_x)*2.5
       end
-      if not hit.dreaming then
-        hit.spd=vector(hit.dash_target_x*(hit.dash_target_y==0 and 2.5  or 1.7678),hit.dash_target_y*(hit.dash_target_x==0 and 2.5 or 1.7678))
+      if not dreaming then
+        spd=vector(dash_target_x*(dash_target_y==0 and 2.5  or 1.7678),dash_target_y*(dash_target_x==0 and 2.5 or 1.7678))
+        dream_time=0
+        dreaming=true
+        _init_smoke, init_smoke=init_smoke, function() end
       end
-      if abs(hit.spd.x)<abs(hit.dash_target_x) or abs(hit.spd.y)<abs(hit.dash_target_y) then
-        hit.move(hit.dash_target_x,hit.dash_target_y,0)
-        if hit.is_solid(hit.dash_target_x,hit.dash_target_y) then
+
+      --corner correction
+      if abs(spd.x)<abs(dash_target_x) or abs(spd.y)<abs(dash_target_y) then
+        move(dash_target_x,dash_target_y,0)
+        if is_solid(dash_target_x,dash_target_y) then
           kill_player(hit)
         end
       end
-      hit.dreaming=true
-      hit.djump=max_djump
-      if dtimer>0 then
-        dtimer-=1
-        if dtimer==0 then
-          dtimer=4
-          create_disp_shape(disp_shapes, hit.x, hit.y)
+
+      djump=max_djump
+      layer=3 -- draw player in front of dream blocks while inside
+      if this.dtimer>0 then
+        this.dtimer-=1
+        if this.dtimer==0 then
+          this.dtimer=4
+          create_disp_shape(this.disp_shapes, x+4, y+4)
         end
       end
     else
@@ -979,79 +1109,168 @@ dream_block={
     --[[hitbox.w-=2
     hitbox.h-=2]]--
     update_disp_shapes(disp_shapes)
+
+    foreach(particles, function(p)
+      if dream_blocks_active then
+        p.t=(p.t+1)%16
+      end
+    end)
   end,
   draw=function(_ENV)
     rectfill(x+1,y+1,right()-1,bottom()-1,0)
+
+    if not dream_blocks_active then
+      pal(split"1,2,5,4,5,6,7,5,6,6,11,13,13,13,15")
+    end
+    local big_particles={}
     foreach(particles, function(p)
       local px,py = (p.x+cam_x*p.z-65)%(hitbox.w-2)+1+x, (p.y+cam_y*p.z-65)%(hitbox.h-2)+1+y
-      if #disp_shapes==0 then
-        rectfill(px,py,px,py,p.c)
-      else
-        local d,dx,dy,ds=displace(disp_shapes, vector(px,py))
+      if #disp_shapes!=0 then
+        local d,dx,dy,ds=displace(disp_shapes, px,py)
         d=max((6-d), 0)
-        rectfill(px+dx*d*ds,py+dy*d*ds,px+dx*d*ds,py+dy*d*ds,p.c)
+        px+=dx*ds*d
+        py+=dy*ds*d
+      end
+
+      if p.s<0.2 and p.t<=8 then
+        add(big_particles,{px,py,p.c})
+      else
+        pset(px,py,p.c)
       end
     end)
+    foreach(big_particles,function(p)
+      local px,py,pc=unpack(p)
+      line(px-1,py,px+1,py,pc)
+      line(px,py-1,px,py+1,pc)
+    end)
+    pal()
+
     color(7)
-    if #disp_shapes==0 then
-      --rect(x,y,right(),bottom(),7)
-      for i=y,bottom(),hitbox.h-1 do
-        line(x+1, i, right()-1,i)
-      end
-      for i=x,right(),hitbox.w-1 do
-        line(i, y+1, i,bottom()-1)
-      end
-    else
-      for x_=x,right() do
-        for y_=y,bottom(),(x_==x or x_==right()) and 1 or bottom()-y do
-          local d,dx,dy,ds=displace(disp_shapes,vector(x_,y_))
-          d=max((4-d), 0)
-          rectfill(x_+dx*d*ds,y_+dy*d*ds,x_+dx*d*ds,y_+dy*d*ds)
+    -- draw outline pixel by pixel
+    -- divide into segments of 8 pixels
+    -- at the boundaries of each segment, set the position to be a sum of sines
+    -- lerp between the boundaries
+    -- fill the dream block in
+    --
+    --
+
+    -- local minx,maxx,miny,maxy
+    -- if #disp_shapes!=0 then
+    --   local first,last=disp_shapes[1],disp_shapes[#disp_shapes]
+    --   minx=min(first.pos.x-first.r-4,last.pos.x-last.r-4)
+    --   maxx=max(first.pos.x+first.r+4,last.pos.x+last.r+4)
+    --   miny=min(first.pos.y-first.r-4,last.pos.y-last.r-4)
+    --   maxy=max(first.pos.y+first.r+4,last.pos.y+last.r+4)
+    -- end
+
+    local outline_color = dream_blocks_active and 7 or 5
+
+    for i=y,bottom(),hitbox.h-1 do
+      -- line(x+1, i, right()-1,i)
+
+      local segs=xsegs[i==y and 1 or 2]
+      for idx,seg in ipairs(segs) do
+        if idx==#segs then
+          break
+        end
+        lx,rx=seg[1],segs[idx+1][1]
+        local ly,ry=i+(i==y and -1 or 1)*calc_seg(seg), i+(i==y and -1 or 1)*calc_seg(segs[idx+1])
+        local m=(ry-ly)/(rx-lx)
+        for j=lx,rx do
+          local py=round(m*(j-lx)+ly)
+          if #disp_shapes==0 then
+            pset(j,py,outline_color)
+          else
+            local d,dx,dy,ds=displace(disp_shapes,j,py)
+            d=max((4-d), 0)
+            pset(j+dx*d*ds,py+dy*d*ds,outline_color)
+          end
+          if py!=i then
+            line(j,py+sign(i-py),j,i,0)
+          end
         end
       end
     end
-    --[[pset(x, y, 0)
-    pset(x, bottom(), 0)
-    pset(right(), y, 0)
-    pset(right(), bottom(), 0)]]--
+
+    for i=x,right(),hitbox.w-1 do
+      -- line(x+1, i, right()-1,i)
+
+      local segs=ysegs[i==x and 1 or 2]
+      for idx,seg in ipairs(segs) do
+        if idx==#segs then
+          break
+        end
+        ly,ry=seg[1],segs[idx+1][1]
+        local lx,rx=i+(i==x and -1 or 1)*calc_seg(seg), i+(i==x and -1 or 1)*calc_seg(segs[idx+1])
+        local m=(rx-lx)/(ry-ly)
+        for j=ly,ry do
+          local px=round(m*(j-ly)+lx)
+          if #disp_shapes==0 then
+            pset(px,j,outline_color)
+          else
+            local d,dx,dy,ds=displace(disp_shapes,px,j)
+            d=max((4-d), 0)
+            pset(px+dx*d*ds,j+dy*d*ds,outline_color)
+          end
+          if px!=i then
+            line(px+sign(i-px),j,i,j,0)
+          end
+        end
+      end
+    end
+
+      for i in all{x+1,right()-1} do
+        for j in all{y+1,bottom()-1} do
+          pset(i,j,outline_color)
+        end
+      end
   end
 }
 
 
 function create_disp_shape(tbl,x,y)
-  add(tbl, {pos=vector(x,y),r=0})
+  add(tbl, {x,y,0}) --x,y,r
 end
 
 function update_disp_shapes(tbl)
   for i in all(tbl) do
-    i.r+=2
-    if i.r >= 15 then
+    i[3]+=2
+    if i[3] >= 15 then
       del(tbl, i)
     end
   end
 end
 
-function displace(tbl, p)
-  local d,ds,po,s = 10000,0,vector(0,0),0
+function displace(tbl, px,py)
+  local d,ds,pox,poy,s = 10000,0,0,0,0
   for i in all(tbl) do
-    local td,ts,tpo = sdf_circ(p, i.pos, i.r)
-    if td<d then
-      d,ds,po,s=td,ts,tpo,i.r
+    local ox,oy,r=unpack(i)
+    if abs(px-ox)+abs(py-oy)<=20 then
+      --cpu optimization - if the manhatten distance is far enough, we don't care anyway
+      local td,ts,tpox,tpoy = sdf_circ(px,py, ox,oy,r)
+      if td<d then
+        d,ds,pox,poy,s=td,ts,tpox,tpoy,r
+      end
     end
   end
-  local gx, gy = sdg_circ(po, ds, s)
+  if d>10 then
+    return d,0,0,0
+  end
+  local gx, gy = sdg_circ(pox,poy, ds, s)
   return d,gx,gy,(15-s)/15
 end
 
-function sdg_circ(po, d, r)
-  return sign(d-r)*(po.x/d), sign(d-r)*(po.y/d)
+function sdg_circ(pox,poy, d, r)
+  local s=sign(d-r)/d
+  return s*pox, s*poy
 end
 
-function sdf_circ(p, origin, r)
-  local po = vec_sub(p,origin)
-  local d = vec_len(po)
-  return abs(d-r), d, po
+function sdf_circ(px,py, ox, oy, r)
+  local pox,poy = px-ox,py-oy
+  local d = vec_len(pox,poy)
+  return abs(d-r), d, pox,poy
 end
+--</dream_block>--
 
 psfx=function(num)
   if sfx_timer<=0 then
@@ -1090,28 +1309,27 @@ function init_object(_type,sx,sy,tile)
     return
   end
   --local _g=_g
-  local _ENV={}
+  local _ENV=setmetatable({},{__index=_g})
   type, collideable, sprite, flip, x, y, hitbox, spd, rem, fruit_id, outline, draw_seed=
-  _type, true, tile, _g.vector(), sx, sy, _g.rectangle(0,0,8,8), _g.vector(0,0), _g.vector(0,0), id, true, _g.rnd()
+  _type, true, tile, vector(), sx, sy, rectangle(0,0,8,8), vector(0,0), vector(0,0), id, true, rnd()
 
-  _g.setmetatable(_ENV,{__index=_g})
   function left() return x+hitbox.x end
   function right() return left()+hitbox.w-1 end
   function top() return y+hitbox.y end
   function bottom() return top()+hitbox.h-1 end
 
-  function is_solid(ox,oy)
+  function is_solid(ox,oy,require_safe_ground)
     for o in all(objects) do
-      if o!=_ENV and (o.solid_obj or o.semisolid_obj and not objcollide(o,ox,0) and oy>0) and objcollide(o,ox,oy)  then
+      if o!=_ENV and (o.solid_obj or o.semisolid_obj and not objcollide(o,ox,0) and oy>0) and objcollide(o,ox,oy) and not (require_safe_ground and o.unsafe_ground) then
         return true
       end
     end
     return oy>0 and not is_flag(ox,0,3) and is_flag(ox,oy,3) or  -- one way platform or
             is_flag(ox,oy,0) -- solid terrain
             -- <dream_block> --
-           or check(dream_block,ox,oy) and (dash_effect_time<=2 or
-           not check(dream_block,sign(dash_target_x),sign(dash_target_y))
-           and not dreaming)
+           or check(dream_block,ox,oy) and (not dream_blocks_active
+           or dash_effect_time<=2
+           or not check(dream_block,sign(dash_target_x),sign(dash_target_y)) and not dreaming)
            -- </dream_block> --
   end
   function oob(ox,oy)
@@ -1158,7 +1376,7 @@ function init_object(_type,sx,sy,tile)
 
   function move(ox,oy,start)
     for axis in all{"x","y"} do
-      rem[axis]+=axis=="x" and ox or oy
+      rem[axis]+=vector(ox,oy)[axis]
       local amt=round(rem[axis])
       rem[axis]-=amt
 
@@ -1168,11 +1386,11 @@ function init_object(_type,sx,sy,tile)
         local step,p=sign(amt),_ENV[axis]
         local d=axis=="x" and step or 0
         for i=start,abs(amt) do
-          if not (is_solid(d,step-d) or oob(d,step-d)) then
-            _ENV[axis]+=step
-          else
+          if is_solid(d,step-d) or oob(d,step-d) then
             spd[axis],rem[axis]=0,0
             break
+          else
+            _ENV[axis]+=step
           end
         end
         movamt=_ENV[axis]-p --save how many px moved to use later for solids
@@ -1201,7 +1419,7 @@ function init_object(_type,sx,sy,tile)
             kill_player(hit)
           end
         elseif riding then
-          riding.move(axis=="x" and movamt or 0, axis=="y" and movamt or 0,1)
+          riding.move(vector(movamt,0)[axis],vector(0,movamt)[axis],1)
         end
         collideable=true
       end
@@ -1228,8 +1446,8 @@ function destroy_object(obj)
 end
 
 function kill_player(obj)
-  sfx_timer=12
-  sfx(17)
+  sfx_timer,shake=12,9
+  sfx"17"
   deaths+=1
   destroy_object(obj)
   --dead_particles={}
@@ -1243,13 +1461,15 @@ function kill_player(obj)
     })
   end
     -- <fruitrain> ---
-  for f in all(fruitrain) do
-    if (f.golden) full_restart=true
-    del(fruitrain,f)
-  end
+  foreach(fruitrain,function(f)
+    full_restart = full_restart or f.golden
+  end)
+  fruitrain={}
   --- </fruitrain> ---
-  delay_restart=15
-  transition:play()
+  --delay_restart=15
+  -- <transition> --
+  co_trans=cocreate(transition)
+  -- </transition> --
 end
 
 -- [room functions]
@@ -1285,7 +1505,7 @@ function load_level(id)
   local exits=tonum(tbl[5]) or 0b0001
 
   -- exit_top,exit_right,exit_bottom,exit_left=exits&1!=0,exits&2!=0,exits&4!=0, exits&8!=0
-  for i,v in ipairs(split"exit_top,exit_right,exit_bottom,exit_left") do
+  for i,v in inext,split"exit_top,exit_right,exit_bottom,exit_left" do
     _ENV[v]=exits&(0.5<<i)~=0
   end
 
@@ -1347,21 +1567,17 @@ function _update()
   end
   frames%=30
 
-  if music_timer>0 then
-    music_timer-=1
-    if music_timer<=0 then
-      music(10,0,7)
-    end
-  end
-
-  if sfx_timer>0 then
-    sfx_timer-=1
-  end
+  sfx_timer=max(sfx_timer-1)
 
   -- cancel if freeze
   if freeze>0 then
     freeze-=1
     return
+  end
+
+  -- screenshake toggle
+  if btnp(⬆️,1) then
+    screenshake=not screenshake
   end
 
   -- restart (soon)
@@ -1391,14 +1607,8 @@ function _update()
   foreach(objects,function(_ENV)
     if type==player or type==player_spawn then
       move_camera(_ENV)
-      return
     end
   end)
-
-  -- <transition>
-  transition:update()
-  -- </transition>
-
 end
 
 -- [drawing functions]
@@ -1413,6 +1623,14 @@ function _draw()
 
   --set cam draw position
   draw_x,draw_y=round(cam_x)-64,round(cam_y)-64
+
+  if shake>0 then
+    shake-=1
+    if screenshake then
+      draw_x+=-2+rnd"5"
+      draw_y+=-2+rnd"5"
+    end
+  end
   camera(draw_x,draw_y)
 
   -- draw bg color
@@ -1481,7 +1699,7 @@ function _draw()
 		        if c.y>128 then
 		          c.y=-8
 		          c.x=rnd(120)
-		          c.spdy=rnd(0.5)+0.5
+          c.spdy=rnd(0.75)+0.5
 		        end
 		        pal()
 		      end
@@ -1496,7 +1714,7 @@ function _draw()
     x+=spd-_g.cam_spdx
     _g.rectfill(x+_g.draw_x,y+_g.draw_y,x+w+_g.draw_x,y+16-w*0.1875+_g.draw_y,1)
     if x>128 then
-      x,y=-w,_g.rnd(120)
+      x,y=-w,_g.rnd"120"
     end
   end)]]
 
@@ -1504,13 +1722,13 @@ function _draw()
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,4)
 
   -- draw outlines
-  for i=0,15 do pal(i,1) end
+  pal(split"1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1")
   pal=time
   foreach(objects,function(_ENV)
     if outline then
-      for dx=-1,1 do for dy=-1,1 do if dx&dy==0 then
-        camera(draw_x+dx,draw_y+dy) draw_object(_ENV)
-      end end end
+      for i=1,4 do
+        camera(draw_x+split"-1,0,0,1"[i],draw_y+split"0,-1,1,0"[i]) draw_object(_ENV)
+      end
     end
   end)
   pal=_pal
@@ -1524,10 +1742,10 @@ function _draw()
   --3: foreground layer
   local layers={{},{},{}}
   foreach(objects,function(_ENV)
-    if type.layer==0 then
+    if layer==0 then
       draw_object(_ENV) --draw below terrain
     else
-      add(layers[type.layer or 1],_ENV) --add object to layer, default draw below player
+      add(layers[layer or 1],_ENV) --add object to layer, default draw below player
     end
   end)
   -- draw terrain
@@ -1551,9 +1769,9 @@ function _draw()
     off+=_g.min(0.05,spd/32)
     _g.rectfill(x+_g.draw_x,y+_g.draw_y,x+s+_g.draw_x,y+s+_g.draw_y,c)
     if x>132 then
-      x,y=-4,_g.rnd128()
+      x,y=-4,_g.rnd"128"
     elseif x<-4 then
-      x,y=128,_g.rnd128()
+      x,y=128,_g.rnd"128"
     end
   end)
 
@@ -1576,9 +1794,9 @@ function _draw()
     ui_timer-=1
   end
 
-  -- <transition>
-  transition:draw()
-  -- </transition>
+  -- <transition> --
+  if (co_trans and costatus(co_trans) != "dead") coresume(co_trans)
+  color"0"
 end
 
 function draw_object(_ENV)
@@ -1597,7 +1815,7 @@ end
 
 
 function two_digit_str(x)
-  return x<10 and "0"..x or x
+  return sub("0"..x,-2)
 end
 
 -- [helper functions]
@@ -1614,32 +1832,13 @@ function sign(v)
   return v~=0 and sgn(v) or 0
 end
 
-function maybe()
-  return rnd()<0.5
-end
-
 --<dream_block>
 
-function vec_len_sqr(a)
-  return a.x^2 + a.y^2
+function vec_len(x,y)
+  local ang=atan2(x,y)
+  return x*cos(ang)+y*sin(ang)
 end
 
--- function vec_len(a)
---   return sqrt(vec_len_sqr(a))
--- end
-
-function vec_len(a)
- local maskx,masky=a.x>>31,a.y>>31
- local a0,b0=(a.x+maskx)^^maskx,(a.y+masky)^^masky
- if a0>b0 then
-  return a0*0.9609+b0*0.3984
- end
- return b0*0.9609+a0*0.3984
-end
-
-function vec_sub(a,b)
-  return vector(a.x-b.x, a.y-b.y)
-end
 --</dream_block>
 
 function tile_at(x,y)
@@ -1660,66 +1859,61 @@ function spikes_at(x1,y1,x2,y2,xspd,yspd)
 end
 
 -- <transition> --
-transition = {
-  -- state:
-  --  1 | wiping in
-  -- -1 | wiping out
-  --  0 | idle
-  state=0,
-  tw = 6,
-  play=function(_ENV)
-    state = state==0 and 1 or state
-    pixelw = 128/(tw-1)
-    circles = {}
-    local ctotal = tw*tw
-    for i=0,ctotal-1 do
-      local c = {
-        x=i%tw * pixelw + _g.rnd(6)-3,
-        y=i\tw * pixelw + _g.rnd(6)-3,
-        delay=i%tw * 2 + _g.rnd(4)-2,
-        radius=state==1 and 0 or pixelw
-      }
-      add(circles, c)
-    end
-  end,
-  update=function(_ENV)
-    if (state==0) return
-    for i=1,#circles do
-      local c = circles[i]
-      if c.delay > 0 then
-        c.delay -= 1
-      else
-        c.radius += state*3
-      end
-    end
-    local lastr = circles[#circles].radius
-    if state==1 and lastr > pixelw*0.7 then
-      state=-1
-      play(_ENV)
-    elseif lastr < 0 then
-      state=0
-    end
-  end,
-  draw=function(this)
-    if (this.state==0) return
-    camera()
-    for i=1,#this.circles do
-      local c = this.circles[i]
-      if c.radius > 0 then
-        circfill(c.x, c.y, c.radius, 0)
-      end
+function transition(wipein)
+  local circles = {}
+  local n=0
+  for x=0,7 do
+    for y=0,7 do
+      c={}
+      c.pos = vector((x - 0.8 + rnd(0.6)) * 20, (y - 0.8 + rnd(0.6)) * 20)
+      c.delay = rnd(1.5) + (wipein and (6 - x) or x)
+      c.radius = (wipein and (2 * (15 - c.delay)) or 0)
+      circles[n]=c
+      n+=1
     end
   end
-}
+
+  for t=1,15 do
+    camera()
+    for i=0,#circles do
+      if not wipein then
+        circles[i].delay -= 1
+        if circles[i].delay <= 0 then
+          circles[i].radius += 2
+        end
+      elseif circles[i].radius > 0 then
+        circles[i].radius -= 2
+      else
+        circles[i].radius = 0
+      end
+    end
+
+    for i=0,#circles do
+      if (circles[i].radius>0) circfill(circles[i].pos.x, circles[i].pos.y, circles[i].radius, 0)
+    end
+    yield()
+  end
+
+  if not wipein then
+    delay_restart=1
+    for t=1,3 do
+      cls(0)
+      yield()
+    end
+
+    co_trans=cocreate(transition)
+    coresume(co_trans, true)
+  end
+end
 -- </transition> --
 -->8
 --[map metadata]
 
 --@conf
 --[[
-composite_shapes={}
-param_names={"badeline num", "comment"}
 autotiles={{52, 54, 53, 39, 33, 35, 34, 55, 49, 51, 50, 48, 36, 38, 37, 32, 29, 30, 31, 41, 42, 43, nil, nil, nil, nil, nil, 56, 45, 46, 47, 80, 44, 81, [41] = 61, [42] = 62, [43] = 63, [0] = 48, [44] = 57, [45] = 58, [46] = 59, [56] = 40, [57] = 60}, {122, 124, 123, 121, 29, 31, 30, 119, 61, 63, 62, 120, 45, 47, 46, 48, 52, 53, 54, 32, 41, 42, 43, nil, nil, nil, nil, 39, 33, 34, 35, 56, 80, 44, 81, nil, nil, nil, nil, 48, 36, 37, 38, [45] = 57, [46] = 58, [47] = 59, [52] = 55, [53] = 49, [0] = 29, [54] = 50, [55] = 51, [57] = 40, [58] = 60}, {41, 43, 42, 41, 41, 43, 42, 57, 57, 59, 58, 80, 80, 81, 44, 44, 48, 52, 53, 54, 32, 56, nil, nil, nil, nil, nil, 60, 39, 33, 34, 35, 29, 30, 31, nil, nil, nil, nil, 40, 48, 36, 37, 38, 45, 46, 47, [53] = 49, [54] = 49, [55] = 50, [0] = 41, [56] = 51, [57] = 61, [58] = 62, [59] = 63}}
+param_names={"badeline num", "comment"}
+composite_shapes={}
 ]]
 --@begin
 --level table
@@ -1728,17 +1922,17 @@ autotiles={{52, 54, 53, 39, 33, 35, 34, 55, 49, 51, 50, 48, 36, 38, 37, 32, 29, 
 levels={
   "0,0,3,1,0b0100,0,spikes on ground need fixed or sparky's going to have a meltdown (g: maybe fixed?) ; need to figure out what's gonna happen to the berry if doing level duplication stuff",
   "0.3125,-2.0625,1.1875,2,0b0010,0,built for branching paths, reworked!",
-  "0,1,1.25,1,0b0010,0",
+  "0,1,1.25,1,0b0010,0,0",
   "1.5625,1,1,1,0b0010,0,perhaps shorten middle right wall by 1px to make it slightly easier",
   "2.5625,1,2,1,0b0010,0,my old notes said needs tweaking (terrain/spacing), but it seems fine",
   "4.6875,0.5,1.3125,1.5,0b1000,0,mirror room- needs mirror; terrain should be made more \"cavernous\",need to fix player spawn in cam trigger",
-  "3,2,1.4375,1.3125,0b1000,0,0",
+  "1.5625,4.25,1.4375,1.3125,0b1000,0,0",
   "1,2,2,1,0b1001,0,the first half could maybe be slightly tweaked",
-  "-1.375,2.8125,1.1875,2,0b1000,0,built for branching paths, reworked!",
+  "3.375,4.375,1.1875,2,0b1000,0,built for branching paths, reworked!",
   "0,2,1,1,0b0001,0,should you be able to land on the left dreamblock?; diag (instead of wj updash) is currently an option, but it might be fine",
-  "0.125,4.25,3,1,0b0001,0,spikes on ground need fixed or sparky's going to have a meltdown (g: maybe fixed?) ; need to figure out what's gonna happen to the berry if doing level duplication stuff",
-  "2.5,-3.5,1,1,0b0001,0,works with or without badeline",
-  "3.5,-3.5,1,1,0b0001,1,0",
+  "0,3,3,1,0b0001,0,spikes on ground need fixed or sparky's going to have a meltdown (g: maybe fixed?) ; need to figure out what's gonna happen to the berry if doing level duplication stuff",
+  "7,0,1,1,0b0001,0,works with or without badeline",
+  "8.1875,2.1875,1,1,0b0001,1,0",
   "4.875,-5.0625,1,1,0b0001,1,0",
   "5.9375,-4.1875,1,1.4375,0b0001,2,terrain is a bit weird?; especially given where it is in the progression",
   "3.5,-2.5,1,1,0b0010,1,0",
@@ -1753,12 +1947,12 @@ levels={
   "15.5,-2.5,1,2,0b0010,1,more badelines could be added to make it feel more intense. could perhaps be tweaked a bit?",
   "7,1,1,2.0625,0b0101,2,0",
   "6,0,1,4,0b0100,4,2nd berry is too hard, while being too easy to collect and tank (add a roundabout?); badeline num seems maybe excessive; probably need to nerf length/ending; move block should go somewhere less in the the way/ending is a bit wacky and tight. also the spikes on the right wall in the middle suck",
-  "6.5,4.25,2,1.5,0b0010,0,exiting the tower portion, after the final badeline room",
+  "5.0625,4.0625,2,1.5,0b0010,0,exiting the tower portion, after the final badeline room",
   "8.5,4.75,3,1,0b0010,0,walk to phone booth",
-  "11.5,4.3125,1,1,0b0000,0,phone booth (no sprite for it yet)",
-  "1.875,7,1,1,0b0010,0,memorial room (missing sprite)",
-  "2.875,7,3,1,0b0010,0,awake ver - main corridor",
-  "5.875,7,3,1,0b0010,0,awake ver - walk to phone booth"
+  "11.5,4.3125,1,1,0b0010,0,phone booth (no sprite for it yet)",
+  "3,0,1,1,0b0010,0,memorial room (missing sprite)",
+  "3,2,3,1,0b0010,0,awake ver - main corridor",
+  "3,3,3,1,0b0010,0,awake ver - walk to phone booth"
 }
 
 --<camtrigger>--
@@ -1846,12 +2040,12 @@ mapdata={
   nil,
   nil,
   nil,
-  nil,
+  "252525252525252525252525252e3e3e3e3e3e2e2525252525252525252525252525252e3f6e257f00003d2e252525252525252525252525252e2f55256f0a0000002d252525252525252525252525252e2f2556255e5f00002d2e25252525252e2e2525252525252e1f6655256e5f1d252525252e3e3e3e3e2e25252e2e25252f40414141412d2e25252e3f737300753d3e3e3e3e2e252f41000000003d3e2e253f007573000000000000003d3e2f410000000000002d250000007400000000000000004e7741000000004d4d2d2e0000000010101010100000004e0041000000004f002d2e00000000404141414100606c4e704100000000005d3d2e1e1f140041000000004d4d4c4d4d4100000000006d6e2d2e2f0000410000000000004e0000410000005d5d25253d253f0000410000000000004e0000410000006d25557e6e2f000000000000000000004e1d1f410000006d557f006d2f100000000000000000292a2e2f410000006d6f01006d252b00000000000000292c3c252e1e1e1e1e1e1e1e1e1e2c51101010101010105025252525252e2e252e25252e2e25282a1e2a2a1e1e2a28252525252525252525252525252525252c3c252c2e3c25252525252525252525252525252525252525252525252525252525252525252525252525",
   nil,
   "252525252525252f0000002d252525252525252525252525252e3f0000003d2e252525252525252525252e3e3f00000000003d3e2e2525252e2525252e2f0000000000000000002d252e25253e3e3e3e3f0000000000000000003d3e3e2e2e00404141410000000000000000007573732d2e00410000000000000000000000000073752d2e00410000000000000000000000000074002d2e1e1e1e1f000000000000000000000000002d2e25252e2f000000000000000000000000002d2e2525252f141515000000000000000000002d2e252e3e3f00000000000000001d1f1415163d2e252f000000000000000000002d2f000000003d252f0000001d1f404141411d2e2f0000000000252f0000003d2f410000003d2e2f0000740000252f000000007700000000003d2e1f60740160252e2b000000000000000000003d2e1e1e1e1e252e2c2a2b000000000000000000392c2c2e25252e2e2c5100000000000000000000502c2d2525252e2e2e1e1f1415000000000000393a2d25252e3e3e3e3e3f101010101010000000002d25252f0000004041414141414141000000002d252e2f000a004100000000000000000000002d252e3f0000004100000000000000000000002d252f120000001d1e1e1e1e7c0000000000002d2e2f120000003d3e3e3e3f000000000000293d3e2f120000000000000000000000000000503c2c2f120000000000000000000000000000502c3c2f1200000000000000000000767172292c3c2c2f120000000000000000001d1e1e1e1e1e1e1e2f120000000000000000002d2e2e2e2e2e2e2e2f120000000000000000002d2e2e2e2e2e2e2e",
   nil,
-  "202525253826255f0031323232323825202525252532323232252538252610101010102438252600000000000000000032323220253355255f00005d2555242525253825336e25255524382525202222222222222525262b00004b0000000000257e6e24266e6c25255e5e6e2525243825252526257e7e252524203232323225252520252525252c2b005b00000000006f006d24266c6c55566e252555213825323238267f73007d5531337f0000132420323232323225253c235b00000000007f006d243822222366254041412420337e252426007300006d6e6f0000001331330000007d6e313232322b5f005d5f0000007d2425323220222341000024266f006d3133007400006d25255f0000001111000000006d257e7e6e502b006d6f000000003133552531252641000031336f007d7f00000000007d6e256f0000000000000010107d7f000a6d50515d6e6f0000000000007d6f002426410000257f000000730000000000006d556f000000000076001d23000000007d50282b25555f0000000000006b0031264100006f00000000730000007000006d6e7f0000000000151624266c600000292c3c516e256f00000000000000007d374100006f000000006c00004d4c4d4d1d23000000000000005d3133141515165025253c2b6e25000000000000000000007d256e6f005d5f00000000014e005d242f1010000000005d556f0000000000503c25252c2a2b00000000000000000000006d55255e6e6f000000001d1f006d24252223000000006d256e5f000000292828252525252c00000000000000000000006d252567256f604b00002d265d252425382f0000525e292a2a231010292c3c253a2c2525252a2a2b000000000000005d6e255568292a2a2b10102426256e2d25252f0000007d502c283c23141624285155393c38253c282c2a2a2b00000000212222222a282c28252222382f55252d20252f101010103925252526005d242551256e242025252525283c2c2a22222238202520282c25252c2525252f6e252d25253822221e1e3c25253c515d4d2438266e25242520",
-  "25265f002425252025323225382525252026255f3132323233004e31322025252526404141414141414d4f007d2425252526410000000000005f600000313232202641000000000000255e5f4041414125264100000000000055256e4100000025265525256e2521222222234100000025252222223535323238252641000000252520323325256f0024253823257f00252526404141414141242025267f0000252526410000000000313225260000003238264100000000006e25313300000000313341000000000055566f0000000000007d6e252122222325666f767172000001006d55242525252222222222222222222222222525202525252525252525",
+  nil,
+  nil,
   "252538323220252525252026556d7f24203233256e313220253832337e00002426252525557e7e31323340410000002426256e7e7f000073000041000000602426557f00000000740000410000151624266f0000000000000000410000000024266f0000000076000000410000000024267f00000021234f0000410000006c24260000000024334d5d5e2123105c4d242023141500306e537e7e24202b1010242526000000377f00000031383c2a2a3c2526000000000000000073312c28252538265f00000000000000755f502c25252526255f700000000000006e503c25252520222223700000010060005025252525252520382223141516212228252525",
   "2525252525252525252033736d6e31252525252525252525383311737d7e7e2425382525252525252611007500717224203232202525252526000000002122202611113138252520261415151624382526000011313232323300000000313225266c00004041007300000f0000751324264d4f00410000740000000000001324264f00004100000000001010000013242600005c41000000001321235f0010242600000041001010101024267f0021382600000021222340414124265d5d24252600000024382641000031335d6e24252660010024252600000040415e55242026141516242026000a5d4100256e2425260000002425265e5e6e410055252438",
   "00000000000000000000002426252524000000000000000010101024264041240000001010101010292a2a24264100240000003422353535323a3a3a33410024000000003011111100007d7e252525241000000030120000000000007d7e7e242b10101030120a0010100000001010242c2a2a2a26120000212310101021223825283a382612000024264041412420253c3b6e313312000031264100003138255155256f00000000003741000000242551256e255f0000000073007573003138262525556f0000000073000f73001324262556557f0000000073000074001324266e667f75000000007400000000133126141627000000007000000000000000265f0030000000004e00000000000000266e5f30000000004e0000000000000026255537101010004e0060000000000026557e40414141704e5c4c4f6c000010267f4e410000004d4c4d4e6c6c01002126004e11111111004e004e271415162426004e00000000004e004e3000000024",
@@ -1869,10 +2063,7 @@ mapdata={
   nil,
   "2525260000000024252525252525252525252525252525253325252525252525252526000100002425253225252525252525252532323233252555252525252525252600000000242533112425252532323232332525252525252525257e7e7e252526000000002426110024252533252525252525552525252525257f7373002525260000000024260000242526252525252525252525252525257f0073730025252600000000313300002425265525252525252525252525256f000073730025252600000000737300003125262525252525252525252525556f0000737300252526000000007473000000242625252525557e7e25252525256f000073730038252600000000007300000024337e7e7e256f00736d252525257f00000073002525262b000000007400000037110000736d6f00746d2525256f606000007500252525232b0000000000000011000000737d7f00006d2555256f4d4c4f0000003232252522230000000000000000000073000000006d25257e7f4d4f000000000000313232322b00000000000000000073000000006d256f0073000000000000000000000000502b000000000000000074000000006d256f00730000000000001000000000005051000000000000000000000000006d257f007300000000000023000000000050282b0000000000000000000000007d7f0000730000000000002600000000292c3c5100000000000000000000000000540000730000000000003314151516502c253c2b0000000000000000000000005d0000730000000000000000000000503c253c2c2a2b00000000000000000000000000740000000000000000000029283c25253c282c2b00000000292a2b000000000000000000000000231010292c3c2525252525252c2a2a2a2a2c3c517060007470000000292a2a2a3c2314162425252525252525253c283c2c3c25282a2a2a2a2a2a2a2a2c2c3c2828260000242538252525252025252525252c25253c283c2c2c2c2828252525253c51000024252525252538252525252525252525252525252525252525252525",
   "000000000000000010242625252525252524252600000000000000000000000000006d6e25252525257f0000000000000000000000000000212526252525256e2524253300000000000000000000000000007d7e7e6e25256f7300000000000000000000000000002425267e6e2525252524260000000000000000000000000000000073006d25256f740000000000000000000000000000242526106d25257e7e24260000000000000000000000000000000074006d256c6f000000000000000000000000000000312525237d6e6f000031330000000000000000000000000000000000006d6c6c6f00000000000000000000000000000000242526007d7f000011110000004041414141410000000000000013222222222223000000000000000000000000000000242526000000000000000000004100000000000000000000000013313232323226404141292a2a0000000000000000003132330000000000101000000041000000000000000000000000006d2525256e37410000503c2800000000000000404141414141410000002123000000002122222300000000000000005d6d252525256f410000502c2500000000000000410000000000000000003133000000003132323300000000005d5b5e2525252525256f410000503c2500000000000000410000000000000000006d6f00000000292a2b00000000005d6e5625252525256e256f000000392c2500000100000000000034222223000000006d6f00000000502c5100000000006d60667671726c762525255f000000503c2a2a2a2b000000000000242526000000006d6f0000292a282c3b00000000007d21222222222223252525255e5e5e502c2c2c2c51000000000010242526000000006d6f0000502c3c510000000000000024382525252025232525252525292c252525252c2a2b005600213825282b006c006d6f292a2c25252c2b00000000292a2c252525382525282a2a2a2a2a3c2525252525252c2c2a2a2a242525252c2a2a2a2a2a3c2c3c2525252c2a2a2a2a282c25252525252525253c2c2c282c252525",
-  "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005d5e5f000000000000000000000000006d256f000000000000000000000000006d256f00000000000000000000005d5e25256f00000000000021230000006d252525255f000100000024382300006d252525256f2a2b0000212025282a2a2a2a2a2a2a2a2c2c2a2a2c2525252c3c2c2c282c3c2825252c282525252525253c2525252525",
-  "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005d5f0000000000000000292a2a2b005d256f00002b0000010000502c2c2c2a2b25255f002c2a2b1416292c2525252c2c2222222a2528510000502c2525252525382525282525510000502c252525252525202525",
-  "20252525382525252525252525252525202525252532323232252538252525252525252538252525252525252533000032322525252525252525323225252525252538253373737d2524382525202525252525252525252525253232252600000000312025252525252625253125253825252526007374736d3132323232323225252025252525252526007331330000000000242525252525337e7e2524252532323233007300756d2525256f0000242032323232322525252600736d6f00000000002438252525264d4c4f6d24203300600000007400006d256e7e7f0000313300007d25253132323200736d6f00000000002425323232334d4f007d242660006c76000000005d25256f7373000000000000006d256f00730000756d6f00000000003133737300730000000031334d4c4d4c4f0000006d25256f0073000000000000006d257f00730000006d6f00000000006d6f75730073000000006d6f004e004e000000006d25256f0075000000000000006d6f0000750000006d6f00000000006d6f00730075000000006d6f004e004e000000006d55256f0000000000000000006d6f0000000000006d6f00000000006d6f00750000000000006d6f004e004e0000005d2525676f0000000000000000006d6f0000000074006d6f00000000006d6f00000000000000006d6f004e004e0000005d762568255f740000000000005d25212300000074746d6f00000001006d6f00000000000000006d6f004e004e00001d1e1e1e2222222300000000005d6e25242600007474746d292a2a2a2a2b6d6f00000000746000006d6f004e004e0000242525252525382f14151516292a2b27313300292a2a2a2a2c3c283c282c2a2a2a2b0074746c71726d6f292a2a2b1416243825252525252f00000000502c282a2a2a2a2c3c283c2c3c2525252525283c2c28222222222222222a282c2851745c242525252520252f10101010503c253c38282525252525252c25252525252525252525202525252538382c253c514d4d242525252525253822222222382c25252525252525252525252525",
-  "0000000000000000102426252525252525242526000000000000000000000000000000000000000000000000000000000000000000000000212526252525256e252425330000000000000000000000000000000000000000000000000000000000000000000000002425267e6e25252525242600000000000000000000000000000000000000000000000000000000000000000000000000242526106d25257e7e242600000000000000000000000000000000000000000000000000000000000000000000000000312525237d6e6f000031330000000000000000000000000000000000000000000000000000000000000000000000000000242526007d7f000011110000000000000000000000000000000000000000000000000000000000000000000000000000242533000000000000000000000000000000000000000000000000000000000000000000292a2a0000000000000000003133000000000000000000000000000000000000000000000000005d5b5b5b5f00000000503c2800000000000000000000000000000000000000000000000000000000000000000000005d6d256e25255f000000502c2500000000000000000000000000000000000000000000000000000000000000005d5b5e2525252525256f002123503c2500000000000000000000000000000000000000000000000000000000000000006d6725252525256e60255f3133392c2500000100000000000000000000000000000000000000292a2b7000000000005d6068767172606022222222222223503c2a2a2a2b000000000000222223000000001010000029283c282223007400006d2122222222222331323232323233502c2c2c2c510000000000342425260000000021230000502c25252525237474606d24382525252026292a2a2a2a2a3c2c252525252c2a2b005600213825282b006c003133292a2c2525252525267474292a2c252525382526503c2c2c282c252525252525252c2c2a2a2a242525252c2a2a2a2a2a3c2c3c2525252525252a2a282c25252525252526502525252525252525"
+  "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005d5e5f000000000000000000000000006d256f000000000000000000000000006d256f00000000000000000000005d5e25256f00000000000021230000006d252525255f000100000024382300006d252525256f2a2b0000212025282a2a2a2a2a2a2a2a2c2c2a2a2c2525252c3c2c2c282c3c2825252c282525252525253c2525252525"
 }
 --@end
 
@@ -1966,14 +2157,14 @@ dd5111dd55515551dd1155511555555d555551155155555151155555d5515555000000006ccccccc
 7cccccccccccc6771110111101101110110111110111010051511515d55111111cccccc100100d060d0010001110111100000000111011101110110000111111
 7cccccccccccc6671110111101101110110111110000000051511515d551111111cccc1100000067600000000000111000000000111000001110110000111111
 77cccccccccccc671110111101101110110111110000000051515515d5511111111cc11111dd6677766dd1100000000000000000111000000000000000111111
-00000000880008888800088888000888880008888800088851515515155555515000000500000067600000001111011111155555000000001110000000000000
-00000050888000808880008088800080888000808880008051510515500000055000000500100d060d0010001111011110151115100001001110000000011110
-00000050088808000888080008880800088808000888080051511515500000055000000500001006001000000000011110151155111101101110111100011111
-0050050500888000008880000088800000888000008880005151151550000005500000050001000d000100001110011110151555111100100000111100111111
-0505051d00088800000888000008880000088800000888005151151550000005500000050000010d010000001110000010155515000000000000111100100111
-051d0515008088800080888000808880008088800080888051511515500000055000000500000001000000001110111110155115110011000000000000011011
-0515051d080008880800088808000888080008880800088851511515500000055000000500000001000000001110111110151115111011110000000000111111
-051d051d888000888880008888800088888000888880008855555555500000055000000500000000000000001110111111155555011001100000000000011111
+00000000000770000007700000077000000000000007700051515515155555515000000500000067600000001111011111155555000000001110000000000000
+00000050000770000077770000700700707777070077770051510515500000055000000500100d060d0010001111011110151115100001001110000000011110
+00000050007777007777777707000070777777770777777051511515500000055000000500001006001000000000011110151155111101101110111100011111
+0050050500777700077777707777777777777777777777775151151550000005500000050001000d000100001110011110151555111100100000111100111111
+0505051d07777770077007707777777707777770777777775151151550000005500000050000010d010000001110000010155515000000000000111100100111
+051d0515077777707777777707777770077777700777777051511515500000055000000500000001000000001110111110155115110011000000000000011011
+0515051d777777770077770000777700077777700077770051511515500000055000000500000001000000001110111110151115111011110000000000111111
+051d051d777777770007700000000000777777700007700055555555500000055000000500000000000000001110111111155555011001100000000000011111
 000000000000000000000000000115000111111500011500000000000dd11dd1011111100d666660066d0d66666d0d660d6666d0011100000000000000000000
 00000000000000000000000000010500001010100001050000011100111111d1dd1111ddd6d6666d66dd1ddddddd1ddd1dd6666d111100000001111000001111
 000000000000000000000000000151000050505000015100001505101611111066d111d6ddddd66666dd11dddd1111dd1ddd666d111100000000111000001111
@@ -1982,70 +2173,70 @@ dd5111dd55515551dd1155511555555d555551155155555151155555d5515555000000006ccccccc
 100000000111111111111150000105000050505000050000001111111dd11ddd6dd111166ddd11d6dd11d6d0ddd0dd10111111dd111101110110100111101111
 100000000001100000011000000151000010101000000000001010511ddd66d1ddd111dddddd1ddd0111ddd1ddd1ddd11dd11110111101110110111111101111
 15000000000150000001500000005000011111150000000000101051011ddd100dd111dd0dd111d000111dd111111dd1ddd11100111101110110111111101111
-f2e652d3e3e25252e2e3e3e3e3e3e3e2e3e3e3e3e3e3e3e2e25252e2e3e3e3e3e25252e2e3e3525252525252e2e3e3e352525252525252525252525252e2e3e3
-e3e3e3e252525200000000000000000000000000000000000000000000000000525262010100000000000300000042835252620101000000030000000000d742
-f255525552d3e3e3f255525252e652d3e752e652f700d7d3e3e2e2f3f737d7e7d3e2e2f352e6d2e252e2e3e3f3e7e7e7525252525252525252525252e2f3e652
-f70000d3e2525200000000000000000000000000000000000000000000000000525282a2b200000001010300000142525252c3a2b20101010300717100000042
-f3e75252e7e7e7e68752e6e7e7e7e65500d752f6000000d752d2f2f600470057d7d3f2e6e752d2e3e3f30414f70000005252525252525252525252e2f25552f6
-a0000000d2525200000000000000000000000000000000000000000000000000525252521501010192a262d70043230252525252c2a2a2a26201010101000042
-0037d7f7005700d78752f7010100d7521727d6f700000000d6d2f2f70000000000d787f6a0d7870057311400000000005252525252525252525252e2f2526552
-e5f50000d2e2520000000000000000000000000000000000000000000000000052525252c2a2a2a252826252e5f73742525252525252c38202a2a2a2b2041442
-004700370000000087f700a7c700f0d6e1f1f60000000000d7d2f20000006700000077f7000087c6003114000000001052525252e2e2525252525252e2f16655
-52e6f5d1525252000000000000000000000000000000000000000000000000005252825283a3a3c3528362e7f70047425252525252525252528252c215140042
-000000370004141487000004140000d7e2f2f7000000000000d2f20414d1f10000310414141487d4f43114000000d1e152e2e3e3e3e3e25252e2e25252f20414
-141414d2e25252000000000000000000000000000000000000000000000000005202a3c362111105c32333000000004252022323835252520252520262111142
-0101004700140000870000140000000052f300000101010000d3f31400d2f20000311400000077000031140000c4d2e2e2f337370057d3e3e3e3e3e252f21400
-000000d3e3e25200000000000000000000000000000000000000000000000000836211133300001333370000000000428333e752425202232323232333000042
-b2b2010000000000770000d1f1010101f23700310414142100d6f61111d2f24100311400000037000000d1f1d4f4d252f300573700000000000000d3e3f21400
-0000000000d252000000000000000000000000000000000000000000000000005262e5e7f70000005737000000000042625700d742026252e7f7370000243442
-c382b20000000000000000d2e2e1e1e1f23700311400002100d652f500d2f20000311400000037000000d2f20101d2e2000000470000000000000000e4771400
-000000d4d4d2e2000000000000000000000000000000000000000000000000000233f60000000000005700000000014262000000132362f70000370000340042
-52c2150000000000000000d252525252f25700311400002100d75552e5d2f20000311400000057000000d2e2e1e1e252000000000101010101000000e4001400
-000000f400d2e2000000000000000000000000000000000000000000000000006252f7000000000000000000000092c362041414000073243400470000340042
-c252150000000000000000d3e3e25252f2000000370037000000d65252d2f20000311400000000000000d2e2525252520000000004141414140006c6e4071400
-00000000d5d3e20000000000000000000000000000000000000000000000000062f6000000000024340000000000055262140000000000340000000000000042
-52521500000000000000000000d25252f200000037f047000000d7e755d2f200d5e555e7e7f700000000d25252525252e1f141001400000000d4d4c4d4d41400
-00000000d6e6d20000000000000000000000000000000000000000000000000062f7000000000034000000000000428262140000000000340000000000000042
-52521501010000000000000000d25252f20000005700000000000000d7d2f2e5e6e7f700000000000000d2e252525252e2f2000014000000000000e400001400
-0000d5d55252d3000000000000000000000000000000000000000000000000006200000001010000000000010101425262140000000000340000000000000642
-525282a2b20100000000000000d25252f2010000000000000000010101d2f2e7f7000000000000010101d2e25252525252f3000014000000000000e400001400
-0000d65255e7e6000000000000000000000000000000000000000000000000006200000092b2010000000092a2a2025262140000010100000000000000c5d405
-525252c252b2172700100000d1e25252e2f1010101010101010192a2a2e2f20101010101010101d1e1e1e25252525252f200000000000000000000e4d1f11400
-0000d655f700d600000000000000000000000000000000000000000000000000152434340552b2000001010552c352526214000012b201010101000000000042
-52525252c282a2b241515161d252525252e2e1e1e1e1e1e1e1a2c3c25252e2e1e1a2a2a2a2a2e1e2e252525252525252f201000000000000000092a2e2f21400
-0000d6f61000d6000000000000000000000000000000000000000000000000001534000005c362000192a282232323026200000042c2a2a2a2b2010101010105
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000052b20000000000000092c2c352e2e1e1
-e1e1e1e1e1e1e1000000000000000000000000000000000000000000000000001500000005c26200432323330000004262000000425282c352c3a2a2a2a2a282
-000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c21501010101010101055252525252e2
-e252e25252e2e20000000000000000000000000000000000000000000000000015000000138362000000670000a0004200000000000000000000000000000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005282a2e1a2a2e1e1a282525252525252
-52525252525252000000000000000000000000000000000000000000000000006200000037132322222232000000004200000000000000000000000000000000
-000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000525252c2c352c2e2c352525252525252
-52525252525252000000000000000000000000000000000000000000000000006200440047d75213232333717171714200000000000000000000000000000000
-000000000000000000000000000000000000001551000000000005dd000000000000000000000000000000000000000052525252525252525252525252525252
-525252525252520000000000d155d5d5ddddd556d55ddddd5d5d551d00000000620000000000d7e7f700570000d5e54200000000000000000000000000000000
-00000000000000000000000000000000111151511515111111111055000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000000000000051000000000150550510000000001500000000062000000000000000000000000d6524200000000000000000000000000000000
-00000000000000000000000000000000ccc700700c00ccccccc70150000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000000000000050ccccccc777777c7cccccccc7770500000000015010100000000000101000044d7524200000000000000000000000000000000
-00000000000000000000000000000000c777777c7cccccccc777c050000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000000000000050ccccc777777c7cccccccc777cc05000000000c2a2b20101000000041400000000d74200000000000000000000000000000000
-0000000000000000000000000000000077777c7cccccccc777ccc050000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000000000000050ccc777777c7cccccccc777cccc0500000000052c3235363000000140000000000004200000000000000000000000000000000
-00000000000000000000000000000000777c7cccccccc777ccccc050000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000000000000050c777777c7cccccccc777cccccc050000000005262c60000000000140000000000004200000000000000000000000000000000
-000000000000000000000000000000007c7cccccccc777ccccccc050000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000005077777c7cccccccc777cccccccc050000000000233d4f400000000140000000000014200000000000000000000000000000000
-000000000000000000000000000000007cccccccc777ccccccccc050000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000000000000050777c7cccccccc777cccccccccc050000000006257000000000000000000000000128300000000000000000000000000000000
-00000000000000000000000000000000ccccccc777ccccccccccc050000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000107c7cccccccc777ccccccccccc7010000000006200000000000000000000000000425200000000000000000000000000000000
-00000000000000000000000000000000ccccc777ccccccccccc7c050000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000107cccccccc777ccccccccccc7cc010000000006200440000010101850074848484425200000000000000000000000000000000
-00000000000000000000000000000000ccc777ccccccccccc7ccc050000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000000000000510ccccccc777ccccccccccc7cccc015000000006200001727122232010175000000420200000000000000000000000000000000
-00000000000000000000000000000000c777ccccccccccc7cccc0151000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000005100cccc777ccccccccccc7ccccc0015000000005222222222025283222222320000425200000000000000000000000000000000
+f2e652d3e3e25252e2e3e3e3e3e3e3e2e3e3e3e3e3e3e3e2e25252e2e3e3e3e3e25252e2e3e3525252525252e2e3e3e302525252835252525252525252525252
+0252525252232323235252835252525252525252835252525252525252330000525262010100000000000300000042835252620101000000030000000000d742
+f255525552d3e3e3f255525252e652d3e752e652f700d7d3e3e2e2f3f737d7e7d3e2e2f352e6d2e252e2e3e3f3e7e7e723235252525252525252232352525252
+52528352333737d7524283525202525252525252525252525252232352620000525282a2b200000001010300000142525252c3a2b20101010300717100000042
+f3e75252e7e7e7e68752e6e7e7e7e65500d752f6000000d752d2f2f600470057d7d3f2e6e752d2e3e3f30414f700000000001302525252525262525213525283
+5252526200374737d61323232323232352520252525252525262003713330000525252521501010192a262d70043230252525252c2a2a2a26201010101000042
+0037d7f7005700d78752f7010100d7521727d6f700000000d6d2f2f70000000000d787f6a0d78700573114000000000000000042525252525233e7e752425252
+2323233300370057d6525252f6000042022323232323525252620037d6f6000052525252c2a2a2a252826252e5f73742525252525252c38202a2a2a2b2041442
+004700370000000087f700a7c700f0d6e1f1f60000000000d7d2f20000006700000077f7000087c60031140000000010000000428352525262d4c4f4d6420233
+0006000000470000d652e6e7f7000013330000d75252132323230037d6f600005252825283a3a3c3528362e7f70047425252525252525252528252c215140042
+000000370004141487000004140000d7e2f2f7000000000000d2f20414d1f10000310414141487d4f43114000000d1e1000000425223232333d4f400d7426206
+00c66700000000d55252f6373700000000000000d652f60037000057d6f600005202a3c362111105c32333000000004252022323835252520252520262111142
+0101004700140000870000140000000052f300000101010000d3f31400d2f20000311400000077000031140000c4d2e2000000133337370037000000001333d4
+c4d4c4f4000000d65252f6003700000000000000d652f70037000000d6f60000836211133300001333370000000000428333e752425202232323232333000042
+b2b2010000000000770000d1f1010101f23700310414142100d6f61111d2f24100311400000037000000d1f1d4f4d252000000d6f65737003700000000d6f600
+e400e400000000d65252f6005700000000000000d6f6000057000000d6f600005262e5e7f70000005737000000000042625700d742026252e7f7370000243442
+c382b20000000000000000d2e2e1e1e1f23700311400002100d652f500d2f20000311400000037000000d2f20101d2e2000000d6f60037005700000000d6f600
+e400e400000000d65552f6000000000000000000d6f6000000000000d6f600000233f60000000000005700000000014262000000132362f70000370000340042
+52c2150000000000000000d252525252f25700311400002100d75552e5d2f20000311400000057000000d2e2e1e1e252000000d6f60057000000000000d6f600
+e400e4000000d5525276f6000000000000000000d6f6000000004700d6f600006252f7000000000000000000000092c362041414000073243400470000340042
+c252150000000000000000d3e3e25252f2000000370037000000d65252d2f20000311400000000000000d2e252525252000000d6f60000000000000000d6f600
+e400e4000000d567528652f547000000000000d55212320000004747d6f6000062f6000000000024340000000000055262140000000000340000000000000042
+52521500000000000000000000d25252f200000037f047000000d7e755d2f200d5e555e7e7f700000000d25252525252001000d6f60000000000000000d6f600
+e400e40000d1e1e1e1222222320000000000d5e65242620000474747d692a2a262f7000000000034000000000000428262140000000000340000000000000042
+52521501010000000000000000d25252f20000005700000000000000d7d2f2e5e6e7f700000000000000d2e252525252a2a2b2d6f60000000047060000d6f600
+e400e4000042525252525283f24151516192a2b27213330092a2a2a2a2c2c3826200000001010000000000010101425262140000000000340000000000000642
+525282a2b20100000000000000d25252f2010000000000000000010101d2f2e7f7000000000000010101d2e252525252c382c2a2a2a2b2004747c61727d6f692
+a2a2b2416142835252525252f20000000005c282a2a2a2a2c2c382c3c2c352526200000092b2010000000092a2a2025262140000010100000000000000c5d405
+525252c252b2172700100000d1e25252e2f1010101010101010192a2a2e2f20101010101010101d1e1e1e2525252525252525282c3c28222222222222222a282
+c2821547c542525252520252f20101010105c352c38382525252525252c25252152434340552b2000001010552c352526214000012b201010101000000000042
+52525252c282a2b241515161d252525252e2e1e1e1e1e1e1e1a2c3c25252e2e1e1a2a2a2a2a2e1e2e252525252525252525252525252525202525252528383c2
+52c315d4d442525252525252832222222283c2525252525252525252525252521534000005c362000192a282232323026200000042c2a2a2a2b2010101010105
+02525252836252f50013232323238352025252525223232323525283526201010101014283526200000000000000000000000000000000000142625252525252
+52425262000000000000000000000000000000000000000000000000000000001500000005c26200432323330000004262000000425282c352c3a2a2a2a2a282
+2323230252335552f50000d5525542525252835233e65252554283525202222222222222525262b20000b40000000000000000000000000012526252525252e6
+524252330000000000000000000000000000000000000000000000000000000015000000138362000000670000a0004200000000000000000000000000000000
+52e7e64262e6c65252e5e5e6525242835252526252e7e752524202232323235252520252525252c2b200b500000000000000000000000000425262e7e6525252
+52426200000000000000000000000000000000000000000000000000000000006200000037132322222232000000004200000000000000000000000000000000
+f600d64262c6c65565e652525512835223238362f73700d7551333f7000031420223232323235252c332b50000000000000000000000000042526201d65252e7
+e7426200000000000000000000000000000000000000000000000000000000006200440047d75213232333717171714200000000000000000000000000000000
+f700d642832222326652041414420233e752426200370000d6e6f6000000311333000000d7e613232323b2f500d5f500000000000000000013525232d7e6f600
+0013330000000000000000000000000000000000000000000000000000000000620000000000d7e7f700570000d5e54200000000000000000000000000000000
+0000d7425223230222321400004262f600d6133300470000d65252f5000000111100000000d652e7e7e605b200d6f60000000000000000000042526200d7f700
+001111000000000000000000000000000000000000000000000000000000000062000000000000000000000000d6524200000000000000000000000000000000
+000000133355521352621400001333f600d7f70000000000d7e652f6000000000000000101d7f700a0d60515d5e6f60000000000000000000042523300000000
+000000000000000000000000000000000000000000000000000000000092a2a215010100000000000101000044d7524200000000000000000000000000000000
+0000000000d7f600426214000052f700000037000000000000d655f600000000006700d13200000000d70582b25255f500000000000000000013330000000000
+0000000000000000000000000000000000000000d5b5b5b5f50000000005c382c2a2b20101000000041400000000d74200000000000000000000000000000000
+000000000000b6001362140000f60000000037000000070000d6e6f7000000000051614262c606000092c2c315e652f600000000000000000000000000000000
+00000000000000000000000000000000000000d5d652e65252f500000005c25252c3235363000000140000000000004200000000000000000000000000000000
+0000000000000000d773140000f600000000c60000d4c4d4d4d13200000000000000d5133341515161055252c3b2e65200000000000000000000000000000000
+00000000000000000000000000000000d5b5e5525252525252f600123205c3525262c60000000000140000000000004200000000000000000000000000000000
+00000000000000000000d752e6f600d5f50000000010e400d542f2010100000000d555f6000000000005c35252c2a2b200000000000000000000000000000000
+00000000000000000000000000000000d6765252525252e60652f5133393c2520233d4f400000000140000000000014200000000000000000000000000000000
+0000000000000000000000d65552e5e6f600000000d1f100d64252223200000000d652e6f500000092828252525252c200001000000000000000000000000000
+00000000000092a2b2070000000000d5068667172706062222222222223205c36257000000000000000000000000128300000000000000000000000000000000
+0000000000000000000000d652527652f606b40000d262d552425283f2000025e592a2a232010192c2c352a3c2525252a2a2a2b2000000000000222232000000
+00010100009282c382223200470000d6122222222222321323232323233305c26200000000000000000000000000425200000000000000000000000000000000
+a2a2b200000000000000d5e652558692a2a2b20101426252e6d25252f2000000d705c282c33241614282155593c38352c2c2c215000000000043425262000000
+001232000005c25252525232474706d64283525252026292a2a2a2a2a2c3c2526200440000010101850074848484425200000000000000000000000000000000
+c382c2a2a2b20000000012222222a282c28252222283f25552d20252f201010101935252526200d542521552e6420252525252c2a2b200650012835282b200c6
+00133392a2c2525252525262474792a2c252525283526205c3c2c282c25252526200001727122232010175000000420200000000000000000000000000000000
+52525282c3c2a22222228302520282c25252c2525252f2e652d25252832222e1e1c35252c315d5d4428362e65242520252525252c2c2a2a2a242525252c2a2a2
+a2a2a2c3c2c3525252525252a2a282c2525252525252620552525252525252525222222222025283222222320000425200000000000000000000000000000000
 __label__
 cccccccccccccccccccccccccccccccccccccc775500000000000000000000000000000000070000000000000000000000000000000000000000000000000000
 cccccccccccccccccccccccccccccccccccccc776670000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -2180,22 +2371,22 @@ __gff__
 0000000000000000000000000000000002020202080808000000000000030303030303030306030303030303030303030303030303030303030303030303030300000000000000000000000604040404030306060606060000000006040606060404040404040604040000040606060604040404040404030303030303060606
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __map__
-202525253826255f003132323232382520252525253232323225253825261010101010243825260000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002625257e24202525252025252532323800000000000000000000000000000000
-32323220253355255f00005d2555242525253825336e25255524382525202222222222222525262b00004b0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000267e7f0031323232323232323311112400000000000000000000000000000000
-257e6e24266e6c25255e5e6e2525243825252526257e7e252524203232323225252520252525252c2b005b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002600000000404141414141410000002400000000000000000000000000000000
-6f006d24266c6c55566e252555213825323238267f73007d5531337f0000132420323232323225253c235b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002676010000410000000000000000002400000000000000000000000000000000
-7f006d243822222366254041412420337e252426007300006d6e6f0000001331330000007d6e313232322b5f005d5f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000382222222222222222222222234f002400000000000000000000000000000000
-00007d2425323220222341000024266f006d3133007400006d25255f0000001111000000006d257e7e6e502b006d6f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002525252025253825202525382600002400000000000000000000000000000000
-0000003133552531252641000031336f007d7f00000000007d6e256f0000000000000010107d7f000a6d50515d6e6f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002032323232323232322525252640412400000000000000000000000000000000
-00000000007d6f002426410000257f000000730000000000006d556f000000000076001d23000000007d50282b25555f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000026257e7f00111111112425252641002400000000000000000000000000000000
-0000000000006b0031264100006f00000000730000007000006d6e7f0000000000151624266c600000292c3c516e256f00000000000000000000000000000000000000000000000000000025252e25252525252e3e3e2e2e3e2e2e3e2e252525267f0a0000000000132438252641002400000000000000000000000000000000
-00000000000000007d374100006f000000006c00004d4c4d4d1d23000000000000005d3133141515165025253c2b6e25000000000000000000000000000000000000000000000000000000252e3e3e3e2e2e3e3f257e2d3f003d3f753d3e2e252600000010100000132425252641002400000000000000000000000000000000
-000000000000000000007d256e6f005d5f00000000004e005d242f1010000000005d556f0000000000503c25252c2a2b0000000000000000000000000000000000000000000000000000003e3f25256e3d3f7f7e7f007700000073007d252d2526101010292b1200132420323300002400000000000000000000000000000000
-00000000000000000000006d55255e6e6f000000001d1f006d24252223000000006d256e5f000000292828252525252c00000000000000000000000000000000000000000000000000000025552525557f0000000000730000007500006d3d2e2640414150511200133133750000002400000000000000000000000000000000
-00010000000000000000006d252567256f604b00002d265d252425382f0000525e292a2a231010292c3c253a2c2525250000000000000000000000000000000000000000000000000000006e2555256f000000000000740000000000007d252d26410000243b0000000000000000002400000000000000000000000000000000
-2a2a2b000000000000005d6e255568292a2a2b10102426256e2d25252f0000007d502c283c23141624285155393c38250000000000000000000000000000000000000000000000000000001e1e1e1e1e1e1f0000000000000000000000006d2d2641000037730000000000000000002400000000000000000000000000000000
-3c282c2a2a2b00000000212222222a282c28252222382f55252d20252f101010103925252526005d242551256e24202500000000000000000000000000000000000000000000000000000025252525252e2f7400000000000000000060701d2e2600000000730000000000101010102400000000000000000000000000000000
-252525283c2c2a22222238202520282c25252c2525252f6e252d25253822221e1e3c25253c515d4d2438266e252425200000000000000000000000000000000000000000000000000000002525252525252e1e1f00000000000000001d1e2e2e2600000000740000005d56292a2a2a3c00000000000000000000000000000000
+202525253826255f003132323232382520252525253232323225253825261010101010243825260000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002625257e24202525252025252532323825265f00242525202532322538252525
+32323220253355255f00005d2555242525253825336e25255524382525202222222222222525262b00004b0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000267e7f003132323232323232331111242026255f3132323233004e3132202525
+257e6e24266e6c25255e5e6e2525243825252526257e7e252524203232323225252520252525252c2b005b0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000260000000040414141414141000000242526404141414141414d4f007d242525
+6f006d24266c6c55566e252555213825323238267f73007d5531337f0000132420323232323225253c235b0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000267601000041000000000000000000242526410000000000005f600000313232
+7f006d243822222366254041412420337e252426007300006d6e6f0000001331330000007d6e313232322b5f005d5f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000382222222222222222222222234f0024202641000000000000255e5f40414141
+00007d2425323220222341000024266f006d3133007400006d25255f0000001111000000006d257e7e6e502b006d6f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002525252025253825202525382600002425264100000000000055256e41000000
+0000003133552531252641000031336f007d7f00000000007d6e256f0000000000000010107d7f000a6d50515d6e6f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002032323232323232322525252640412425265525256e25212222222341000000
+00000000007d6f002426410000257f000000730000000000006d556f000000000076001d23000000007d50282b25555f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000026257e7f00111111112425252641002425252222223535323238252641000000
+0000000000006b0031264100006f00000000730000007000006d6e7f0000000000151624266c600000292c3c516e256f00000000000000000000000000000000000000000000000000000025252e25252525252e3e3e2e2e3e2e2e3e2e252525267f0a00000000001324382526410024252520323325256f0024253823257f00
+00000000000000007d374100006f000000006c00004d4c4d4d1d23000000000000005d3133141515165025253c2b6e25000000000000000000000000000000000000000000000000000000252e3e3e3e2e2e3e3f257e2d3f003d3f753d3e2e2526000000101000001324252526410024252526404141414141242025267f0000
+000000000000000000007d256e6f005d5f00000000004e005d242f1010000000005d556f0000000000503c25252c2a2b0000000000000000000000005d5f000000000000000000000000003e3f25256e3d3f7f7e7f007700000073007d252d2526101010292b1200132420323300002425252641000000000031322526000000
+00000000000000000000006d55255e6e6f000000001d1f006d24252223000000006d256e5f000000292828252525252c000000000000292a2a2b005d256f0000000000000000000000000025552525557f0000000000730000007500006d3d2e264041415051120013313375000000243238264100000000006e253133000000
+00010000000000000000006d252567256f604b00002d265d252425382f0000525e292a2a231010292c3c253a2c2525252b0000010000502c2c2c2a2b25255f0000000000000000000000006e2555256f000000000000740000000000007d252d26410000243b0000000000000000002400313341000000000055566f00000000
+2a2a2b000000000000005d6e255568292a2a2b10102426256e2d25252f0000007d502c283c23141624285155393c38252c2a2b1416292c2525252c2c2222222a00000000000000000000001e1e1e1e1e1e1f0000000000000000000000006d2d2641000037730000000000000000002400007d6e252122222325666f76717200
+3c282c2a2a2b00000000212222222a282c28252222382f55252d20252f101010103925252526005d242551256e2420252528510000502c252525252538252528000000000000000000000025252525252e2f7400000000000000000060701d2e260000000073000000000010101010240001006d552425252522222222222222
+252525283c2c2a22222238202520282c25252c2525252f6e252d25253822221e1e3c25253c515d4d2438266e252425202525510000502c25252525252520252500000000000000000000002525252525252e1e1f00000000000000001d1e2e2e2600000000740000005d56292a2a2a3c22222222222525202525252525252525
 3e3e3e2e2525252e3e3e3e3e3e2e252525252525000000000025252e3e3e3e3e3e3e3e2e2525253e3e2525252525252e2e2e3e3e3e2e2e2525252e252525252e3e3e2e252525252525000025252525252525252e1f404141414141412d2e2525265f00000000005d5e2566502c25282525252625252425253232322538252525
 256e7e3d3e252e3f730073006d3d3e2e252e3e3e0000000000253e3f7f00000073007d2d2e3e3f000025252e2e3e3e3e3e3f5525253d3e3e2e2e3e3e2e252e3f6e252d2525252525250000252525252525252e252f410000000000002d252525266f0000101021222222222025252525253826257e2438330075002432323220
 557f00006d2d3f00730074007d25552d3e3f6e2500000000002f7e7f00000f007400102d2f00000000252e3e3f6e252525557e256e7e7f733d3f55252d2e3f257e7e3d2e2525252525000025252525252e3e3e2e2f410000000000002d2e252526255e5e2122382025382525252525252525267f003133000000003700000024

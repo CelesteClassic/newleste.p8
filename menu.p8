@@ -246,11 +246,11 @@ function load_gamedata()
 	-- variables
 	cartnames = {
 		"prologue",
-		"forsaken_city",
-		"old_site",
-		"celestial_resort",
-		"goden_ridge",
-		"mirror_temple",
+		"city",
+		"site",
+		"resort",
+		"ridge",
+		"temple",
 		"reflection",
 		"summit",
 		"epilogue",
@@ -316,7 +316,8 @@ function handle_ui()
 				elseif btnp(4) then
 					transition_action=function()
 						if selected2chap(sel_level) ~= 9 then
-							load(""..selected2chap(sel_level)..cartnames[sel_level])
+							--load(""..selected2chap(sel_level)..cartnames[sel_level])
+							load(cartnames[sel_level])
 						else
 							load("0interludes")
 						end
