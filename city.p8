@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 36
+version 41
 __lua__
 --newleste.p8 base cart
 
@@ -1173,9 +1173,10 @@ function load_level(id)
     --hex loaded levels go at (0,0), despite what the levels table says (to make everhorn nicer)
     lvl_x,lvl_y=0,0
     if diff_level then
-      --replace mapdata with hex
-      for i=1,#mapdata[lvl_id],2 do
-        mset(i\2%lvl_w,i\2\lvl_w,"0x"..sub(mapdata[lvl_id],i,i+1))
+      --replace mapdata with base256
+      --encoding is offset by 1, to avoid shenanigans with null chars
+      for i=0,#mapdata[lvl_id]-1 do
+        mset(i%lvl_w,i\lvl_w,ord(mapdata[lvl_id][i+1])-1)
       end
     end
   end
@@ -1628,14 +1629,14 @@ and can be safely removed!
 function get_mapdata(x,y,w,h)
   local reserve=""
   for i=0,w*h-1 do
-    reserve..=num2hex(mget(i%w,i\w))
+    reserve..=num2base256(mget(i%w,i\w)+1)
   end
   printh(reserve,"@clip")
 end
 
 --convert mapdata to memory data
-function num2hex(v)
-  return sub(tostr(v,true),5,6)
+function num2base256(number)
+  return number%256==0 and "\\000" or number==10 and "\\n" or number==13 and "\\r" or number==34 and [[\"]] or number==92 and [[\\]] or chr(number)
 end
 
 __gfx__
