@@ -1024,7 +1024,7 @@ dream_block={
       t=flr(rnd(10))})
     end
     dtimer=1
-    disp_shapes={}
+    disp_shapes={min_x=10000,max_x=-10000, min_y=10000, max_y=-10000}
     outline=false
     xsegs={}
     ysegs={}
@@ -1125,12 +1125,10 @@ dream_block={
     local big_particles={}
     foreach(particles, function(p)
       local px,py = (p.x+cam_x*p.z-65)%(hitbox.w-2)+1+x, (p.y+cam_y*p.z-65)%(hitbox.h-2)+1+y
-      if #disp_shapes!=0 then
-        local d,dx,dy,ds=displace(disp_shapes, px,py)
-        d=max((6-d), 0)
-        px+=dx*ds*d
-        py+=dy*ds*d
-      end
+      local d,dx,dy,ds=displace(disp_shapes, px,py)
+      d=max((6-d), 0)
+      px+=dx*ds*d
+      py+=dy*ds*d
 
       if p.s<0.2 and p.t<=8 then
         add(big_particles,{px,py,p.c})
@@ -1174,10 +1172,12 @@ dream_block={
           break
         end
         lx,rx=seg[1],segs[idx+1][1]
+        if rx<draw_x or lx>draw_x+128 then goto continue end
         local ly,ry=i+(i==y and -1 or 1)*calc_seg(seg), i+(i==y and -1 or 1)*calc_seg(segs[idx+1])
         local m=(ry-ly)/(rx-lx)
         for j=lx,rx do
           local py=round(m*(j-lx)+ly)
+          rectfill(j,py,j,i,0)
           if #disp_shapes==0 then
             pset(j,py,outline_color)
           else
@@ -1185,10 +1185,9 @@ dream_block={
             d=max((4-d), 0)
             pset(j+dx*d*ds,py+dy*d*ds,outline_color)
           end
-          if py!=i then
-            line(j,py+sign(i-py),j,i,0)
-          end
         end
+
+        ::continue::
       end
     end
 
@@ -1201,10 +1200,12 @@ dream_block={
           break
         end
         ly,ry=seg[1],segs[idx+1][1]
+        if ry<draw_y or ly>=draw_y+129 then goto continue end
         local lx,rx=i+(i==x and -1 or 1)*calc_seg(seg), i+(i==x and -1 or 1)*calc_seg(segs[idx+1])
         local m=(rx-lx)/(ry-ly)
         for j=ly,ry do
           local px=round(m*(j-ly)+lx)
+          rectfill(px,j,i,j,0)
           if #disp_shapes==0 then
             pset(px,j,outline_color)
           else
@@ -1212,11 +1213,10 @@ dream_block={
             d=max((4-d), 0)
             pset(px+dx*d*ds,j+dy*d*ds,outline_color)
           end
-          if px!=i then
-            line(px+sign(i-px),j,i,j,0)
-          end
         end
+        ::continue::
       end
+
     end
 
       for i in all{x+1,right()-1} do
@@ -1233,23 +1233,27 @@ function create_disp_shape(tbl,x,y)
 end
 
 function update_disp_shapes(tbl)
+  tbl.min_x,tbl.max_x,tbl.min_y,tbl.max_y=10000,-10000,10000,-10000
   for i in all(tbl) do
     i[3]+=2
     if i[3] >= 15 then
       del(tbl, i)
     end
+    tbl.min_x,tbl.max_x,tbl.min_y,tbl.max_y=min(tbl.min_x,i[1]), max(tbl.max_x, i[1]), min(tbl.min_y, i[2]), max(tbl.max_y,i[2])
   end
 end
 
 function displace(tbl, px,py)
   local d,ds,pox,poy,s = 10000,0,0,0,0
-  for i in all(tbl) do
-    local ox,oy,r=unpack(i)
-    if abs(px-ox)+abs(py-oy)<=20 then
-      --cpu optimization - if the manhatten distance is far enough, we don't care anyway
-      local td,ts,tpox,tpoy = sdf_circ(px,py, ox,oy,r)
-      if td<d then
-        d,ds,pox,poy,s=td,ts,tpox,tpoy,r
+  if px>=tbl.min_x-20 and px<=tbl.max_x+20 and  py>=tbl.min_y-20 and py<=tbl.max_y+20 then
+    for i in all(tbl) do
+      local ox,oy,r=unpack(i)
+      if abs(px-ox)+abs(py-oy)<=20 then
+        --cpu optimization - if the manhatten distance is far enough, we don't care anyway
+        local td,ts,tpox,tpoy = sdf_circ(px,py, ox,oy,r)
+        if td<d then
+          d,ds,pox,poy,s=td,ts,tpox,tpoy,r
+        end
       end
     end
   end
@@ -1798,6 +1802,12 @@ function _draw()
   -- <transition> --
   if (co_trans and costatus(co_trans) != "dead") coresume(co_trans)
   color"0"
+
+--   if seconds>0 then
+--   max_cpu = max(max_cpu,stat(1))
+--   camera()
+--   print(max_cpu,0,0,7)
+-- end
 end
 
 function draw_object(_ENV)
