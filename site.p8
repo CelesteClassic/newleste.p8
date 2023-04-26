@@ -49,7 +49,7 @@ end
 
 -- [effects]
 
-clouds={}
+--[[clouds={}
 for i=0,16 do
   add(clouds,{
     x=rnd"128",
@@ -57,7 +57,7 @@ for i=0,16 do
     spd=1+rnd"4",
     w=32+rnd"32"
   })
-end
+end]]
 
 particles={}
 for i=0,24 do
@@ -84,7 +84,6 @@ for i=0,15 do
     size=rnd{1,2}
   })
 end
-stars_active=true
 stars_falling=true
 --</stars>--
 
@@ -788,14 +787,21 @@ function bade_track(_ENV,o)
   end
 end
 
+--<fall_plat> <dream_block> <touch_switch>--
+--for rectangle objects with variable size, determined by mapdata
+function resize_rect_obj(_ENV,tr,td)
+  while right()<lvl_pw-1 and tile_at(right()\8+1,y/8)==tr do
+    hitbox.w+=8
+  end
+  while bottom()<lvl_ph-1 and tile_at(x/8,bottom()\8+1)==td do
+    hitbox.h+=8
+  end
+end
+--</fall_plat> </dream_block> </touch_switch>
+
 fall_plat={
   init=function(_ENV)
-    while right()<lvl_pw-1 and tile_at(right()\8+1,y/8)==67 do
-      hitbox.w+=8
-    end
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()\8+1)==67 do
-      hitbox.h+=8
-    end
+    resize_rect_obj(_ENV,67,67)
     collides,solid_obj,timer=true,true,0
   end,
   update=function(_ENV)
@@ -829,8 +835,8 @@ fall_plat={
       x+=rnd(2)-1
       y+=rnd(2)-1
     end
-    local r,d=x+hitbox.w-8,y+hitbox.h-8
-    for i in all{x,r} do
+    local r,d=hitbox.w-8,hitbox.h-8
+    --[[for i in all{x,r} do
       for j in all{y,d} do
         spr(41+(i==x and 0 or 2) + (j==y and 0 or 16),i,j)
       end
@@ -853,7 +859,18 @@ fall_plat={
         end
       end
     end
-    palt(0,true)
+    palt(0,true)]]
+
+    --can probably be optimized slightly farther
+    local sprites=split"37,80,81,?,42,41,43,42,58,57,59,58,?,80,81,?"
+    for i=0,r,8 do
+      for j=0,d,8 do
+        local typ=(i==0 and 1 or i==r and 2 or (i==8 or i==r-8) and 3 or 0) + (j==0 and 4 or j==d and 8 or (j==8 or j==d-8) and 12 or 0) + 1
+        palt(0,(i==0 or i==r) and (j==0 or j==d))
+        spr(tonum(sprites[typ]) or (i+j)%16==0 and 44 or 60,i+x,j+y)
+      end
+    end
+    palt()
   end
 
 }
@@ -863,7 +880,7 @@ touch_switch={
     off=2
   end,
   update=function(_ENV)
-    if player_here() and not collected then
+    if not collected and player_here() then
       collected=true
       controller.missing-=1
       init_smoke()
@@ -893,12 +910,7 @@ touch_switch={
 switch_block={
   init=function(_ENV)
     solid_obj=true
-    while right()<lvl_pw-1 and tile_at(right()\8+1,y/8)==72 do
-      hitbox.w+=8
-    end
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()\8+1)==87 do
-      hitbox.h+=8
-    end
+    resize_rect_obj(_ENV,72,87)
     delay,end_delay=0,0
   end,
   end_init=function(_ENV)
@@ -981,11 +993,7 @@ switch_block={
       spr(87,x,i)
       spr(87,r,i,1.0,1.0,true)
     end
-    for i=x+8,r-8,8 do
-      for j=y+8,d-8,8 do
-        rectfill(i,j,i+8,j+8,1)
-      end
-    end
+    rectfill(x+8,y+8,r-8,d-8,1)
 
     spr(88,x+hitbox.w/2-4,y+hitbox.h/2-4)
   end
@@ -1002,16 +1010,64 @@ function calc_seg(seg)
   return 0
 end
 
+function build_segs(x,right)
+  local segs={}
+  for i=1,2 do
+    local seg={{x},{x+4}}
+    local x_=x+10+flr(rnd"6")
+    while x_<right-4 do
+      add(seg,{x_,rnd"3"+2,rnd"3"+2})
+      x_+=flr(rnd"6")+6
+    end
+
+    seg[ seg[#seg][1]>right-8 and #seg or #seg+1 ] = {right - 4}
+    add(seg,{right})
+    add(segs,seg)
+  end
+  return segs
+end
+
+function draw_outline(_ENV, x,right,draw_y,ysegs,transpose,outline_color)
+  for t,i in ipairs{x,right} do
+    -- line(x+1, i, right()-1,i)
+
+
+    local segs=ysegs[t]
+    local dir= split"-1,1"[t]
+    for idx=1,#segs-1 do
+      ly,ry=segs[idx][1],segs[idx+1][1]
+      if ry<draw_y or ly>=draw_y+129 then goto continue end
+      local lx,rx=i+dir*calc_seg(segs[idx]), i+dir*calc_seg(segs[idx+1])
+      local m=(rx-lx)/(ry-ly)
+      local px_=lx
+      for j=ly,ry do
+        px_+=m
+        local px=round(px_)
+        if transpose then
+          rectfill(j,px,j,i,0)
+          px,j=j,px
+        else
+          rectfill(px,j,i,j,0)
+        end
+        if #disp_shapes==0 then
+          pset(px,j,outline_color)
+        else
+          local d,dx,dy,ds=displace(disp_shapes,px,j)
+          d=max((4-d), 0)
+          pset(px+dx*d*ds,j+dy*d*ds,outline_color)
+        end
+      end
+      ::continue::
+    end
+
+  end
+end
+
 dream_blocks_active=true
 dream_block={
   init=function(_ENV)
     layer=3
-    while right()<lvl_pw-1 and tile_at(right()\8+1,y/8)==65 do
-      hitbox.w+=8
-    end
-    while bottom()<lvl_ph-1 and tile_at(x/8,bottom()\8+1)==65 do
-      hitbox.h+=8
-    end
+    resize_rect_obj(_ENV,65,65)
     kill_timer=0
     particles={}
     for i=1,hitbox.w*hitbox.h/32 do
@@ -1026,40 +1082,8 @@ dream_block={
     dtimer=1
     disp_shapes={min_x=10000,max_x=-10000, min_y=10000, max_y=-10000}
     outline=false
-    xsegs={}
-    ysegs={}
-    for i=1,2 do
-      local seg={{x},{x+4}}
-      local x_=x+10+flr(rnd(6))
-      while x_<right()-4 do
-        add(seg,{x_,rnd(3)+2,rnd(3)+2})
-        x_+=flr(rnd(6))+6
-      end
-      if seg[#seg][1]>right()-8 then
-        seg[#seg][1]=right()-4
-        seg[#seg][2]=nil
-      else
-        add(seg,{right()-4})
-      end
-      add(seg,{right()})
-      add(xsegs,seg)
-    end
-    for i=1,2 do
-      local seg={{y},{y+4}}
-      local y_=y+10+flr(rnd(6))
-      while y_<bottom()-4 do
-        add(seg,{y_,rnd(3)+2,rnd(3)+2})
-        y_+=flr(rnd(6))+6
-      end
-      if seg[#seg][1]>bottom()-8 then
-        seg[#seg][1]=bottom()-4
-        seg[#seg][2]=nil
-      else
-        add(seg,{bottom()-4})
-      end
-      add(seg,{bottom()})
-      add(ysegs,seg)
-    end
+    xsegs=build_segs(x,right())
+    ysegs=build_segs(y,bottom())
   end,
   update=function(_ENV)
     --[[hitbox.w+=2
@@ -1070,15 +1094,9 @@ dream_block={
       local _ENV,this=hit,_ENV
       dash_effect_time=10
       dash_time=2
-      if dash_target_y==-1.5 then
-        dash_target_y=-2
-      end
-      if dash_target_x==0 then
-        dash_target_y=sign(dash_target_y)*2.5
-      end
-      if dash_target_y==0 then
-        dash_target_x=sign(dash_target_x)*2.5
-      end
+
+      local magnitude=(dash_target_y==0 or dash_target_x==0) and 2.5 or 2
+      dash_target_x,dash_target_y=sign(dash_target_x)*magnitude,sign(dash_target_y)*magnitude
       if not dreaming then
         spd=vector(dash_target_x*(dash_target_y==0 and 2.5  or 1.7678),dash_target_y*(dash_target_x==0 and 2.5 or 1.7678))
         dream_time=0
@@ -1138,12 +1156,15 @@ dream_block={
     end)
     foreach(big_particles,function(p)
       local px,py,pc=unpack(p)
-      line(px-1,py,px+1,py,pc)
-      line(px,py-1,px,py+1,pc)
+      -- line(px-1,py,px+1,py,pc)
+      -- line(px,py-1,px,py+1,pc)
+      -- draw a + in the right location using some trickery
+      palt(0b1111111011111111)
+      pal(7,pc)
+      spr(74,px-3,py-3)
     end)
     pal()
 
-    color(7)
     -- draw outline pixel by pixel
     -- divide into segments of 8 pixels
     -- at the boundaries of each segment, set the position to be a sum of sines
@@ -1162,68 +1183,15 @@ dream_block={
     -- end
 
     local outline_color = dream_blocks_active and 7 or 5
+    draw_outline(_ENV,x,right(),draw_y,ysegs,false,outline_color)
+    draw_outline(_ENV,y,bottom(),draw_x,xsegs,true,outline_color)
 
-    for i=y,bottom(),hitbox.h-1 do
-      -- line(x+1, i, right()-1,i)
 
-      local segs=xsegs[i==y and 1 or 2]
-      for idx,seg in ipairs(segs) do
-        if idx==#segs then
-          break
-        end
-        lx,rx=seg[1],segs[idx+1][1]
-        if rx<draw_x or lx>draw_x+128 then goto continue end
-        local ly,ry=i+(i==y and -1 or 1)*calc_seg(seg), i+(i==y and -1 or 1)*calc_seg(segs[idx+1])
-        local m=(ry-ly)/(rx-lx)
-        for j=lx,rx do
-          local py=round(m*(j-lx)+ly)
-          rectfill(j,py,j,i,0)
-          if #disp_shapes==0 then
-            pset(j,py,outline_color)
-          else
-            local d,dx,dy,ds=displace(disp_shapes,j,py)
-            d=max((4-d), 0)
-            pset(j+dx*d*ds,py+dy*d*ds,outline_color)
-          end
-        end
-
-        ::continue::
+    for i in all{x+1,right()-1} do
+      for j in all{y+1,bottom()-1} do
+        pset(i,j,outline_color)
       end
     end
-
-    for i=x,right(),hitbox.w-1 do
-      -- line(x+1, i, right()-1,i)
-
-      local segs=ysegs[i==x and 1 or 2]
-      for idx,seg in ipairs(segs) do
-        if idx==#segs then
-          break
-        end
-        ly,ry=seg[1],segs[idx+1][1]
-        if ry<draw_y or ly>=draw_y+129 then goto continue end
-        local lx,rx=i+(i==x and -1 or 1)*calc_seg(seg), i+(i==x and -1 or 1)*calc_seg(segs[idx+1])
-        local m=(rx-lx)/(ry-ly)
-        for j=ly,ry do
-          local px=round(m*(j-ly)+lx)
-          rectfill(px,j,i,j,0)
-          if #disp_shapes==0 then
-            pset(px,j,outline_color)
-          else
-            local d,dx,dy,ds=displace(disp_shapes,px,j)
-            d=max((4-d), 0)
-            pset(px+dx*d*ds,j+dy*d*ds,outline_color)
-          end
-        end
-        ::continue::
-      end
-
-    end
-
-      for i in all{x+1,right()-1} do
-        for j in all{y+1,bottom()-1} do
-          pset(i,j,outline_color)
-        end
-      end
   end
 }
 
@@ -1250,11 +1218,12 @@ end
 function update_disp_shapes(tbl)
   tbl.min_x,tbl.max_x,tbl.min_y,tbl.max_y=10000,-10000,10000,-10000
   for i in all(tbl) do
+    x,y=unpack(i)
     i[3]+=2
     if i[3] >= 15 then
       del(tbl, i)
     end
-    tbl.min_x,tbl.max_x,tbl.min_y,tbl.max_y=min(tbl.min_x,i[1]), max(tbl.max_x, i[1]), min(tbl.min_y, i[2]), max(tbl.max_y,i[2])
+    tbl.min_x,tbl.max_x,tbl.min_y,tbl.max_y=min(tbl.min_x,x), max(tbl.max_x, x), min(tbl.min_y, y), max(tbl.max_y,y)
   end
 end
 
@@ -1659,74 +1628,63 @@ function _draw()
 
   --<stars>--
   -- bg stars effect
-  if stars_active then --stars_active is star condition, should probably set it somewhere
-  	for dy=stars_falling and -4 or 0,0 do
-	    foreach(stars, function(c)
-	      if stars_falling then
-	        pal(7,6)
-	        pal(6,12)
-	        pal(13,12)
-	      end
-	      local x=c.x+draw_x
-	      local y=c.y+draw_y
-	      local s=flr(sin(c.off)*2)
-	      local _y = y+dy
-      	local _s = _y<y and s-1 or s
-      	if _y~=y then
-      		pal(7,1)
-       		pal(6,1)
-        	pal(13,1)
-      	else
-      		pal(7,6)
-       		pal(6,12)
-        	pal(13,12)
-      	end
-      	if c.size==2 then
-		      if _s<=-2 then
-		        pset(x,_y,stars_falling and (_y==y and 12 or 1) or 7)
-		      elseif _s==-1 then
-		        spr(73,x-3,_y-3)
-		      elseif _s==0 then
-		        line(x-5,_y,x+5,_y,13)
-		        line(x,_y-5,x,_y+5,13)
-		        spr(74,x-3,_y-3)
-		      else
-		       	sspr(72,40,16,16,x-7,_y-7)
-		      end
-	    	else
-	    		if _s<=-2 then
-		        pset(x,_y,stars_falling and (_y==y and 12 or 1) or 7)
-		      elseif _s==-1 then
-		        line(x-1,_y-1,x+1,_y+1,13)
-		        line(x-1,_y+1,x+1,_y-1,13)
-		      else
-		      	line(x-2,_y-2,x+2,_y+2,13)
-		        line(x-2,_y+2,x+2,_y-2,13)
-		      end
-	    	end
-	      if dy==0 then
-		      c.x+=(-cam_spdx/4)*(2-c.size)
-		      c.y+=(-cam_spdy/4)*(2-c.size)
-		      c.off+=0.01
-		      if c.x>128 then
-		        c.x=-8
-		        c.y=rnd(120)
-		      elseif c.x<-8 then
-		        c.x=128
-		        c.y=rnd(120)
-		      end
-		      if stars_falling then
-		        c.y+=c.spdy
-		        if c.y>128 then
-		          c.y=-8
-		          c.x=rnd(120)
-          c.spdy=rnd(0.75)+0.5
-		        end
-		        pal()
-		      end
-		    end
-	    end)
-	  end
+  for dy=stars_falling and -4 or 0,0 do
+    foreach(stars, function(c)
+      local x=c.x+draw_x
+      local y=c.y+draw_y
+      local s=flr(sin(c.off)*2)
+      local _y = y+dy
+      local _s = _y<y and s-1 or s
+      if _y~=y then
+        pal(split"1,2,3,4,5,1,1,8,9,10,11,12,1")
+      elseif stars_falling then
+        pal(split"1,2,3,4,5,12,6,8,9,10,11,12,12")
+      end
+      if c.size==2 then
+        if _s<=-2 then
+          pset(x,_y,stars_falling and (_y==y and 12 or 1) or 7)
+        elseif _s==-1 then
+          spr(73,x-3,_y-3)
+        elseif _s==0 then
+          line(x-5,_y,x+5,_y,13)
+          line(x,_y-5,x,_y+5,13)
+          spr(74,x-3,_y-3)
+        else
+          sspr(72,40,16,16,x-7,_y-7)
+        end
+      else
+        if _s<=-2 then
+          pset(x,_y,stars_falling and (_y==y and 12 or 1) or 7)
+        elseif _s==-1 then
+          line(x-1,_y-1,x+1,_y+1,13)
+          line(x-1,_y+1,x+1,_y-1,13)
+        else
+          line(x-2,_y-2,x+2,_y+2,13)
+          line(x-2,_y+2,x+2,_y-2,13)
+        end
+      end
+      if dy==0 then
+        c.x+=(-cam_spdx/4)*(2-c.size)
+        c.y+=(-cam_spdy/4)*(2-c.size)
+        c.off+=0.01
+        if c.x>128 then
+          c.x=-8
+          c.y=rnd"120"
+        elseif c.x<-8 then
+          c.x=128
+          c.y=rnd"120"
+        end
+        if stars_falling then
+          c.y+=c.spdy
+          if c.y>128 then
+            c.y=-8
+            c.x=rnd"120"
+            c.spdy=rnd"0.75"+0.5
+          end
+          pal()
+        end
+      end
+    end)
   end
   --</stars>--
 
@@ -1986,9 +1944,9 @@ end
 
 --@conf
 --[[
-param_names={"badeline num", "comment"}
 composite_shapes={}
 autotiles={{52, 54, 53, 39, 33, 35, 34, 55, 49, 51, 50, 48, 36, 38, 37, 32, 29, 30, 31, 41, 42, 43, nil, nil, nil, nil, nil, 56, 45, 46, 47, 80, 44, 81, [41] = 61, [42] = 62, [43] = 63, [0] = 48, [44] = 57, [45] = 58, [46] = 59, [56] = 40, [57] = 60}, {122, 124, 123, 121, 29, 31, 30, 119, 61, 63, 62, 120, 45, 47, 46, 48, 52, 53, 54, 32, 41, 42, 43, nil, nil, nil, nil, 39, 33, 34, 35, 56, 80, 44, 81, nil, nil, nil, nil, 48, 36, 37, 38, [45] = 57, [46] = 58, [47] = 59, [52] = 55, [53] = 49, [0] = 29, [54] = 50, [55] = 51, [57] = 40, [58] = 60}, {41, 43, 42, 41, 41, 43, 42, 57, 57, 59, 58, 80, 80, 81, 44, 44, 48, 52, 53, 54, 32, 56, nil, nil, nil, nil, nil, 60, 39, 33, 34, 35, 29, 30, 31, nil, nil, nil, nil, 40, 48, 36, 37, 38, 45, 46, 47, [53] = 49, [54] = 49, [55] = 50, [0] = 41, [56] = 51, [57] = 61, [58] = 62, [59] = 63}}
+param_names={"badeline num", "comment"}
 ]]
 --@begin
 --level table
@@ -2171,7 +2129,7 @@ and can be safely removed!
 --]]
 
 --copy mapdata string to clipboard
-function get_mapdata(x,y,w,h)
+--[=[function get_mapdata(x,y,w,h)
   local reserve=""
   for i=0,w*h-1 do
     reserve..=num2base256(mget(i%w,i\w)+1)
@@ -2182,7 +2140,7 @@ end
 --convert mapdata to memory data
 function num2base256(number)
   return number%256==0 and "\\000" or number==10 and "\\n" or number==13 and "\\r" or number==34 and [[\"]] or number==92 and [[\\]] or chr(number)
-end
+end]=]
 __gfx__
 000000000000000000000000088888800000000000000000000000000000000000000000000000000300b0b00a0aa0a000000000000000000000000000077000
 00000000088888800888888088888888088888800888880000000000088888800004000000000000003b33000aa88aa0000777770000000000000000007bb700
