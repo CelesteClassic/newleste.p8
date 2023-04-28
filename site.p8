@@ -153,7 +153,7 @@ player={
     -- </dream_block> --
 
     -- horizontal input
-    local h_input=_g.pause_player and (h_input or 0) or btn(➡️) and 1 or btn(⬅️) and -1 or 0
+    local h_input=pause_player and (h_input or 0) or btn(➡️) and 1 or btn(⬅️) and -1 or 0
 
     -- spike collision / bottom death
     if is_flag(0,0,-1) or
@@ -194,8 +194,8 @@ player={
     end
 
     -- jump and dash input
-    local j_input,d_input = j_input or false,d_input or false
-    if not _g.pause_player then
+    local j_input,d_input = j_input ,d_input
+    if not pause_player then
     	j_input,d_input = btn(🅾️),btn(❎)
     end
     local jump,dash=j_input and not p_jump,d_input and not p_dash
@@ -288,7 +288,7 @@ player={
         djump-=1
         dash_time,_g.has_dashed,dash_effect_time=4, true, 10
         -- vertical input
-        local v_input=_g.pause_player and 0 or btn(⬆️) and -1 or btn(⬇️) and 1 or 0
+        local v_input=pause_player and 0 or btn(⬆️) and -1 or btn(⬇️) and 1 or 0
         -- calculate dash speeds
         spd=vector(h_input~=0 and
         h_input*(v_input~=0 and d_half or d_full) or
@@ -317,8 +317,8 @@ player={
     -- animation
     spr_off+=0.25
     sprite = on_ground and (
-      not _g.pause_player and btn(⬇️) and 6 or -- crouch
-      (_g.pause_player and u_input or btn(⬆️)) and 7 or -- look up
+      not pause_player and btn(⬇️) and 6 or -- crouch
+      (not pause_player and btn(⬆️) or u_input) and 7 or -- look up
       spd.x*h_input~=0 and 1+spr_off%4 or 1) -- walk or stand
       or is_solid(h_input,0) and 5 or 3 -- wall slide or mid air
 
@@ -396,7 +396,7 @@ end
 
 
 function update_hair(_ENV)
-  local last=vector(x+(flip.x and 6 or 1),y+(not _g.pause_player and btn(⬇️) and 4 or 2.9))
+  local last=vector(x+(flip.x and 6 or 1),y+(not pause_player and btn(⬇️) and 4 or 2.9))
   for h in all(hair) do
     h.x+=(last.x-h.x)/1.5
     h.y+=(last.y+0.5-h.y)/1.5
@@ -1278,14 +1278,9 @@ end
 
 mirror={
   init=function(_ENV)
-    outline=false
-    hitbox=rectangle(-5, -20, 42, 60)
-    reflect_off=0
-    mirror_col=12
+    hitbox,reflect_off,mirror_col,outline=rectangle(-5, -20, 42, 60),0,12--,false
   end,
   update=function(_ENV)
-  end,
-  draw=function(_ENV)
     if p and not player_here() and not cutscene and not _g.mirror_broken then
       _g.pause_player=true
       p.spd.x=0
@@ -1295,6 +1290,8 @@ mirror={
     else
       p=p or player_here()
     end
+  end,
+  draw=function(_ENV)
     rectfill(x+3,y+7,x+28,y+23,mirror_col)
     if p then
       pal(split"8,2,1,4,5,6,5,2,9,10,11,8,13,14,15")
@@ -1304,8 +1301,7 @@ mirror={
       pal()
       clip()
     end
-    palt(0,false)
-    palt(8,true)
+    palt(0x00f0)
     if broken then
       sspr(8,96,32,24,x,y+4)
     else
@@ -1317,73 +1313,61 @@ mirror={
 }
 
 function mirror_cutscene(_ENV)
-  wait(30)
+  wait"30"
   p.flip.x=not p.flip.x
-  wait(20)
+  wait"20"
   p.h_input=sgn(x+6-p.x)
-  while abs(p.x-(x+6))>1 do
+  while abs(x+6-p.x)>1 do
     yield()
   end
-  p.h_input=0
-  p.spd.x=0
+  p.h_input,p.spd.x=0,0
   yield()
   p.flip.x=false
-  wait(30)
-	_g.co_trans=cocreate(cutscene_transition)
-  wait(50)
+  wait"30"
+  _g.co_trans=cocreate(cutscene_transition)
+  wait"50"
   for i=0,-3,-1 do reflect_off=i yield() end
-  wait(30)
-  mirror_col=7
-  wait(2)
-  mirror_col=12
-  wait(2)
-  mirror_col=7
-  wait(2)
-  mirror_col=12
-  wait(2)
-  mirror_col=7
-  wait(2)
-  mirror_col=12
-  wait(15)
-  reflect_off=-128
-  baddy = init_object(cutscene_badeline, 197-p.x, p.y)
+  wait"30"
+  for i=1,6 do
+    mirror_col=split"12,7"[i%2+1]
+    wait"2"
+  end
+  wait"15"
+  reflect_off,baddy,broken=-128, init_object(cutscene_badeline, 197-p.x, p.y),true
   baddy.flip.x=true
   init_smoke(4,8)
   init_smoke(24,8)
-  broken=true
   wait(3,rectfill, x, y+5, x+32, y+23, 7)
-  wait(20)
+  wait"20"
   baddy.h_input=-1
-  --wait(5)
+  --wait"5"
   --baddy.d_input=true
-  wait(10)
+  wait"10"
   --baddy.d_input=false
   baddy.j_input=true
-  wait(10)
+  wait"10"
   baddy.d_input=true
-  wait(50)
+  wait"50"
   destroy_object(baddy)
   p.u_input=true
-  while _g.cam_offy>-60 do _g.cam_offy+=0.2*(-60-_g.cam_offy) yield() end
+  while _g.cam_offy>-60 do _g.cam_offy+=-12-0.2*_g.cam_offy yield() end
   _g.dream_blocks_active=true
   block = check(dream_block,0,-16)
   block.outline_size=2
-	for _y=block.bottom()-1,block.top()+8,-0.50 do
-		rectfill(block.left()+1,block.top()+1,block.right()-1,_y,7)
-		if _y%2<1 then
-			for _x=0,block.hitbox.w,8 do block.init_smoke(_x-4,_y-block.top()-8) end
-		end
-		yield()
-	end
-	wait(3)
-	block.outline_size=1
-	wait(3)
-	block.outline_size=0
-	wait(20)
-        p.u_input=false
-	while _g.cam_offy<-0.05 do _g.cam_offy+=0.2*(0-_g.cam_offy) yield() end
-	_g.cam_offy=0
-	_g.mirror_broken=true
+  for _y=block.bottom()-1,block.y+8,-0.50 do
+    rectfill(block.x+1,block.y+1,block.right()-1,_y,7)
+    if _y%2<1 then
+      for _x=1,block.hitbox.w,8 do block.init_smoke(_x-3,_y-block.y-8) end
+    end
+    yield()
+  end
+  wait"3"
+  block.outline_size=1
+  wait"3"
+  block.outline_size=0
+  wait"20"
+  while _g.cam_offy<-1 do _g.cam_offy+=-0.2*_g.cam_offy yield() end
+  _g.cam_offy,_g.mirror_broken,p.u_input=0,true--false
 end
 function wait(frames,func, ...) for i=1,frames do (func or stat)(...); yield() end end
 cutscene_badeline={
@@ -1397,23 +1381,12 @@ cutscene_badeline={
   end
 }
 function cutscene_transition()
-	for t=1,15 do
+  for _t=1,305 do
+    local t=_t<=15 and _t or _t<=245 and 15 or 306-_t
+    local c=_t<=245 and 15 or 60
+    local fac=15-15*(1-t/c)^3
     camera()
-    local fac=(1-(1-(t/15))^3)*15
-    rectfill(0, 0, 128, 0+fac, 0)
-    rectfill(0, 128-fac, 128, 128, 0)
-    yield()
-  end
-  for t=1,230 do
-  	camera()
-  	rectfill(0, 0, 128, 15, 0)
-    rectfill(0, 113, 128, 128, 0)
-  	yield()
-  end
-  for t=60,1,-1 do
-    camera()
-    local fac=(1-(1-(t/60))^3)*15
-    rectfill(0, 0, 128, 0+fac, 0)
+    rectfill(0, 0, 128, fac, 0)
     rectfill(0, 128-fac, 128, 128, 0)
     yield()
   end
@@ -1906,12 +1879,9 @@ function _draw()
   end)
 
   if cutscene then
-    local _,e = coresume(cutscene, cutscene_env)
-    assert(not e, e)
+    coresume(cutscene, cutscene_env)
     if costatus(cutscene) == "dead" then
-      pause_player=false
-      cutscene=nil
-      cutscene_env=nil
+      pause_player,cutscene,cutscene_env=false--,nil,nil
     end
   end
 
