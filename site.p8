@@ -993,7 +993,7 @@ switch_block={
       spr(87,x,i)
       spr(87,r,i,1.0,1.0,true)
     end
-    rectfill(x+8,y+8,r-8,d-8,1)
+    rectfill(x+8,y+8,r,d,1)
 
     spr(88,x+hitbox.w/2-4,y+hitbox.h/2-4)
   end
