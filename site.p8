@@ -1762,7 +1762,8 @@ function _draw()
     foreach(stars, function(c)
       local x=c.x+draw_x
       local y=c.y+draw_y
-      local s=flr(sin(c.off)*2)
+      --avoid the edge case where sin(c.off) is exactly 1
+      local s=flr(min(1,sin(c.off)*2))
       local _y = y+dy
       local _s = _y<y and s-1 or s
       if _y~=y then
