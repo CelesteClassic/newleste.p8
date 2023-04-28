@@ -1205,22 +1205,6 @@ dream_block={
   end
 }
 
-phone_booth={
-  init=function(_ENV)
-    hitbox.h=16
-  end,
-  update=function(_ENV)
-    if not done and player_here() then
-      _g.co_trans=cocreate(circ_transition)
-      done=true
-    end
-  end,
-  draw=function(_ENV)
-    rectfill(x,y,x+7,y+15,2)
-  end
-}
-
-
 function create_disp_shape(tbl,x,y)
   add(tbl, {x,y,0}) --x,y,r
 end
@@ -1269,6 +1253,22 @@ function sdf_circ(px,py, ox, oy, r)
   return abs(d-r), d, pox,poy
 end
 --</dream_block>--
+phone_booth={
+  init=function(_ENV)
+    hitbox.h=16
+  end,
+  update=function(_ENV)
+    if not done and player_here() then
+      _g.co_trans=cocreate(circ_transition)
+      done=true
+    end
+  end,
+  draw=function(_ENV)
+    rectfill(x,y,x+7,y+15,2)
+  end
+}
+
+
 
 -- <cutscene> --
 mirror={
