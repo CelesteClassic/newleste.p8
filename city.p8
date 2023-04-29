@@ -367,9 +367,11 @@ player_spawn={
       y,spd.y=lvl_ph,-4
     elseif entrance_dir<=3 then
       y,spd.y,state=-8,1,1
-    else
+    elseif entrance_dir<=5 then
       local dir = entrance_dir==4 and 1 or -1
       spd,x=vector(1.7*dir,-2), x-24*dir
+    else
+      state,delay=2,20
     end
 
     create_hair(_ENV)
@@ -1524,6 +1526,7 @@ autotiles = {{38, 40, 39, 38, 38, 40, 39, 54, 54, 56, 55, 52, 52, 53, 42, 41, 33
 --"x,y,w,h,exit_dirs,entrance_dir"
 --exit directions "0b"+"exit_left"+"exit_bottom"+"exit_right"+"exit_top" (default top- 0b0001)
 --entrace direction 012345->bfr (bottom facing right) bfl tfr tfl left right
+--entrace direction 012345->bfr (bottom facing right) bfl tfr tfl left right static
 levels={
   "0,0,1,1,0b0001",
   "1,0,1,1,0b0001",
