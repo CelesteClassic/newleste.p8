@@ -588,20 +588,9 @@ refill={
       spr(15,x,y+sin(offset)+0.5)
 
     else
-      -- color"7"
-      -- line(x,y+4,x+3,y+7)
-      -- line(x+4,y+7,x+7,y+4)
-      -- line(x+7,y+3,x+4,y)
-      -- line(x+3,y,x,y+3)
-      foreach(split(
-      [[0,4,3,7
-      4,7,7,4
-      7,3,4,0
-      3,0,0,3]],"\n"),function(t)
-        local o1,o2,o3,o4=unpack(split(t))
-        line(x+o1,y+o2,x+o3,y+o4,7)
-      end
-      )
+      palt"0xfeff"
+      draw_obj_sprite(_ENV)
+      palt()
     end
   end
 }
