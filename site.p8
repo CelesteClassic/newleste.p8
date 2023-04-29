@@ -894,10 +894,11 @@ fall_plat={
 
     --can probably be optimized slightly farther
     local sprites=split"37,80,81,?,42,41,43,42,58,57,59,58,?,80,81,?"
+    local pals=split"0,0,0,0,0,0x8000,0x8000,0,0,0x8000,0x8000,0,0,0,0,0"
     for i=0,r,8 do
       for j=0,d,8 do
         local typ=(i==0 and 1 or i==r and 2 or (i==8 or i==r-8) and 3 or 0) + (j==0 and 4 or j==d and 8 or (j==8 or j==d-8) and 12 or 0) + 1
-        palt(0,(i==0 or i==r) and (j==0 or j==d))
+        palt(pals[typ])
         spr(tonum(sprites[typ]) or (i+j)%16==0 and 44 or 60,i+x,j+y)
       end
     end
@@ -921,7 +922,7 @@ touch_switch={
   end,
   draw=function(_ENV)
     --set color 8 as transparent
-    palt(0x0a0)
+    palt"0x80"
     if controller.active then
       sprite=68
       pal(12,2)
@@ -1286,7 +1287,7 @@ phone_booth={
     end
   end,
   draw=function(_ENV)
-    palt(0)
+    palt"0"
     spr(148,x,y,1,3)
     palt()
   end
@@ -1318,7 +1319,7 @@ mirror={
       pal()
       clip()
     end
-    palt(0x00f0)
+    palt"0x80"
     if broken then
       spr(128,x,y+4,4,2.5)
     else
@@ -1425,7 +1426,7 @@ campfire={
     off+=0.2
   end,
   draw=function(_ENV)
-    palt(0)
+    palt"0"
     spr(8,x,y,2,1)
     if stars_falling then
       pal(split"1,2,3,4,5,6,7,11,7")
@@ -1826,7 +1827,6 @@ function _draw()
       draw_y+=-2+rnd"5"
     end
   end
-  camera(draw_x,draw_y)
 
   -- draw bg color
   cls()
@@ -1835,8 +1835,8 @@ function _draw()
   -- bg stars effect
   for dy=stars_falling and -4 or 0,0 do
     foreach(stars, function(c)
-      local x=c.x+draw_x
-      local y=c.y+draw_y
+      local x=c.x
+      local y=c.y
       --avoid the edge case where sin(c.off) is exactly 1
       local s=flr(min(1,sin(c.off)*2))
       local _y = y+dy
@@ -1846,27 +1846,27 @@ function _draw()
       elseif stars_falling then
         pal(split"1,2,3,4,5,12,6,8,9,10,11,12,12")
       end
+      camera(-x,-_y)
+      if _s<=-2 then
+        pset(0,0,stars_falling and (_y==y and 12 or 1) or 7)
+      end
       if c.size==2 then
-        if _s<=-2 then
-          pset(x,_y,stars_falling and (_y==y and 12 or 1) or 7)
-        elseif _s==-1 then
-          spr(73,x-3,_y-3)
+        if _s==-1 then
+          spr(73,-3,-3)
         elseif _s==0 then
-          line(x-5,_y,x+5,_y,13)
-          line(x,_y-5,x,_y+5,13)
-          spr(74,x-3,_y-3)
-        else
-          sspr(72,40,16,16,x-7,_y-7)
+          line(-5,0,5,0,13)
+          line(0,-5,0,5,13)
+          spr(74,-3,-3)
+        elseif _s>0 then
+          sspr(72,40,16,16,-7,-7)
         end
       else
-        if _s<=-2 then
-          pset(x,_y,stars_falling and (_y==y and 12 or 1) or 7)
-        elseif _s==-1 then
-          line(x-1,_y-1,x+1,_y+1,13)
-          line(x-1,_y+1,x+1,_y-1,13)
-        else
-          line(x-2,_y-2,x+2,_y+2,13)
-          line(x-2,_y+2,x+2,_y-2,13)
+        if _s==-1 then
+          line(-1,-1,1,1,13)
+          line(-1,1,1,-1,13)
+        elseif s>-1 then
+          line(-2,-2,2,2,13)
+          line(-2,2,2,-2,13)
         end
       end
       if dy==0 then
@@ -1892,6 +1892,8 @@ function _draw()
       end
     end)
   end
+
+  camera(draw_x,draw_y)
   --</stars>--
 
   -- bg clouds effect
@@ -1934,8 +1936,7 @@ function _draw()
     end
   end)
   -- draw terrain
-  palt(0,false)
-  palt(8,true)
+  palt"0x80"
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,2)
   palt()
 
