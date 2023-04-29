@@ -1330,6 +1330,7 @@ function mirror_cutscene(_ENV)
   end
   wait"15"
   reflect_off,baddy,broken=-128, init_object(cutscene_badeline, 197-p.x, p.y),true
+  _g.shake=2
   baddy.flip.x=true
   init_smoke(4,8)
   init_smoke(24,8)
@@ -1350,6 +1351,7 @@ function mirror_cutscene(_ENV)
   _g.dream_blocks_active=true
   block = check(dream_block,0,-16)
   block.outline_size=2
+  _g.shake=100
   for _y=block.bottom()-1,block.y+8,-0.50 do
     rectfill(block.x+1,block.y+1,block.right()-1,_y,7)
     if _y%2<0.5 then
@@ -1357,6 +1359,7 @@ function mirror_cutscene(_ENV)
     end
     yield()
   end
+  _g.shake=0
   wait"3"
   block.outline_size=1
   wait"3"
