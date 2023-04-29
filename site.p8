@@ -99,7 +99,7 @@ player={
     foreach(split"grace,jbuffer,dash_time,dash_effect_time,dash_target_x,dash_target_y,dash_accel_x,dash_accel_y,spr_off,berry_timer,berry_count", function(var)
       _ENV[var]=0
     end)
-    create_hair(_ENV)
+    --create_hair(_ENV)
     dream_particles={}
 
   end,
@@ -417,11 +417,29 @@ player_spawn={
     sfx"15"
     sprite=3
     target=y
-    y=min(y+48,lvl_ph)
-    _g.cam_x,_g.cam_y=mid(x,64,lvl_pw-64),mid(y,64,lvl_ph-64)
-    spd.y=-4
-    state=0
-    delay=0
+
+    local offx,offy,c=0,0,check(camera_trigger,0,0)
+    if c then
+      offx,offy=c.offx,c.offy
+      _g.cam_offx,_g.cam_offy=offx,offy
+    end
+    _g.cam_x,_g.cam_y=mid(x+offx+4,64,lvl_pw-64),mid(y+offy+4,64,lvl_ph-64)
+    state,delay,flip.x=0,0,entrance_dir%2==1
+    --top entrance
+    if entrance_dir<=1 then
+      y,spd.y=lvl_ph,-4
+    elseif entrance_dir<=3 then
+      if not is_solid(0,1) then
+        player_start_spdy=2
+      end
+      y,spd.y,state=-8,1,1
+    elseif entrance_dir<=5 then
+      local dir = entrance_dir==4 and 1 or -1
+      spd,x=vector(1.7*dir,-2), x-24*dir
+    else
+      state,delay=2,20
+    end
+
     create_hair(_ENV)
     djump=max_djump
     --- <fruitrain> ---
@@ -441,7 +459,7 @@ player_spawn={
         state,delay=1, 3
     -- falling
     elseif state==1 then
-      spd.y+=0.5
+      spd.y=min(spd.y+0.5,3)
       if spd.y>0 then
         if delay>0 then
           -- stall at peak
@@ -449,9 +467,12 @@ player_spawn={
           delay-=1
         elseif y>target then
           -- clamp at target y
-          y,spd,state,delay,_g.shake=target,vector(0,0),2,5,4
-          init_smoke(0,4)
-          sfx"16"
+          state,spd=2,vector(0,0)
+          if not player_start_spdy then
+            y,delay,_g.shake=target,5,4
+            init_smoke(0,4)
+            sfx"16"
+          end
         end
       end
     -- landing and spawning player object
@@ -460,7 +481,8 @@ player_spawn={
       sprite=6
       if delay<0 then
         destroy_object(_ENV)
-        local p=init_object(player,x,y);
+        local p=init_object(player,x,y)
+        p.flip,p.hair,p.spd.y=flip,hair,player_start_spdy or 0;
         --- <fruitrain> ---
         (fruitrain[1] or {}).target=p
         --- </fruitrain> ---
@@ -740,7 +762,7 @@ badeline={
     elseif tracking.type==badeline and tracking.timer<30 then
       return
     end
-    if timer<70 then
+    if timer<50 then
       timer+=1
     end
 
@@ -755,11 +777,11 @@ badeline={
           q[k]=v
         end
       end)
-      add(states,{x,y,flip.x,sprite or 1,curr_smokes,dreaming,dream_time,dream_particles_copy,layer})
+      add(states,{x,y,flip.x,sprite or 1,curr_smokes,dreaming,dream_time,dream_particles_copy,layer,tangible or type==player})
     end
 
     if #states>=30 then
-      x,y,flip.x,sprite,curr_smokes,dreaming,dream_time,dream_particles,layer=unpack(deli(states,1))
+      x,y,flip.x,sprite,curr_smokes,dreaming,dream_time,dream_particles,layer,tangible=unpack(deli(states,1))
       for s in all(curr_smokes) do
         init_smoke(unpack(s))
       end
@@ -771,7 +793,7 @@ badeline={
       update_hair(_ENV)
     end
     local hit=player_here()
-    if hit and timer>=70 then
+    if hit and tangible then
       kill_player(hit)
     end
   end,
@@ -1370,7 +1392,10 @@ function mirror_cutscene(_ENV)
 end
 function wait(frames,func, ...) for i=1,frames do (func or stat)(...); yield() end end
 cutscene_badeline={
-  init=player.init,
+  init=function(_ENV)
+    player.init(_ENV)
+    create_hair(_ENV)
+  end,
   update=player.update,
   draw=function(_ENV)
     pal(split"8,2,1,4,5,6,5,2,9,10,11,8,13,14,15")
@@ -1664,7 +1689,7 @@ function load_level(id)
 
   lvl_pw,lvl_ph=lvl_w*8,lvl_h*8
   --<badeline>--
-  bad_num=tbl[6] or 0
+  bad_num=tbl[7] or 0
   --</badeline>--
 
   local exits=tonum(tbl[5]) or 0b0001
@@ -1674,6 +1699,7 @@ function load_level(id)
     _ENV[v]=exits&(0.5<<i)~=0
   end
 
+  entrance_dir=tonum(tbl[6]) or 0
 
   --reload map
   if diff_level then
@@ -1691,6 +1717,16 @@ function load_level(id)
       end
     end
   end
+
+  --<camtrigger>--
+  --generate camera triggers
+  cam_offx,cam_offy=0,0
+  for s in all(camera_offsets[lvl_id]) do
+    local tx,ty,tw,th,offx_,offy_=unpack(split(s))
+    local _ENV=init_object(camera_trigger,tx*8,ty*8)
+    hitbox.w,hitbox.h,offx,offy=tw*8,th*8,offx_,offy_
+  end
+  --</camtrigger>--
 
   -- entities
   for tx=0,lvl_w-1 do
@@ -1711,15 +1747,6 @@ function load_level(id)
 
   end)
 
-  --<camtrigger>--
-  --generate camera triggers
-  cam_offx,cam_offy=0,0
-  for s in all(camera_offsets[lvl_id]) do
-    local tx,ty,tw,th,offx_,offy_=unpack(split(s))
-    local _ENV=init_object(camera_trigger,tx*8,ty*8)
-    hitbox.w,hitbox.h,offx,offy=tw*8,th*8,offx_,offy_
-  end
-  --</camtrigger>--
 end
 
 -- [main update loop]
@@ -1920,6 +1947,7 @@ function _draw()
   -- draw platforms
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,8)
   -- particles
+  --[[
   foreach(particles,function(_ENV)
     x+=spd-_g.cam_spdx
     y+=_g.sin(off)-_g.cam_spdy
@@ -1932,6 +1960,7 @@ function _draw()
       x,y=128,_g.rnd"128"
     end
   end)
+  ]]
 
   -- dead particles
   foreach(dead_particles,function(_ENV)
@@ -2131,50 +2160,52 @@ end
 
 --@conf
 --[[
-param_names={"badeline num", "comment"}
-composite_shapes={}
 autotiles={{52, 54, 53, 39, 33, 35, 34, 55, 49, 51, 50, 48, 36, 38, 37, 32, 29, 30, 31, 41, 42, 43, nil, nil, nil, nil, nil, 56, 45, 46, 47, 80, 44, 81, [41] = 61, [42] = 62, [43] = 63, [0] = 48, [44] = 57, [45] = 58, [46] = 59, [56] = 40, [57] = 60}, {122, 124, 123, 121, 29, 31, 30, 119, 61, 63, 62, 120, 45, 47, 46, 48, 52, 53, 54, 32, 41, 42, 43, nil, nil, nil, nil, 39, 33, 34, 35, 56, 80, 44, 81, nil, nil, nil, nil, 48, 36, 37, 38, [45] = 57, [46] = 58, [47] = 59, [52] = 55, [53] = 49, [0] = 29, [54] = 50, [55] = 51, [57] = 40, [58] = 60}, {41, 43, 42, 41, 41, 43, 42, 57, 57, 59, 58, 80, 80, 81, 44, 44, 48, 52, 53, 54, 32, 56, nil, nil, nil, nil, nil, 60, 39, 33, 34, 35, 29, 30, 31, nil, nil, nil, nil, 40, 48, 36, 37, 38, 45, 46, 47, [53] = 49, [54] = 49, [55] = 50, [0] = 41, [56] = 51, [57] = 61, [58] = 62, [59] = 63}}
+param_names={"entrance dir", "badeline num", "comment"}
+composite_shapes={}
 ]]
 --@begin
 --level table
---"x,y,w,h,exit_dirs,badeline num"
+--"x,y,w,h,exit_dirs,entrance_dir,badeline num"
 --exit directions "0b"+"exit_left"+"exit_bottom"+"exit_right"+"exit_top" (default top- 0b0001)
+--entrace direction 012345->bfr (bottom facing right) bfl tfr tfl left right
+--entrace direction 012345->bfr (bottom facing right) bfl tfr tfl left right static
 levels={
-  "0,0,1,1,0b0010,0,0",
-  "-3.5,2.9375,3,1,0b0100,0,spikes on ground need fixed or sparky's going to have a meltdown (g: maybe fixed?) ; need to figure out what's gonna happen to the berry if doing level duplication stuff",
-  "0.3125,-2.0625,1.1875,2,0b0010,0,built for branching paths, reworked!",
-  "-1.25,1,1.25,1,0b0010,0,0",
-  "0,1,1,1,0b0010,0,perhaps shorten middle right wall by 1px to make it slightly easier",
-  "1,1,2,1,0b0010,0,my old notes said needs tweaking (terrain/spacing), but it seems fine",
-  "1.75,-1.875,1.3125,1.5,0b1000,0,mirror room- needs mirror; terrain should be made more \"cavernous\",need to fix player spawn in cam trigger",
-  "1.5625,4.3125,1.4375,1.3125,0b1000,0,0",
-  "2,2,2,1,0b1001,0,the first half could maybe be slightly tweaked",
-  "3.375,4.375,1.1875,2,0b1000,0,built for branching paths, reworked!",
-  "0.5625,6,1,1,0b0001,0,should you be able to land on the left dreamblock?; diag (instead of wj updash) is currently an option, but it might be fine",
-  "-3.5,4,3,1,0b0001,0,spikes on ground need fixed or sparky's going to have a meltdown (g: maybe fixed?) ; need to figure out what's gonna happen to the berry if doing level duplication stuff",
-  "7,0,1,1,0b0001,0,works with or without badeline",
-  "5,0,1,1,0b0001,1,0",
-  "0.1875,4.4375,1,1,0b0001,1,0",
-  "5.9375,-4.1875,1,1.4375,0b0001,2,terrain is a bit weird?; especially given where it is in the progression",
-  "1,0,1,1,0b0010,1,0",
-  "2,0,1,1,0b0001,2,0",
-  "3,0,1,1,0b0010,1,0",
-  "4,0,1,1,0b0001,2,0",
-  "7,1,1,1,0b0001,3,difficult balance between awkward dream block placements and relative cheese freeness. not sure it's quite there yet",
-  "7,2,1,1,0b0001,1,0",
-  "9.5,-2.5,1,2,0b0010,2,where this fits in the progression should be considered",
-  "10.5,-2.5,2,1,0b0010,1,0",
-  "12.5,-2.5,3,1,0b0010,2,0",
-  "15.5,-2.5,1,2,0b0010,1,more badelines could be added to make it feel more intense. could perhaps be tweaked a bit?",
-  "10.1875,0.375,1,2.0625,0b0100,2,0",
-  "6,0,1,4,0b0100,4,2nd berry is too hard, while being too easy to collect and tank (add a roundabout?); badeline num seems maybe excessive; probably need to nerf length/ending; move block should go somewhere less in the the way/ending is a bit wacky and tight. also the spikes on the right wall in the middle suck",
-  "5.0625,4.0625,2,1.5,0b0010,0,exiting the tower portion, after the final badeline room",
-  "3,1,3,1,0b0010,0,walk to phone booth",
-  "7,3,1,1,0b0000,0,phone booth (no sprite for it yet)",
-  "0,0,1,1,0b0010,0,memorial room (missing sprite)",
-  "0,3,3,1,0b0010,0,awake ver - main corridor",
-  "3,3,3,1,0b0010,0,awake ver - walk to phone booth",
-  "7,3,1,1,0b0000,0,0"
+  "0,0,1,1,0b0010,6,0,0",
+  "-3.5,2.9375,3,1,0b0100,4,0,spikes on ground need fixed or sparky's going to have a meltdown (g: maybe fixed?) ; need to figure out what's gonna happen to the berry if doing level duplication stuff",
+  "0.3125,-2.0625,1.1875,2,0b0010,2,0,built for branching paths, reworked!",
+  "-1.25,1,1.25,1,0b0010,4,0,0",
+  "0,1,1,1,0b0010,4,0,perhaps shorten middle right wall by 1px to make it slightly easier",
+  "1,1,2,1,0b0010,4,0,my old notes said needs tweaking (terrain/spacing), but it seems fine",
+  "1.75,-1.875,1.3125,1.5,0b1000,4,0,mirror room- needs mirror; terrain should be made more \"cavernous\",need to fix player spawn in cam trigger",
+  "1.5625,4.3125,1.4375,1.3125,0b1000,5,0,0",
+  "2,2,2,1,0b1001,5,0,the first half could maybe be slightly tweaked",
+  "3.375,4.375,1.1875,2,0b1000,5,0,built for branching paths, reworked!",
+  "0.5625,6,1,1,0b0001,0,0,should you be able to land on the left dreamblock?; diag (instead of wj updash) is currently an option, but it might be fine",
+  "-3.5,4,3,1,0b0001,1,0,spikes on ground need fixed or sparky's going to have a meltdown (g: maybe fixed?) ; need to figure out what's gonna happen to the berry if doing level duplication stuff",
+  "7,0,1,1,0b0001,4,0,works with or without badeline",
+  "5,0,1,1,0b0001,0,1,0",
+  "0.1875,4.4375,1,1,0b0001,0,1,0",
+  "5.9375,-4.1875,1,1.4375,0b0001,1,2,terrain is a bit weird?; especially given where it is in the progression",
+  "1,0,1,1,0b0010,0,1,0",
+  "2,0,1,1,0b0001,4,2,0",
+  "3,0,1,1,0b0010,0,1,0",
+  "4,0,1,1,0b0001,4,2,0",
+  "7,1,1,1,0b0001,0,3,difficult balance between awkward dream block placements and relative cheese freeness. not sure it's quite there yet",
+  "7,2,1,1,0b0001,0,1,0",
+  "9.5,-2.5,1,2,0b0010,0,2,where this fits in the progression should be considered",
+  "10.5,-2.5,2,1,0b0010,4,1,0",
+  "12.5,-2.5,3,1,0b0010,4,2,0",
+  "15.5,-2.5,1,2,0b0010,4,1,more badelines could be added to make it feel more intense. could perhaps be tweaked a bit?",
+  "10.1875,0.375,1,2.0625,0b0100,2,2,0",
+  "6,0,1,4,0b0100,2,4,2nd berry is too hard, while being too easy to collect and tank (add a roundabout?); badeline num seems maybe excessive; probably need to nerf length/ending; move block should go somewhere less in the the way/ending is a bit wacky and tight. also the spikes on the right wall in the middle suck",
+  "5.0625,4.0625,2,1.5,0b0010,2,0,exiting the tower portion, after the final badeline room",
+  "3,1,3,1,0b0010,4,0,walk to phone booth",
+  "7,3,1,1,0b0000,4,0,phone booth (no sprite for it yet)",
+  "0,0,1,1,0b0010,6,0,memorial room (missing sprite)",
+  "0,3,3,1,0b0010,4,0,awake ver - main corridor",
+  "3,3,3,1,0b0010,4,0,awake ver - walk to phone booth",
+  "7,3,1,1,0b0000,4,0,0"
 }
 
 --<camtrigger>--
@@ -2194,7 +2225,7 @@ camera_offsets={
     "15,2,1,5,0,0"
   },
   {
-    "6,11,1,7,56,0",
+    "6,11,1,7,74,0",
     "4,15,1,3,0,0",
     "10,8,7,1,24,0",
     "10,12,7,1,56,0"
@@ -2260,7 +2291,7 @@ camera_offsets={
 mapdata={
   nil,
   "!&&&9'&`¹233339&!&&&&3333&&9&'■■■■■%9&'¹¹¹¹¹¹¹¹¹333!&4V&`¹¹^&V%&&&9&4o&&V%9&&!######&&',¹¹L¹¹¹¹¹&○o%'om&&__o&&%9&&&'&○○&&%!3333&&&!&&&&-,¹\\¹¹¹¹¹p¹n%'mmVWo&&V\"9&339'█t¹~V24█¹¹⁘%!33333&&=$\\¹¹¹¹¹█¹n%9##$g&ABB%!4○&%'¹t¹¹nop¹¹¹⁘24¹¹¹~o2333,`¹^`¹¹¹~%&33!#$B¹¹%'p¹n24¹u¹¹n&&`¹¹¹□□¹¹¹¹n&○○oQ,¹np¹¹¹¹24V&2&'B¹¹24p¹~█¹¹¹¹¹~o&p¹¹¹¹¹¹¹■■~█¹ᵇnQR^op¹¹¹¹¹¹~p¹%'B¹¹&█¹¹¹t¹¹¹¹¹¹nVp¹¹¹¹¹w¹゛$¹¹¹¹~Q),&V`¹¹¹¹¹¹l¹2'B¹¹p¹¹¹¹t¹¹¹q¹¹no█¹¹¹¹¹◀▶%'ma¹¹*-=Ro&p¹¹¹¹¹¹¹¹~8B¹¹p¹¹¹¹m¹¹NMNN゛$¹¹¹¹¹¹¹^24‖◀◀▶Q&&=,o&¹¹¹¹¹¹¹¹¹¹~&op¹^`¹¹¹¹¹O¹^%0■■¹¹¹¹^Vp¹¹¹¹¹Q=&&-+,¹¹¹¹¹¹¹¹¹¹¹nV&_op¹¹¹¹゛ ¹n%&#$¹¹¹¹n&o`¹¹¹*))&&&&-¹²¹¹¹¹¹¹¹¹¹n&&h&paL¹¹.'^&%&90¹¹S_*++$■■*-=&;-&&&++,¹¹¹¹¹¹¹^o&Vi*++,■■%'&o.&&0¹¹¹~Q-)=$‖▶%)RV:=9&=)-++,¹¹¹¹\"###+)-)&##90V&.!&0■■■■:&&&'¹^%&R&o%!&&&&)=-+###9!&!)-&&-&&&0o&.&&9##゜゜=&&=R^N%9'o&%&!",
-  "&&&&&&&0¹¹¹.&&&&&&&&&&&&&/@¹¹¹>/&&&&&&&&&&/?@¹¹²¹¹>?/&&&/&&&/0¹¹¹¹¹¹¹¹¹.&/&&????@¹¹¹¹¹¹¹¹¹>??//¹ABBB¹¹¹¹¹¹¹¹¹vtt./¹B¹¹¹¹¹¹¹¹¹¹¹¹¹tv./¹B¹¹¹¹¹¹¹¹¹¹¹¹¹u¹./゜゜゜ ¹¹¹¹¹¹¹¹¹¹¹¹¹./&&/0¹¹¹¹¹¹¹¹¹¹¹¹¹./&&&0‖◀◀¹¹¹¹¹¹¹¹¹¹./&/?@¹¹¹¹¹¹¹¹゛ ‖◀▶>/&0¹¹¹¹¹¹¹¹¹¹.0¹¹¹¹>&0¹¹¹゛ ABBB゛/0¹¹¹¹¹&0¹¹¹>0B¹¹¹>/0¹¹u¹¹&0¹¹¹¹x¹¹¹¹¹>/ au¹a&/,¹¹¹¹¹¹¹¹¹¹>/゜゜゜゜&/-+,¹¹¹¹¹¹¹¹¹:--/&&//-R¹¹¹¹¹¹¹¹¹¹Q-.&&&///゜ ‖◀¹¹¹¹¹¹:;.&&/????@■■■■■■¹¹¹¹.&&0¹¹¹ABBBBBBB¹¹¹¹.&/0¹ᵇ¹B¹¹¹¹¹¹¹¹¹¹¹.&/@¹¹¹B¹¹¹¹¹¹¹¹¹¹¹.&0⁙¹¹¹゛゜゜゜゜}¹¹¹¹¹¹./0⁙¹¹¹>???@¹¹¹¹¹¹¹>?0⁙¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹0⁙¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹0⁙¹¹¹¹¹¹¹¹¹¹wrsa¹¹¹0⁙¹¹¹¹¹¹¹¹¹゛゜゜゜゜゜゜゜0⁙¹¹¹¹¹¹¹¹¹.///////0⁙¹¹¹¹¹¹¹¹¹.///////",
+  "&&&&&&&0¹¹¹.&&&&&&&&&&&&&/@¹²¹>/&&&&&&&&&&/?@¹¹¹¹¹>?/&&&/&&&/0¹¹¹¹¹¹¹¹¹.&/&&????@¹¹¹¹¹¹¹¹¹>??//¹ABBB¹¹¹¹¹¹¹¹¹vtt./¹B¹¹¹¹¹¹¹¹¹¹¹¹¹tv./¹B¹¹¹¹¹¹¹¹¹¹¹¹¹u¹./゜゜゜ ¹¹¹¹¹¹¹¹¹¹¹¹¹./&&/0¹¹¹¹¹¹¹¹¹¹¹¹¹./&&&0‖◀◀¹¹¹¹¹¹¹¹¹¹./&/?@¹¹¹¹¹¹¹¹゛ ‖◀▶>/&0¹¹¹¹¹¹¹¹¹¹.0¹¹¹¹>&0¹¹¹゛ ABBB゛/0¹¹¹¹¹&0¹¹¹>0B¹¹¹>/0¹¹u¹¹&0¹¹¹¹x¹¹¹¹¹>/ au¹a&/,¹¹¹¹¹¹¹¹¹¹>/゜゜゜゜&/-+,¹¹¹¹¹¹¹¹¹:--/&&//-R¹¹¹¹¹¹¹¹¹¹Q-.&&&///゜ ‖◀¹¹¹¹¹¹:;.&&/????@■■■■■■¹¹¹¹.&&0¹¹¹ABBBBBBB¹¹¹¹.&/0¹ᵇ¹B¹¹¹¹¹¹¹¹¹¹¹.&/@¹¹¹B¹¹¹¹¹¹¹¹¹¹¹.&0⁙¹¹¹゛゜゜゜゜}¹¹¹¹¹¹./0⁙¹¹¹>???@¹¹¹¹¹¹¹>?0⁙¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹0⁙¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹0⁙¹¹¹¹¹¹¹¹¹¹wrsa¹¹¹0⁙¹¹¹¹¹¹¹¹¹゛゜゜゜゜゜゜゜0⁙¹¹¹¹¹¹¹¹¹.///////0⁙¹¹¹¹¹¹¹¹¹.///////",
   "???/&&&/?????/&&&&&&&o○>?&/@t¹t¹n>?/&/??V█¹¹n.@¹t¹u¹~&V.?@o&p¹¹¹~y⁙¹t¹¹¹¹n&yV&&Vp²¹¹¹y⁙¹u¹■■¹~ox○○&&゜゜}¹¹y⁙¹¹¹゛ ¹¹~█¹¹~o/@¹¹¹x⁙¹¹¹.0¹¹¹¹¹¹¹n0¹a¹¹¹¹¹▮¹.0¹▮¹¹¹¹¹n0NMNP¹¹¹¹¹.0¹¹¹¹¹◀▶゛0NNP¹¹¹¹¹^.0__`¹¹¹¹.0¹¹¹¹¹¹¹^o.0&o○U¹¹■.0■¹¹¹¹¹¹~○.0○█¹¹¹¹゛// ¹¹¹¹¹■■■.0■¹¹¹¹■.&&0■■■■■゛゜゜// ■■■■゛/&&/゜゜゜゜゜/&&&&/゜゜゜゜/&&&&&&//&&&&&&&&&//&&&",
   nil,
   nil,
@@ -2605,7 +2636,7 @@ __map__
 00000000000000000000000000000000260000000031335d6f00000000000031267f4d4d4c4d4f0000000040416d5525336e7f0000005d5e410000555f305800337e7e6e3725254100000024202525252023141500306e537e7e24202b10102426000000101000001324252526410024252526404141414141242025267f0000
 00000000000000b5000000005e5b5b00267601000000586d255f000000004748260000004e00000000000041006d25257e5f0000005d6e25410000256e3700000000007d6e256e4100000024382525252526000000377f00000031383c2a2a3c26101010292b1200132420323300002425252641000000000031322526000000
 000000000000292a2a2b005d6e25255f3823141621235d256e6f006000005700330000004e00000000000041006d6e2500000000007d7e5541000025255f4748000100006d5625555f0000503c2525252526000000000000000073312c282525264041415051120013313375000000243238264100000000006e253133000000
-2b0000010000502c2c2c2a2b2508256f2526005d24266d6e256f6c6c000057000000005d5b5e5f00000000006d555525000176717200007d4100006e256f575d222223006d666e256f6000502525252538265f00000000000000755f502c252526410000243b0000000000000000002400313341000000000055566f00000000
+2b0000000000502c2c2c2a2b0108256f2526005d24266d6e256f6c6c000057000000005d5b5e5f00000000006d555525000176717200007d4100006e256f575d222223006d666e256f6000502525252538265f00000000000000755f502c252526410000243b0000000000000000002400313341000000000055566f00000000
 2c2a2b1416292c2525252c2c2222222a20265b6e2438222a2a2a2a2a2a22222200005225256e255e5200000f6d6e2525231416292b0000002122222a2a2a2a2a202538222a2a2a2a2a2a2a2c252525252526255f700000000000006e503c25252641000037730000000000000000002400007d6e252122222325666f76717200
 2528510000502c252525252538252528382655252425382c3c252c28383825200060016d2525557f0000005d25252525265f0050515f0000243825252c252c3c252525252c253c25282c3c252525252525202222237000000100600050252525260000000073000000000010101010240001006d552425252522222222222222
 2525510000502c252525252525202525252625552420252525252525252525252222231415256f000000006d6e25552526255e50516e5f00242025252525252525252525252525252525252525252525252525203822231415162122282525252600000000740000005d56292a2a2a3c22222222222525202525252525252525

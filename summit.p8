@@ -84,7 +84,7 @@ player={
     foreach(split"grace,jbuffer,dash_time,dash_effect_time,dash_target_x,dash_target_y,dash_accel_x,dash_accel_y,spr_off,berry_timer,berry_count", function(var)
       _ENV[var]=0
     end)
-    create_hair(_ENV)
+    -- create_hair(_ENV)
     --<badeline_orb>--
     flying=0
     nocontrol=false
@@ -320,11 +320,29 @@ player_spawn={
     sfx"15"
     sprite=3
     target=y
-    y=min(y+48,lvl_ph)
-    _g.cam_x,_g.cam_y=mid(x,64,lvl_pw-64),mid(y,64,lvl_ph-64)
-    spd.y=-4
-    state=0
-    delay=0
+
+    local offx,offy,c=0,0,check(camera_trigger,0,0)
+    if c then
+      offx,offy=c.offx,c.offy
+      _g.cam_offx,_g.cam_offy=offx,offy
+    end
+    _g.cam_x,_g.cam_y=mid(x+offx+4,64,lvl_pw-64),mid(y+offy+4,64,lvl_ph-64)
+    state,delay,flip.x=0,0,entrance_dir%2==1
+    --top entrance
+    if entrance_dir<=1 then
+      y,spd.y=lvl_ph,-4
+    elseif entrance_dir<=3 then
+      if not is_solid(0,1) then
+        player_start_spdy=2
+      end
+      y,spd.y,state=-8,1,1
+    elseif entrance_dir<=5 then
+      local dir = entrance_dir==4 and 1 or -1
+      spd,x=vector(1.7*dir,-2), x-24*dir
+    else
+      state,delay=2,20
+    end
+
     create_hair(_ENV)
     djump=max_djump
     --- <fruitrain> ---
@@ -344,7 +362,7 @@ player_spawn={
         state,delay=1, 3
     -- falling
     elseif state==1 then
-      spd.y+=0.5
+      spd.y=min(spd.y+0.5,3)
       if spd.y>0 then
         if delay>0 then
           -- stall at peak
@@ -352,9 +370,12 @@ player_spawn={
           delay-=1
         elseif y>target then
           -- clamp at target y
-          y,spd,state,delay,_g.shake=target,vector(0,0),2,5,4
-          init_smoke(0,4)
-          sfx"16"
+          state,spd=2,vector(0,0)
+          if not player_start_spdy then
+            y,delay,_g.shake=target,5,4
+            init_smoke(0,4)
+            sfx"16"
+          end
         end
       end
     -- landing and spawning player object
@@ -363,7 +384,8 @@ player_spawn={
       sprite=6
       if delay<0 then
         destroy_object(_ENV)
-        local p=init_object(player,x,y);
+        local p=init_object(player,x,y)
+        p.flip,p.hair,p.spd.y=flip,hair,player_start_spdy or 0;
         --- <fruitrain> ---
         (fruitrain[1] or {}).target=p
         --- </fruitrain> ---
@@ -906,6 +928,7 @@ function load_level(id)
     _ENV[v]=exits&(0.5<<i)~=0
   end
 
+  entrance_dir=tonum(tbl[6]) or 0
 
   --reload map
   if diff_level then
@@ -924,6 +947,16 @@ function load_level(id)
     end
   end
 
+  --<camtrigger>--
+  --generate camera triggers
+  cam_offx,cam_offy=0,0
+  for s in all(camera_offsets[lvl_id]) do
+    local tx,ty,tw,th,offx_,offy_=unpack(split(s))
+    local _ENV=init_object(camera_trigger,tx*8,ty*8)
+    hitbox.w,hitbox.h,offx,offy=tw*8,th*8,offx_,offy_
+  end
+  --</camtrigger>--
+
   -- entities
   for tx=0,lvl_w-1 do
     for ty=0,lvl_h-1 do
@@ -936,19 +969,11 @@ function load_level(id)
     end
   end
 
+
   foreach(objects,function(_ENV)
     (type.end_init or time)(_ENV)
   end)
 
-  --<camtrigger>--
-  --generate camera triggers
-  cam_offx,cam_offy=0,0
-  for s in all(camera_offsets[lvl_id]) do
-    local tx,ty,tw,th,offx_,offy_=unpack(split(s))
-    local _ENV=init_object(camera_trigger,tx*8,ty*8)
-    hitbox.w,hitbox.h,offx,offy=tw*8,th*8,offx_,offy_
-  end
-  --</camtrigger>--
 end
 
 -- [main update loop]
@@ -1203,8 +1228,10 @@ end
 
 --@begin
 --level table
---"x,y,w,h,exit_dirs"
+--"x,y,w,h,exit_dirs,entrance_dir"
 --exit directions "0b"+"exit_left"+"exit_bottom"+"exit_right"+"exit_top" (default top- 0b0001)
+--entrace direction 012345->bfr (bottom facing right) bfl tfr tfl left right
+--entrace direction 012345->bfr (bottom facing right) bfl tfr tfl left right static
 levels={
 	"0,0,1,1",
  "1,0,3,1"
