@@ -1413,30 +1413,24 @@ campfire={
 
 memorial={
 	init=function(_ENV)
-		index,outline,text=6,false,"-- celeste mountain --\nthis memorial to those\n perished on the climb"
+		index,text,hitbox.w,outline=6,"-- celeste mountain --\nthis memorial to those\n perished on the climb",16--,false
 	end,
 	draw=function(_ENV)
 		spr(149,x,y-16,2,3)
 		spr(183,x+4,y-24)
-	  if check(player,4,0) then
+	  if player_here() then
 	  	if stars_falling then
-				for i = 0,2 do
-	 				pos = rnd(#text)+1
-	 				if ptext[pos] ~= "\n" then
-	 					c = rnd(split(text,""))
-	 					if c~="\n" then
-							ptext = sub(ptext,1,pos-1)..c..sub(ptext,pos+1,#ptext)
-						end
+				for i = 1,8 do
+          pos = rnd(#text)+1
+          c = i<=3 and rnd(split(text,"")) or text[pos]
+	 				if ptext[pos] ~= "\n" and c~="\n" then
+            ptext = sub(ptext,1,pos-1)..c..sub(ptext,pos+1)
 					end
-	 			end
-	 			for i = 0,5 do
-	 				pos = rnd(#ptext)+1
-					ptext = sub(ptext,1,pos-1)..text[pos]..sub(ptext,pos+1,#ptext)
 	 			end
 	 		end
 
 	  	index+=0.5
-	  	?"\^x5\^y8"..sub(ptext, 1, min(index,#text)),8,16,7
+	  	?"\^x5\^y8"..sub(ptext, 1, index),8,16,7
 		else
 			ptext,index = text,0
 		end
