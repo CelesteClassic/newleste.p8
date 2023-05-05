@@ -1138,7 +1138,7 @@ dream_block={
       --corner correction
       if abs(spd.x)<abs(dash_target_x) or abs(spd.y)<abs(dash_target_y) then
         move(dash_target_x,dash_target_y,0)
-        if is_solid(dash_target_x,dash_target_y) then
+        if is_solid(dash_target_x,dash_target_y) or oob(dash_target_x,dash_target_y) then
           kill_player(hit)
         end
       end
