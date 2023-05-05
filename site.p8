@@ -741,6 +741,7 @@ badeline={
     --TODO: rn hitbox is 8x8, need to test if a hitbox matching the player obj is more fitting
   end,
   update=function(_ENV)
+    player_input=player_input or btn()!=0
     if tracking.type==player_spawn then
       --search for player to replace player spawn
       foreach(objects, function(o)
@@ -749,6 +750,10 @@ badeline={
         end
       end)
     elseif tracking.type==badeline and tracking.timer<30 then
+      return
+    end
+    --don't create badeline before the player inputs anything
+    if not player_input and (tracking.type==player or timer==29) then
       return
     end
     if timer<50 then
