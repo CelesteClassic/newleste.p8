@@ -74,7 +74,7 @@ end]]
 dead_particles={}
 
 --<stars>--
-stars={}
+stars,stars_falling={},true
 for i=0,15 do
   add(stars,{
     x=rnd"128",
@@ -84,7 +84,6 @@ for i=0,15 do
     size=rnd{1,2}
   })
 end
-stars_falling=true
 --</stars>--
 
 
@@ -366,23 +365,18 @@ function draw_dreams(_ENV,cdark,clight)
   pal()
 
   if dreaming then
-    --TODO: optimize more
     for i=0,15 do
       pal(i,clight)
     end
     draw_obj_sprite(_ENV)
-    local gfx = split"98,98,98, 99,99,99, 100, 101,101,101"
-    local sprite = gfx[dream_time%#gfx+1]
-    local sx, sy = sprite % 16 * 8,sprite \ 16 * 8
-    local cs = {clight,clight,cdark,cdark,clight,cdark}--[0]=7
-    local c = cs[dream_time%#cs] or 7
-    local size = split"0,5"[dream_time] or rnd()<0.4 and 4 or 0
-    local w = 2
+    local sx = split"8,8,8, 16,16,16, 24, 32,32,32"[dream_time%10+1]
+    --sprites used are 97-101 so sy is always 48
+    pal(7,({clight,clight,cdark,cdark,clight,cdark})[dream_time%7] or 7)
+    local size,w = split"0,5"[dream_time] or rnd()<0.4 and 4 or 0, 2
     if dream_time<3 then
-      w,sprite=4,97
+      w,sx=4,0
     end
-    pal(7,c)
-    sspr(sx, sy, 8, 8, x-w, y-size/2, 8+w*2, 8+size) -- draw flickering sprite
+    sspr(sx, 48, 8, 8, x-w, y-size/2, 8+w*2, 8+size) -- draw flickering sprite
     pal()
   end
 end
@@ -938,34 +932,32 @@ touch_switch={
 }
 switch_block={
   init=function(_ENV)
-    solid_obj=true
+    delay,end_delay,solid_obj=0,0,true
     resize_rect_obj(_ENV,72,87)
-    delay,end_delay=0,0
   end,
   end_init=function(_ENV)
     switches={}
-    for o in all(objects) do
+    foreach(objects, function(o)
       if o.type==touch_switch then
         add(switches,o)
         o.controller=_ENV
       elseif o.sprite==88 then
-        target=vector(o.x,o.y)
+        target=o
         destroy_object(o)
-        dirx,diry=sign(o.x-x),sign(o.y-y)
-        distx,disty=abs(o.x-x),abs(o.y-y)
+        local dx,dy=o.x-x,o.y-y
+        dirx,diry,distx,disty=sign(dx),sign(dy),abs(dx),abs(dy)
       end
-    end
+    end)
     missing=#switches
   end,
   update=function(_ENV)
     if missing==0 and not active then
-      active=true
-      for s in all(switches) do
+      active,delay=true,20
+      foreach(switches,function(s)
         s.init_smoke()
         s.init_smoke()
-      end
+      end)
       sfx"24"
-      delay=20
     end
 
     if end_delay>0 then
@@ -989,17 +981,18 @@ switch_block={
     elseif active then
       local dx,dy=target.x-x,target.y-y
       --local c=min(max(abs(dx),abs(dy)),16)/8
-      local cx=min(abs(dx)+1,distx/4)/8
-      local cy=min(abs(dy)+1,disty/4)/8
+      local cx,cy=min(abs(dx)+1,distx/4)/8,
+                  min(abs(dy)+1,disty/4)/8
       --local c=clamp(abs(dx),abs(dy),16)/8
       --c=c==0.125 and 0.25 or c
       spd=vector(cx*sign(dx),cy*sign(dy))
-      if dx==0 and dy==0 and not done then
-        end_delay=5
-        done=true
-        sfx"25"
-      elseif not done then
-        sfx"26"
+      if not done then
+        if dx==0 and dy==0 then
+          end_delay,done=5,true
+          sfx"25"
+        else
+          sfx"26"
+        end
       end
     end
   end,
@@ -1256,7 +1249,7 @@ function update_disp_shapes(tbl)
 end
 
 function displace(tbl, px,py)
-  local d,ds,pox,poy,s = args"10000,0,0,0,0"
+  local d,ds,pox,poy,s = 10000,0,0,0,0
   if px>=tbl.min_x-20 and px<=tbl.max_x+20 and  py>=tbl.min_y-20 and py<=tbl.max_y+20 then
     for i in all(tbl) do
       local ox,oy,r=unpack(i)
@@ -1311,11 +1304,8 @@ mirror={
   end,
   update=function(_ENV)
     if p and not player_here() and not cutscene and not _g.mirror_broken then
-      _g.pause_player=true
-      p.spd.x=0
-      p.dash_time=0
-      _g.cutscene=cocreate(mirror_cutscene)
-      _g.cutscene_env=_ENV
+      p.spd.x,p.dash_time=0,0
+      _g.cutscene,_g.cutscene_env,_g.pause_player=cocreate(mirror_cutscene),_ENV,true
     else
       p=p or player_here()
     end
@@ -1359,7 +1349,7 @@ function mirror_cutscene(_ENV)
   wait"50"
   for i=0,-3,-1 do reflect_off=i yield() end
   wait"30"
-  sfx(8)
+  sfx"8"
   for i=1,6 do
     mirror_col=split"12,7"[i%2+1]
     wait"2"
@@ -1395,7 +1385,7 @@ function mirror_cutscene(_ENV)
     if _y%2<0.5 then
       for _x=1,block.hitbox.w,8 do block.init_smoke(_x-3,_y-block.y-8) end
     end
-    
+
     --sfxaddr = 0x3200 + 28*68
     poke(0x3970, 0b11000000 + 12+pitch)
     poke(0x3972, 0b11000000 + 19+pitch)
@@ -1878,13 +1868,14 @@ function _draw()
       end
       if c.size==2 then
         if _s==-1 then
-          spr(73,-3,-3)
+          spr(args"73,-3,-3")
         elseif _s==0 then
           line(args"-5,0,5,0,13")
           line(args"0,-5,0,5,13")
           spr(args"74,-3,-3")
         elseif _s>0 then
-          sspr(args"72,40,16,16,-7,-7")
+          spr(args"89,-7,-7,1.875,1.875")
+          -- sspr(args"72,40,16,16,-7,-7")
         end
       else
         if _s==-1 then
@@ -2093,43 +2084,40 @@ end
 -- <transition> --
 function transition(wipein)
   local circles = {}
-  local n=0
   for x=0,7 do
     for y=0,7 do
-      c={}
-      c.pos = vector((x - 0.8 + rnd(0.6)) * 20, (y - 0.8 + rnd(0.6)) * 20)
-      c.delay = rnd(1.5) + (wipein and (6 - x) or x)
-      c.radius = (wipein and (2 * (15 - c.delay)) or 0)
-      circles[n]=c
-      n+=1
+      c={
+        pos = vector((x - 0.8 + rnd"0.6") * 20, (y - 0.8 + rnd"0.6") * 20),
+        delay = rnd"1.5" + (wipein and (6 - x) or x)
+      }
+      c.radius = wipein and 30 - 2*c.delay or 0
+      add(circles,c)
     end
   end
 
   for t=1,15 do
     camera()
-    for i=0,#circles do
+    foreach(circles, function(c)
       if not wipein then
-        circles[i].delay -= 1
-        if circles[i].delay <= 0 then
-          circles[i].radius += 2
+        c.delay -= 1
+        if c.delay <= 0 then
+          c.radius += 2
         end
-      elseif circles[i].radius > 0 then
-        circles[i].radius -= 2
+      elseif c.radius > 0 then
+        c.radius -= 2
       else
-        circles[i].radius = 0
+        c.radius = 0
       end
-    end
+      if (c.radius>0) circfill(c.pos.x, c.pos.y, c.radius, 0)
+    end)
 
-    for i=0,#circles do
-      if (circles[i].radius>0) circfill(circles[i].pos.x, circles[i].pos.y, circles[i].radius, 0)
-    end
     yield()
   end
 
   if not wipein then
     delay_restart=1
     for t=1,3 do
-      cls(0)
+      cls()
       yield()
     end
 
@@ -2154,9 +2142,8 @@ function circ_transition()
   s=""
   for i,r in ipairs(radii) do
     if i==48 then
-      stars_falling=false
+      stars_falling,pause_player=false--,false
       next_level()
-      pause_player=false
       for o in all(objects) do
         if o.type==player_spawn then
           p=vector(o.x,o.target)
@@ -2170,13 +2157,13 @@ end
 
 function inv_circle(circle_x, circle_y, circle_r)
 
-  color(0)
+  color"0"
   rectfill(-1, -1, 128, circle_y - circle_r)
   rectfill(-1, circle_y + circle_r, 128, 128)
   rectfill(-1, -1, circle_x - circle_r, 128)
   rectfill(circle_x + circle_r, -1, 128, 128)
 
-  local circle_r_max = circle_r*sqrt(2)+1
+  local circle_r_max = circle_r*sqrt"2"+1
 
   for i=circle_r,circle_r_max do
     for _x=0,1 do for _y=0,1 do
