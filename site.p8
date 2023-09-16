@@ -1687,6 +1687,14 @@ end
 function next_level()
   if lvl_id==12 then music(args"-1,5000,0") end
   if lvl_id==13 then music(args"38,0,7") end
+  if lvl_id==28 then music(args"-1,32000,7") end
+  if lvl_id==31 then
+    sfxaddr = 0x3200
+    for a=14772,15520,68 do
+      poke(a+65, 20)
+    end
+    music(args"0,0,7")
+  end
   load_level(lvl_id+1)
 end
 
@@ -1724,7 +1732,7 @@ function load_level(id)
 
   --reload map
   if diff_level then
-    reload()
+    reload(0x1000,0x1000,0x2000)
   end
     --chcek for mapdata strings
   if mapdata[lvl_id] then
