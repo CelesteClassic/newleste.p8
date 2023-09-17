@@ -813,6 +813,7 @@ fall_plat={
     if not state and check(player,0,-1) then
       -- shake
       state,timer = 0,10
+      sfx"13"
     elseif timer>0 then
       timer-=1
       if timer==0 then
@@ -823,6 +824,7 @@ fall_plat={
       if spd.y==0 then
         for i=0,hitbox.w-1,8 do
           init_smoke(i,hitbox.h-2)
+          sfx"25"
         end
         timer=6
       end
