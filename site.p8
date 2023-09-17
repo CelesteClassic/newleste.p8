@@ -2189,9 +2189,9 @@ end
 
 --@conf
 --[[
-param_names={"entrance dir", "badeline num", "comment"}
 composite_shapes={}
 autotiles={{52, 54, 53, 39, 33, 35, 34, 55, 49, 51, 50, 48, 36, 38, 37, 32, 29, 30, 31, 41, 42, 43, nil, nil, nil, nil, nil, 56, 45, 46, 47, 80, 44, 81, [41] = 61, [42] = 62, [43] = 63, [0] = 48, [44] = 57, [45] = 58, [46] = 59, [56] = 40, [57] = 60}, {122, 124, 123, 121, 29, 31, 30, 119, 61, 63, 62, 120, 45, 47, 46, 48, 52, 53, 54, 32, 41, 42, 43, nil, nil, nil, nil, 39, 33, 34, 35, 56, 80, 44, 81, nil, nil, nil, nil, 48, 36, 37, 38, [45] = 57, [46] = 58, [47] = 59, [52] = 55, [53] = 49, [0] = 29, [54] = 50, [55] = 51, [57] = 40, [58] = 60}, {41, 43, 42, 41, 41, 43, 42, 57, 57, 59, 58, 80, 80, 81, 44, 44, 48, 52, 53, 54, 32, 56, nil, nil, nil, nil, nil, 60, 39, 33, 34, 35, 29, 30, 31, nil, nil, nil, nil, 40, 48, 36, 37, 38, 45, 46, 47, [53] = 49, [54] = 49, [55] = 50, [0] = 41, [56] = 51, [57] = 61, [58] = 62, [59] = 63}}
+param_names={"entrance dir", "badeline num"}
 ]]
 --@begin
 --level table
@@ -2200,41 +2200,41 @@ autotiles={{52, 54, 53, 39, 33, 35, 34, 55, 49, 51, 50, 48, 36, 38, 37, 32, 29, 
 --entrace direction 012345->bfr (bottom facing right) bfl tfr tfl left right
 --entrace direction 012345->bfr (bottom facing right) bfl tfr tfl left right static
 levels={
-  "0,0,1,1,0b0010,6,0,0",
-  "-3.5,2.9375,3,1,0b0100,4,0,spikes on ground need fixed or sparky's going to have a meltdown (g: maybe fixed?) ; need to figure out what's gonna happen to the berry if doing level duplication stuff",
-  "0.3125,-2.0625,1.1875,2,0b0010,2,0,built for branching paths, reworked!",
-  "-1.25,1,1.25,1,0b0010,4,0,0",
-  "0,1,1,1,0b0010,4,0,perhaps shorten middle right wall by 1px to make it slightly easier",
-  "1,1,2,1,0b0010,4,0,my old notes said needs tweaking (terrain/spacing), but it seems fine",
-  "1.75,-1.875,1.3125,1.5,0b1000,4,0,mirror room- needs mirror; terrain should be made more \"cavernous\",need to fix player spawn in cam trigger",
-  "1.5625,4.3125,1.4375,1.3125,0b1000,5,0,0",
-  "2,2,2,1,0b1001,5,0,the first half could maybe be slightly tweaked",
-  "-1.25,-2.0625,1.1875,2,0b1000,5,0,built for branching paths, reworked!",
-  "0.5625,6,1,1,0b0001,5,0,should you be able to land on the left dreamblock?; diag (instead of wj updash) is currently an option, but it might be fine",
-  "-3.5,4,3,1,0b0001,0,0,spikes on ground need fixed or sparky's going to have a meltdown (g: maybe fixed?) ; need to figure out what's gonna happen to the berry if doing level duplication stuff",
-  "7,0,1,1,0b0001,0,0,works with or without badeline",
-  "5,0,1,1,0b0001,0,1,0",
-  "0.1875,4.4375,1,1,0b0001,0,1,0",
-  "5.9375,-4.1875,1,1.4375,0b0001,1,2,terrain is a bit weird?; especially given where it is in the progression",
-  "1,0,1,1,0b0010,0,1,0",
-  "2,0,1,1,0b0001,4,2,0",
-  "3,0,1,1,0b0010,0,1,0",
-  "4,0,1,1,0b0001,4,2,0",
-  "7,1,1,1,0b0001,0,3,difficult balance between awkward dream block placements and relative cheese freeness. not sure it's quite there yet",
-  "7,2,1,1,0b0001,0,1,0",
-  "9.5,-2.5,1,2,0b0010,0,2,where this fits in the progression should be considered",
-  "10.5,-2.5,2,1,0b0010,4,1,0",
-  "12.5,-2.5,3,1,0b0010,4,2,0",
-  "15.5,-2.5,1,2,0b0010,4,1,more badelines could be added to make it feel more intense. could perhaps be tweaked a bit?",
-  "10.1875,0.375,1,2.0625,0b0100,2,2,0",
-  "6,0,1,4,0b0100,2,4,2nd berry is too hard, while being too easy to collect and tank (add a roundabout?); badeline num seems maybe excessive; probably need to nerf length/ending; move block should go somewhere less in the the way/ending is a bit wacky and tight. also the spikes on the right wall in the middle suck",
-  "5.0625,4.0625,2,1.5,0b0010,2,0,exiting the tower portion, after the final badeline room",
-  "3,1,3,1,0b0010,4,0,walk to phone booth",
-  "7,3,1,1,0b0000,4,0,phone booth (no sprite for it yet)",
-  "0,0,1,1,0b0010,6,0,memorial room (missing sprite)",
-  "0,3,3,1,0b0010,4,0,awake ver - main corridor",
-  "3,3,3,1,0b0010,4,0,awake ver - walk to phone booth",
-  "7,3,1,1,0b0000,4,0,0"
+  "0,0,1,1,0b0010,6,0",
+  "-3.5,2.9375,3,1,0b0100,4,0",
+  "0.3125,-2.0625,1.1875,2,0b0010,2,0",
+  "-1.25,1,1.25,1,0b0010,4,0",
+  "0,1,1,1,0b0010,4,0",
+  "1,1,2,1,0b0010,4,0",
+  "1.75,-1.875,1.3125,1.5,0b1000,4,0",
+  "1.5625,4.3125,1.4375,1.3125,0b1000,5,0",
+  "2,2,2,1,0b1001,5,0",
+  "-1.25,-2.0625,1.1875,2,0b1000,5,0",
+  "0.5625,6,1,1,0b0001,5,0",
+  "-3.5,4,3,1,0b0001,0,0",
+  "7,0,1,1,0b0001,0,0",
+  "5,0,1,1,0b0001,0,1",
+  "0.1875,4.4375,1,1,0b0001,0,1",
+  "5.9375,-4.1875,1,1.4375,0b0001,1,2",
+  "1,0,1,1,0b0010,0,1",
+  "2,0,1,1,0b0001,4,2",
+  "3,0,1,1,0b0010,0,1",
+  "4,0,1,1,0b0001,4,2",
+  "7,1,1,1,0b0001,0,3",
+  "7,2,1,1,0b0001,0,1",
+  "9.5,-2.5,1,2,0b0010,0,2",
+  "10.5,-2.5,2,1,0b0010,4,1",
+  "12.5,-2.5,3,1,0b0010,4,2",
+  "15.5,-2.5,1,2,0b0010,4,1",
+  "10.1875,0.375,1,2.0625,0b0100,2,2",
+  "6,0,1,4,0b0100,2,4",
+  "5.0625,4.0625,2,1.5,0b0010,2,0",
+  "3,1,3,1,0b0010,4,0",
+  "7,3,1,1,0b0000,4,0",
+  "0,0,1,1,0b0010,6,0",
+  "0,3,3,1,0b0010,4,0",
+  "3,3,3,1,0b0010,4,0",
+  "7,3,1,1,0b0000,4,0"
 }
 
 --<camtrigger>--
