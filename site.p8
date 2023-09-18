@@ -52,16 +52,23 @@ end
 
 dead_particles={}
 
+function bt(idxs, b)
+  local ret={}
+  for i,v in pairs(b) do
+    ret[split(idxs)[i]]=v
+  end
+  return ret
+end
 --<stars>--
 stars,stars_falling={},true
 for i=0,15 do
-  add(stars,{
-    x=rnd"128",
-    y=rnd"128",
-    off=rnd(),
-    spdy=rnd"0.75"+0.5,
-    size=rnd{1,2}
-  })
+  add(stars,bt("x,y,off,spdy,size",
+  {rnd"128",
+    rnd"128",
+    rnd(),
+    rnd"0.75"+0.5,
+    rnd{1,2}
+  }))
 end
 --</stars>--
 
@@ -94,23 +101,25 @@ player={
     if dreaming then
       dream_time+=1
       if dream_time%5==0 then
-        add(dream_particles,{ -- afterimage particles
-          x=x,
-          y=y,
-          dx=spd.x/8,
-          dy=spd.y/8,
-          t=10,
-          type=2
-        })
+        -- afterimage particles
+        add(dream_particles,bt("x,y,dx,dy,t,type",{
+          x,
+          y,
+          spd.x/8,
+          spd.y/8,
+          10,
+          2
+        }))
       end
-      add(dream_particles,{ -- trail particles
-        x=x+4,
-        y=y+4,
-        dx=rnd"0.5"-0.25,
-        dy=rnd"0.5"-0.25,
-        t=7,
-        type=1
-      })
+      -- trail particles
+      add(dream_particles,bt("x,y,dx,dy,t,type",{
+        x+4,
+        y+4,
+        rnd"0.5"-0.25,
+        rnd"0.5"-0.25,
+        7,
+        1
+      }))
       if not check(dream_block,0,0) then
         -- back to drawing behing dream block
         layer,init_smoke,spd,dash_time,dash_effect_time,dreaming=2,_init_smoke,vector(mid(dash_target_x,-2,2),mid(dash_target_y,-2,2)),0,0--,false
@@ -719,11 +728,10 @@ badeline={
     player_input=player_input or btn()!=0
     if tracking.type==player_spawn then
       --search for player to replace player spawn
-      foreach(objects, function(o)
-        if o.type==player then
-          bade_track(_ENV,o)
-        end
-      end)
+      local o=find_player()
+      if o.type==player then
+        bade_track(_ENV,o)
+      end
     elseif tracking.type==badeline and tracking.timer<30 then
       return
     end
@@ -834,8 +842,8 @@ fall_plat={
   draw=function(_ENV)
     local x,y=x,y
     if timer>0 then
-      x+=rnd(2)-1
-      y+=rnd(2)-1
+      x+=rnd"2"-1
+      y+=rnd"2"-1
     end
     local r,d=hitbox.w-8,hitbox.h-8
     --[[for i in all{x,r} do
@@ -980,8 +988,8 @@ switch_block={
     --TODO: put this into a function to save tokens with fall_plat
     local x,y=x,y
     if delay>3 then
-      x+=rnd(2)-1
-      y+=rnd(2)-1
+      x+=rnd"2"-1
+      y+=rnd"2"-1
     end
 
     local r,d=x+hitbox.w-8,y+hitbox.h-8
@@ -1078,16 +1086,16 @@ dream_block={
     kill_timer=0
     particles={}
     for i=1,hitbox.w*hitbox.h/32 do
-      add(particles,
-      {x=rnd(hitbox.w-1)+x,
-      y=rnd(hitbox.h-1)+y,
-      z=rnd(),
-      c=split"3, 8, 9, 10, 12, 14"[flr(rnd(6))+1],
-      s=rnd(),
-      t=flr(rnd(10))})
+      add(particles,bt("x,y,z,c,s,t",
+      {rnd(hitbox.w-1)+x,
+      rnd(hitbox.h-1)+y,
+      rnd(),
+      split"3, 8, 9, 10, 12, 14"[flr(rnd"6")+1],
+      rnd(),
+      flr(rnd"10")}))
     end
     dtimer=1
-    disp_shapes={min_x=10000,max_x=-10000, min_y=10000, max_y=-10000}
+    disp_shapes=bt("min_x,min_y,max_x,max_y",split"10000,-10000,10000,-10000")
     outline=false
     xsegs=build_segs(x,right())
     ysegs=build_segs(y,bottom())
@@ -1134,24 +1142,34 @@ dream_block={
         dtimer-=1
         if dtimer==0 then
           dtimer=4
-          create_disp_shape(disp_shapes, hit.x+4, hit.y+4)
+          add(disp_shapes, {hit.x+4, hit.y+4,0}) -- x,y,r
         end
       end
 
       --local sfxaddr = 0x3200 + 28*68
-      poke(0x3970, 0b11000000 + 12+pitch)
-      poke(0x3972, 0b11000000 + 19+pitch)
-      pitch=min(pitch+1.5,27)+(pitch >= 27 and rnd()*8 or 0)
+      poke(0x3970, 204+pitch)
+      poke(0x3972, 211+pitch)
+      pitch=min(pitch+1.5,27)+(pitch >= 27 and rnd"8" or 0)
     else
       dtimer=1
     end
     --[[hitbox.w-=2
     hitbox.h-=2]]--
-    update_disp_shapes(disp_shapes)
+    --update disp_shapes
+    disp_shapes.min_x,disp_shapes.max_x,disp_shapes.min_y,disp_shapes.max_y=args"10000,-10000,10000,-10000"
+    for i in all(disp_shapes) do
+      local x,y=unpack(i)
+      i[3]+=2
+      if i[3] >= 15 then
+        del(disp_shapes, i)
+      end
+      disp_shapes.min_x,disp_shapes.max_x,disp_shapes.min_y,disp_shapes.max_y=min(disp_shapes.min_x,x), max(disp_shapes.max_x, x), min(disp_shapes.min_y, y), max(disp_shapes.max_y,y)
+    end
 
     foreach(particles, function(p)
       if dream_blocks_active then
-        p.t=(p.t+1)%16
+        p.t+=1
+        p.t%=16
       end
     end)
   end,
@@ -1165,7 +1183,7 @@ dream_block={
     foreach(particles, function(p)
       local px,py = (p.x+cam_x*p.z-65)%(hitbox.w-2)+1+x, (p.y+cam_y*p.z-65)%(hitbox.h-2)+1+y
       local d,dx,dy,ds=displace(disp_shapes, px,py)
-      d=max((6-d), 0)
+      d=max(6-d, 0)
       px+=dx*ds*d
       py+=dy*ds*d
 
@@ -1212,21 +1230,6 @@ dream_block={
   end
 }
 
-function create_disp_shape(tbl,x,y)
-  add(tbl, {x,y,0}) --x,y,r
-end
-
-function update_disp_shapes(tbl)
-  tbl.min_x,tbl.max_x,tbl.min_y,tbl.max_y=args"10000,-10000,10000,-10000"
-  for i in all(tbl) do
-    x,y=unpack(i)
-    i[3]+=2
-    if i[3] >= 15 then
-      del(tbl, i)
-    end
-    tbl.min_x,tbl.max_x,tbl.min_y,tbl.max_y=min(tbl.min_x,x), max(tbl.max_x, x), min(tbl.min_y, y), max(tbl.max_y,y)
-  end
-end
 
 function displace(tbl, px,py)
   local d,ds,pox,poy,s = 10000,0,0,0,0
@@ -1235,7 +1238,10 @@ function displace(tbl, px,py)
       local ox,oy,r=unpack(i)
       if abs(px-ox)+abs(py-oy)<=20 then
         --cpu optimization - if the manhatten distance is far enough, we don't care anyway
-        local td,ts,tpox,tpoy = sdf_circ(px,py, ox,oy,r)
+        local tpox,tpoy = px-ox,py-oy
+        local ang=atan2(tpox,tpoy)
+        local ts= tpox*cos(ang)+tpoy*sin(ang)
+        local td =abs(ts-r)
         if td<d then
           d,ds,pox,poy,s=td,ts,tpox,tpoy,r
         end
@@ -1245,20 +1251,11 @@ function displace(tbl, px,py)
   if d>10 then
     return d,0,0,0
   end
-  local gx, gy = sdg_circ(pox,poy, ds, s)
+  local s_=sign(ds-s)/ds
+  local gx, gy= s_*pox, s_*poy
   return d,gx,gy,(15-s)/15
 end
 
-function sdg_circ(pox,poy, d, r)
-  local s=sign(d-r)/d
-  return s*pox, s*poy
-end
-
-function sdf_circ(px,py, ox, oy, r)
-  local pox,poy = px-ox,py-oy
-  local d = vec_len(pox,poy)
-  return abs(d-r), d, pox,poy
-end
 --</dream_block>--
 phone_booth={
   init=function(_ENV)
@@ -1312,6 +1309,8 @@ mirror={
   end
 }
 
+--a="\z
+-- [=["
 function mirror_cutscene(_ENV)
   music(-1,500)
   wait"30"
@@ -1386,6 +1385,7 @@ function mirror_cutscene(_ENV)
   while _g.cam_offy<-1 do _g.cam_offy+=-0.2*_g.cam_offy yield() end
   _g.cam_offy,_g.mirror_broken,p.u_input=0,true--false
 end
+--]=]
 function wait(frames,func, ...) for i=1,frames do (func or stat)(...); yield() end end
 cutscene_badeline={
   init=function(_ENV)
@@ -1464,7 +1464,7 @@ end_screen={
   init=function(_ENV)
     local data = "⁶⁶⁵⁵⁵¹³⁵⁵⁵⁵⁵⁵⁵⁶⁶²²⁵⁵⁵³⁵⁵⁵⁵⁵⁵⁵⁵²²¹¹⁵⁵⁵⁵⁵⁵⁵⁵⁵⁵⁵⁵¹¹¹¹⁵⁵³⁵³⁵³⁵³⁵⁵⁵¹¹¹¹⁵⁵³³³³³³³⁵⁵⁵¹¹¹¹⁵⁵³³³³³³³⁵⁵⁵¹¹¹¹⁵⁵⁵³³³³³⁵⁵⁵⁵¹¹¹¹⁵⁵⁵⁵³³⁵³⁵⁵⁵⁵¹¹¹¹⁵⁵⁵³⁵³³³⁵⁵⁵⁵¹¹¹¹⁵⁵⁵³³³³³⁵⁵⁵⁵¹¹¹¹⁵⁵³³³³³⁵³⁵⁵⁵¹¹¹¹⁵⁵⁵⁵⁵⁵⁵⁵⁵⁵⁵⁵¹¹¹¹⁵⁵⁵³¹⁵⁵⁵⁵⁵⁵³¹¹¹¹⁵¹⁵³¹¹⁵⁵⁵⁵⁵³¹¹¹¹³¹³¹¹¹³¹¹⁵³¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹"
     for i=0,#data-1 do
-      sset(i%16,(i\16),ord(data[i+1])-1)
+      sset(i%16,i\16,ord(data[i+1])-1)
     end
   end,
   draw=function (_ENV)
@@ -1481,7 +1481,7 @@ end_screen={
 function(t) rectfill(args(t)) end)
 
 
-    fillp(0b1100000000000000.1000)
+    fillp"0b1100000000000000.1000"
     rectfill(args"15,92,112,92,13")
     fillp()
 
@@ -1499,7 +1499,8 @@ function(t) rectfill(args(t)) end)
 
     ?"⁙ "..berry_count.."/18",args"55,51,0"
     ?"⁙ "..deaths,args"55,64,0"
-    ?"⁙ "..two_digit_str(minutes\60)..":"..two_digit_str(minutes%60)..":"..two_digit_str(seconds),args"55,77,0"
+    ?args"⁙ ,55,77,0"
+    draw_time(63,77,0)
 
     pal(split"0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0")
     for i=1,4 do
@@ -1703,13 +1704,13 @@ function kill_player(obj)
   destroy_object(obj)
   --dead_particles={}
   for dir=0,0.875,0.125 do
-    add(dead_particles,{
-      x=obj.x+4,
-      y=obj.y+4,
-      t=2,
-      dx=sin(dir)*3,
-      dy=cos(dir)*3
-    })
+    add(dead_particles,bt("x,y,t,dx,dy",{
+      obj.x+4,
+      obj.y+4,
+      2,
+      sin(dir)*3,
+      cos(dir)*3
+    }))
   end
     -- <fruitrain> ---
   foreach(fruitrain,function(f)
@@ -1871,11 +1872,25 @@ function _update()
   end)
 
   --move camera to player
-  foreach(objects,function(_ENV)
-    if type==player or type==player_spawn then
-      move_camera(_ENV)
+  local p=find_player()
+  if p then
+    --move camera to p
+    --<camtrigger>--
+    cam_spdx,cam_spdy=cam_gain*(4+p.x-cam_x+cam_offx),cam_gain*(4+p.y-cam_y+cam_offy)
+    --</camtrigger>--
+
+    cam_x+=cam_spdx
+    cam_y+=cam_spdy
+
+    --clamp camera to level boundaries
+    local clampx,clampy=mid(cam_x,64,lvl_pw-64),mid(cam_y,64,lvl_ph-64)
+    if cam_x~=clampx then
+      cam_spdx,cam_x=0,clampx
     end
-  end)
+    if cam_y~=clampy then
+      cam_spdy,cam_y=0,clampy
+    end
+  end
 end
 
 -- [drawing functions]
@@ -2057,7 +2072,8 @@ function _draw()
   -- draw time
   if ui_timer>=-30 then
     if ui_timer<0 then
-      draw_time(draw_x+4,draw_y+4)
+      rectfill(draw_x+4,draw_y+4,draw_x+36,draw_y+10,0)
+      draw_time(draw_x+5,draw_y+5,7)
     end
     ui_timer-=1
   end
@@ -2082,9 +2098,8 @@ function draw_obj_sprite(_ENV)
   spr(sprite,x,y,1,1,flip.x,flip.y)
 end
 
-function draw_time(x,y)
-  rectfill(x,y,x+32,y+6,0)
-  ?two_digit_str(minutes\60)..":"..two_digit_str(minutes%60)..":"..two_digit_str(seconds),x+1,y+1,7
+function draw_time(x,y,c)
+  ?two_digit_str(minutes\60)..":"..two_digit_str(minutes%60)..":"..two_digit_str(seconds),x,y,c
 end
 
 
@@ -2110,15 +2125,6 @@ function args(a)
   return unpack(split(a))
 end
 
---<dream_block>
-
-function vec_len(x,y)
-  local ang=atan2(x,y)
-  return x*cos(ang)+y*sin(ang)
-end
-
---</dream_block>
-
 function tile_at(x,y)
   return mget(lvl_x+x,lvl_y+y)
 end
@@ -2141,29 +2147,31 @@ function transition(wipein)
   local circles = {}
   for x=0,7 do
     for y=0,7 do
-      c={
-        pos = vector((x - 0.8 + rnd"0.6") * 20, (y - 0.8 + rnd"0.6") * 20),
-        delay = rnd"1.5" + (wipein and (6 - x) or x)
-      }
-      c.radius = wipein and 30 - 2*c.delay or 0
-      add(circles,c)
+      local delay=rnd"1.5" + (wipein and 6 - x or x)
+      add(circles,bt("x,y,delay,radius",{
+         (x - 0.8 + rnd"0.6") * 20,
+         (y - 0.8 + rnd"0.6") * 20,
+         delay,
+         wipein and 30 - 2*delay or 0
+      }))
     end
   end
 
   for t=1,15 do
     camera()
-    foreach(circles, function(c)
+    local circfill=circfill
+    foreach(circles, function(_ENV)
       if not wipein then
-        c.delay -= 1
-        if c.delay <= 0 then
-          c.radius += 2
+        delay -= 1
+        if delay <= 0 then
+          radius += 2
         end
-      elseif c.radius > 0 then
-        c.radius -= 2
+      elseif radius > 0 then
+        radius -= 2
       else
-        c.radius = 0
+        radius = 0
       end
-      if (c.radius>0) circfill(c.pos.x, c.pos.y, c.radius, 0)
+      if (radius>0) circfill(x, y, radius, 0)
     end)
 
     yield()
@@ -2181,17 +2189,13 @@ function transition(wipein)
   end
 end
 -- </transition> --
+
 -- <circ_transition>--
 
 function circ_transition()
-  local p
-  for o in all(objects) do
-    if o.type==player then
-      p=o
-    end
-  end
-  p.spd=vector(0,0)
-  pause_player=true
+  --find_player()
+  local p=find_player()
+  p.spd,pause_player=vector(0,0),true
 
   sfx"26"
 
@@ -2199,13 +2203,12 @@ function circ_transition()
   s=""
   for i,r in ipairs(radii) do
     if i==48 then
-      p.x,p.y=64,64
-      stars_falling,pause_player=false--,false
+      --set p in order to center circle for end screen
+      p,stars_falling,pause_player=vector(64,64),--false,false
       next_level()
-      for o in all(objects) do
-        if o.type==player_spawn then
-          p=vector(o.x,o.target)
-        end
+      local o=find_player()
+      if o then
+        p=vector(o.x,o.target)
       end
     end
     inv_circle(p.x+4,p.y+4,r)
@@ -2221,12 +2224,19 @@ function inv_circle(circle_x, circle_y, circle_r)
   rectfill(-1, -1, circle_x - circle_r, 128)
   rectfill(circle_x + circle_r, -1, 128, 128)
 
-  local circle_r_max = circle_r*sqrt"2"+1
 
-  for i=circle_r,circle_r_max do
-    for _x=0,1 do for _y=0,1 do
-      circ(circle_x+_x, circle_y+_y, i)
-    end end
+  for i=circle_r,circle_r*sqrt"2"+1 do
+    for t=0,3 do
+      circ(circle_x+t\2, circle_y+t%2, i)
+    end
+  end
+end
+
+function find_player()
+  for _ENV in all(objects) do
+    if type==player or type==player_spawn then
+      return _ENV
+    end
   end
 end
 -- </circ_transition>--
@@ -2398,25 +2408,7 @@ mapdata={
 }
 
 --@end
-linked_levels={[9]=3, [12]=2}
-
-function move_camera(obj)
-  --<camtrigger>--
-  cam_spdx,cam_spdy=cam_gain*(4+obj.x-cam_x+cam_offx),cam_gain*(4+obj.y-cam_y+cam_offy)
-  --</camtrigger>--
-
-  cam_x+=cam_spdx
-  cam_y+=cam_spdy
-
-  --clamp camera to level boundaries
-  local clampx,clampy=mid(cam_x,64,lvl_pw-64),mid(cam_y,64,lvl_ph-64)
-  if cam_x~=clampx then
-    cam_spdx,cam_x=0,clampx
-  end
-  if cam_y~=clampy then
-    cam_spdy,cam_y=0,clampy
-  end
-end
+linked_levels=bt("9,12",split"3,2")
 
 --[[
 
