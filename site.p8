@@ -1502,21 +1502,37 @@ function(t) rectfill(args(t)) end)
     ?args"⁙ ,55,77,0"
     draw_time(63,77,0)
 
+    --manually draw outlines
     pal(split"0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0")
-    for i=1,4 do
-      camera(draw_x+split"-1,0,0,1"[i],draw_y+split"0,-1,1,0"[i])
-      spr(args"10,42,49")
-      spr(args"151,42,63")
-      spr(args"167,42,76")
-      spr(args"0,93,25,2,2")
-    end
-    camera()
+    foreach(split([[
+10,43,49
+10,41,49
+10,42,50
+10,42,48
+151,43,63
+151,41,63
+151,42,64
+151,42,62
+167,43,76
+167,41,76
+167,42,77
+167,42,75
+0,94,25,2,2
+0,92,25,2,2
+0,93,26,2,2
+0,93,24,2,2
+pal
+10,42,49
+151,42,63
+167,42,76
+0,93,25,2,2]], "\n"),
+function(t)
+  if t=="pal" then
     pal()
-    spr(args"10,42,49")
-    spr(args"151,42,63")
-    spr(args"167,42,76")
-    spr(args"0,93,25,2,2")
-
+  else
+    spr(args(t))
+  end
+end)
   end
 }
 
