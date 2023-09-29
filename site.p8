@@ -1388,7 +1388,6 @@ memorial={
         for i = 1,8 do
           pos = rnd(#text)+1
           c = i<=3 and rnd(split(text,"")) or text[pos]
-          print(c)
           if ptext[pos] ~= "\n" and c~="\n" then
             ptext = sub(ptext,1,pos-1)..c..sub(ptext,pos+1)
           end
