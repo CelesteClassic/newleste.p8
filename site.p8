@@ -397,10 +397,8 @@ end
 
 player_spawn={
   init=function(_ENV)
-    layer=2
+    layer,sprite,target=2,3,y
     sfx"15"
-    sprite=3
-    target=y
 
     local offx,offy,c=0,0,check(camera_trigger,0,0)
     if c then
@@ -451,7 +449,7 @@ player_spawn={
           delay-=1
         elseif y>target then
           -- clamp at target y
-          state,spd=2,vector(0,0)
+          state,spd=2,zerovec()
           if not player_start_spdy then
             y,delay,_g.shake=target,5,4
             init_smoke(0,4)
@@ -648,51 +646,6 @@ fruit={
   end
 }
 --- </fruitrain> ---
---[[
-fly_fruit={
-  check_fruit=true,
-  init=function(_ENV)
-    start,step,sfx_delay=y,0.5,8
-  end,
-  update=function(_ENV)
-    --fly away
-    if has_dashed then
-      sfx_delay-=1
-      if sfx_delay==0 then
-       _g.sfx_timer=20
-       sfx"10"
-      end
-      spd.y=appr(spd.y,-3.5,0.25)
-      if y<-16 then
-        destroy_object(_ENV)
-      end
-    -- wait
-    else
-      step+=0.05
-      spd.y=sin(step)*0.5
-    end
-    -- collect
-    if player_here() then
-      --- <fruitrain> ---
-      init_smoke(-6)
-      init_smoke(6)
-
-      local f=init_object(fruit,x,y,10) --if this happens to be in the exact location of a different fruit that has already been collected, this'll cause a crash
-      --TODO: fix this if needed
-      f.fruit_id=fruit_id
-      fruit.update(f)
-      --- </fruitrain> ---
-      destroy_object(_ENV)
-    end
-  end,
-  draw=function(_ENV)
-    spr(10,x,y)
-    for ox=-6,6,12 do
-      spr((has_dashed or sin(step)>=0) and 12 or y>start and 14 or 13,x+ox,y-2,1,1,ox==-6)
-    end
-  end
-}
-]]
 
 lifeup={
   init=function(_ENV)
@@ -778,7 +731,7 @@ badeline={
     if timer>=30 then
       draw_dreams(_ENV,2,8)
       if not dreaming then
-        pal(split"8,2,1,4,5,6,5,2,9,10,11,8,13,14,6")
+        palsplit"8,2,1,4,5,6,5,2,9,10,11,8,13,14,6"
         draw_hair(_ENV)
         draw_obj_sprite(_ENV)
         pal()
@@ -942,9 +895,9 @@ switch_block={
   update=function(_ENV)
     if missing==0 and not active then
       active,delay=true,20
-      foreach(switches,function(s)
-        s.init_smoke()
-        s.init_smoke()
+      foreach(switches,function(_ENV)
+        init_smoke()
+        init_smoke()
       end)
       _g.sfx_timer=20
       sfx"24"
@@ -1027,13 +980,14 @@ function build_segs(x,right)
   local segs={}
   for i=1,2 do
     local seg={{x},{x+4}}
-    local x_=x+10+flr(rnd"6")
+    local x_,lastx_=x+10+flr(rnd"6"),x+4
     while x_<right-4 do
       add(seg,{x_,rnd"3"+2,rnd"3"+2})
+      lastx_=x_
       x_+=flr(rnd"6")+6
     end
 
-    seg[ seg[#seg][1]>right-8 and #seg or #seg+1 ] = {right - 4}
+    seg[ lastx_>right-8 and #seg or #seg+1 ] = {right - 4}
     add(seg,{right})
     add(segs,seg)
   end
@@ -1045,8 +999,7 @@ function draw_outline(_ENV, x,right,draw_y,ysegs,transpose,outline_color)
     -- line(x+1, i, right()-1,i)
 
 
-    local segs=ysegs[t]
-    local dir= split"-1,1"[t]
+    local segs,dir=ysegs[t], split"-1,1"[t]
     for idx=1,#segs-1 do
       ly,ry=segs[idx][1],segs[idx+1][1]
       if ry<draw_y or ly>=draw_y+129 then goto continue end
@@ -1081,10 +1034,8 @@ end
 --dream_blocks_active=false
 dream_block={
   init=function(_ENV)
-    layer=3
+    layer,kill_timer,particles=3,0,{}
     resize_rect_obj(_ENV,65,65)
-    kill_timer=0
-    particles={}
     for i=1,hitbox.w*hitbox.h/32 do
       add(particles,bt("x,y,z,c,s,t",
       {rnd(hitbox.w-1)+x,
@@ -1094,15 +1045,10 @@ dream_block={
       rnd(),
       flr(rnd"10")}))
     end
-    dtimer=1
-    disp_shapes=bt("min_x,min_y,max_x,max_y",split"10000,-10000,10000,-10000")
-    outline=false
-    xsegs=build_segs(x,right())
-    ysegs=build_segs(y,bottom())
+    dtimer,disp_shapes,xsegs,ysegs,pitch,outline=1, bt("min_x,min_y,max_x,max_y",split"10000,-10000,10000,-10000"), build_segs(x,right()), build_segs(y,bottom()), 0--,false
     -- <cutscene> --
     outline_size=0
     -- </cutscene> --
-    pitch=0
   end,
   update=function(_ENV)
     --[[hitbox.w+=2
@@ -1111,15 +1057,13 @@ dream_block={
     if hit then
       -- set the player as _ENV temporarily, to save a lot of tokens
       local _ENV,this=hit,_ENV
-      dash_effect_time=10
-      dash_time=2
+      dash_effect_time,dash_time=10,2
 
       local magnitude=(dash_target_y==0 or dash_target_x==0) and 2.5 or 2
       dash_target_x,dash_target_y=sign(dash_target_x)*magnitude,sign(dash_target_y)*magnitude
       if not dreaming then
         spd=vector(dash_target_x*(dash_target_y==0 and 2.5  or 1.7678),dash_target_y*(dash_target_x==0 and 2.5 or 1.7678))
-        dream_time=0
-        dreaming=true
+        dream_time,dreaming=0,true
         _init_smoke, init_smoke=init_smoke, function() end
         sfx"28"
         this.pitch=5
@@ -1134,8 +1078,7 @@ dream_block={
         end
       end
 
-      djump=max_djump
-      layer=3 -- draw player in front of dream blocks while inside
+      djump,layer=max_djump,3 -- draw player in front of dream blocks while inside
 
       local _ENV=this -- set _ENV back to this to save more tokens
       if dtimer>0 then
@@ -1177,7 +1120,7 @@ dream_block={
     rectfill(x+1,y+1,right()-1,bottom()-1,0)
 
     if not dream_blocks_active then
-      pal(split"1,2,5,4,5,6,7,5,6,6,11,13,13,13,15")
+      palsplit"1,2,5,4,5,6,7,5,6,6,11,13,13,13,15"
     end
     local big_particles={}
     foreach(particles, function(p)
@@ -1263,8 +1206,7 @@ phone_booth={
   end,
   update=function(_ENV)
     if not done and player_here() then
-      _g.co_trans=cocreate(circ_transition)
-      done=true
+      _g.co_trans,done=cocreate(circ_transition),true
     end
   end,
   draw=function(_ENV)
@@ -1290,7 +1232,7 @@ mirror={
   draw=function(_ENV)
     rectfill(x+3,y+7,x+28,y+23,mirror_col)
     if p then
-      pal(split"8,2,1,4,5,6,5,2,9,10,11,8,13,14,15")
+      palsplit"8,2,1,4,5,6,5,2,9,10,11,8,13,14,15"
       clip(x+3-cam_x+64,y+7-cam_y+64,26,17)
       draw_hair(p,reflect_off)
       spr(p.sprite,2*x-p.x+24+reflect_off,p.y,1,1,not p.flip.x)
@@ -1298,12 +1240,14 @@ mirror={
       clip()
     end
     palt"0x80"
+    camera(draw_x-x,draw_y-y)
     if broken then
-      spr(128,x,y+4,4,2.5)
+      spr(args"128,0,4,4,2.5")
     else
-      sspr(0,84,32,12,x,y+4)
-      spr(132,x,y+16,4,1)
+      sspr(args"0,84,32,12,0,4")
+      spr(args"132,0,16,4,1")
     end
+    camera(draw_x,draw_y)
     palt()
     -- rect(x+3,y+7,x+20,y+15,7)
   end
@@ -1368,8 +1312,8 @@ function mirror_cutscene(_ENV)
     end
 
     --sfxaddr = 0x3200 + 28*68
-    poke(0x3970, 0b11000000 + 12+pitch)
-    poke(0x3972, 0b11000000 + 19+pitch)
+    poke(0x3970, 204+pitch)
+    poke(0x3972, 211+pitch)
     pitch+=0.5
     yield()
   end
@@ -1394,7 +1338,7 @@ cutscene_badeline={
   end,
   update=player.update,
   draw=function(_ENV)
-    pal(split"8,2,1,4,5,6,5,2,9,10,11,8,13,14,15")
+    palsplit"8,2,1,4,5,6,5,2,9,10,11,8,13,14,15"
     draw_hair(_ENV)
     draw_obj_sprite(_ENV)
     pal()
@@ -1407,7 +1351,7 @@ function cutscene_transition()
     local fac=15-15*(1-t/c)^3
     camera()
     rectfill(0, 0, 128, fac, 0)
-    rectfill(0, 128-fac, 128, 128, 0)
+    rectfill(0, 128-fac, args"128, 128, 0")
     yield()
   end
 end
@@ -1424,7 +1368,7 @@ campfire={
     palt"0"
     spr(8,x,y,2,1)
     if stars_falling then
-      pal(split"1,2,3,4,5,6,7,11,7")
+      palsplit"1,2,3,4,5,6,7,11,7"
     end
     palt()
     spr(split"12,13,14"[flr(off)%3+1],x+4,y-2)
@@ -1433,32 +1377,33 @@ campfire={
 }
 
 memorial={
-	init=function(_ENV)
-		index,text,hitbox.w,outline=6,"-- celeste mountain --\nthis memorial to those\n perished on the climb",16--,false
-	end,
-	draw=function(_ENV)
-		spr(149,x,y-16,2,3)
-		spr(183,x+4,y-24)
-	  if player_here() then
-	  	if stars_falling then
-				for i = 1,8 do
+  init=function(_ENV)
+    index,text,hitbox.w,outline=6,"-- celeste mountain --\nthis memorial to those\n perished on the climb",16--,false
+  end,
+  draw=function(_ENV)
+    spr(149,x,y-16,2,3)
+    spr(183,x+4,y-24)
+    if player_here() then
+      if stars_falling then
+        for i = 1,8 do
           pos = rnd(#text)+1
           c = i<=3 and rnd(split(text,"")) or text[pos]
-	 				if ptext[pos] ~= "\n" and c~="\n" then
+          print(c)
+          if ptext[pos] ~= "\n" and c~="\n" then
             ptext = sub(ptext,1,pos-1)..c..sub(ptext,pos+1)
-					end
-	 			end
-	 		end
+          end
+        end
+      end
 
-	  	index+=0.5
-	  	?"\^x5\^y8"..sub(ptext, 1, index),8,16,7
+      index+=0.5
+      ?"\^x5\^y8"..sub(ptext, 1, index),args"8,16,7"
       if index%1==0 and index < #text then
         ?"\as4i6<<<x5d#4"
       end
-		else
-			ptext,index = text,0
-		end
-	end
+    else
+      ptext,index = text,0
+    end
+  end
 }
 end_screen={
   init=function(_ENV)
@@ -1493,17 +1438,19 @@ function(t) rectfill(args(t)) end)
       line(_x,48-_x, _x+3, 48-_x, 10)
     end
 
-    ?args"CHAPTER 2,52,26,11"
-    ?args"old site,56,34,7"
-    ?args"chapter complete!,31,100,0"
+    -- ?args"CHAPTER 2,52,26,11"
+    -- ?args"old site,56,34,7"
+    -- ?args"chapter complete!,31,100,0"
+    --
+    -- ?"⁙ "..berry_count.."/18",args"55,51,0"
+    -- ?"⁙ "..deaths,args"55,64,0"
+    -- ?args"⁙ ,55,77,0"
 
-    ?"⁙ "..berry_count.."/18",args"55,51,0"
-    ?"⁙ "..deaths,args"55,64,0"
-    ?args"⁙ ,55,77,0"
-    draw_time(63,77,0)
+    ?"\^jd6\|i\fbCHAPTER 2\^je8\|i\f7old site\^j7p\-j\f0chapter complete!\^jdc\+jj\f0⁙ "..berry_count.."/18\^jdj\+jh\f0⁙ \^jdg\-j\f0⁙ "..deaths
+    draw_time(args"63,77,0")
 
     --manually draw outlines
-    pal(split"0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0")
+    palsplit"0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
     foreach(split([[
 10,43,49
 10,41,49
@@ -1578,7 +1525,7 @@ function init_object(_type,sx,sy,tile)
   --local _g=_g
   local _ENV=setmetatable({},{__index=_g})
   type, collideable, sprite, flip, x, y, hitbox, spd, rem, fruit_id, outline, draw_seed=
-  _type, true, tile, vector(), sx, sy, rectangle(args"0,0,8,8"), vector(0,0), vector(0,0), id, true, rnd()
+  _type, true, tile, vector(), sx, sy, rectangle(args"0,0,8,8"), zerovec(), zerovec(), id, true, rnd()
 
   function left() return x+hitbox.x end
   function right() return left()+hitbox.w-1 end
@@ -1744,15 +1691,14 @@ end
 
 
 function next_level()
-  if lvl_id==12 then music(args"-1,5000,0") end
-  if lvl_id==13 then music(args"38,0,7") end
-  if lvl_id==28 then music(args"-1,32000,7") end
+  local mu=music_triggers[lvl_id]
   if lvl_id==31 then
-    sfxaddr = 0x3200
     for a=14772,15520,68 do
       poke(a+65, 20)
     end
-    music(args"0,0,7")
+  end
+  if mu then
+    music(args(mu))
   end
   if lvl_id==35 then time_ticking=false end
   load_level(lvl_id+1)
@@ -1944,9 +1890,9 @@ function _draw()
       local _y = y+dy
       local _s = _y<y and s-1 or s
       if _y~=y then
-        pal(split"1,2,3,4,5,1,1,8,9,10,11,12,1")
+        palsplit"1,2,3,4,5,1,1,8,9,10,11,12,1"
       elseif stars_falling then
-        pal(split"1,2,3,4,5,12,6,8,9,10,11,12,12")
+        palsplit"1,2,3,4,5,12,6,8,9,10,11,12,12"
       end
       camera(-x,-_y)
       if _s<=-2 then
@@ -2012,7 +1958,7 @@ function _draw()
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,4)
 
   -- draw outlines
-  pal(split"1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1")
+  palsplit"1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1"
   pal=time
   foreach(objects,function(_ENV)
     if outline then
@@ -2141,6 +2087,14 @@ function args(a)
   return unpack(split(a))
 end
 
+function palsplit(x)
+  pal(split(x))
+end
+
+function zerovec()
+  return vector(0,0)
+end
+
 function tile_at(x,y)
   return mget(lvl_x+x,lvl_y+y)
 end
@@ -2211,7 +2165,7 @@ end
 function circ_transition()
   --find_player()
   local p=find_player()
-  p.spd,pause_player=vector(0,0),true
+  p.spd,pause_player=zerovec(),true
 
   sfx"26"
 
@@ -2425,6 +2379,11 @@ mapdata={
 
 --@end
 linked_levels=bt("9,12",split"3,2")
+music_triggers=bt("12,13,28,31",
+split([[-1,5000,0
+38,0,7
+-1,32000,7
+0,0,7]],"\n"))
 
 --[[
 
