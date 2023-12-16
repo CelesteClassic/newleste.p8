@@ -23,25 +23,24 @@ end
 -- [globals]
 
 
-objects,got_fruit, --tables
+objects,obj_bins,got_fruit, --tables
 freeze,delay_restart,sfx_timer,ui_timer, --timers
 cam_x,cam_y,cam_spdx,cam_spdy,cam_gain,cam_offx,cam_offy, --camera values <camtrigger>
 _pal, --for outlining
 shake--,screenshake
 =
-{},{},
+{},{solids={}},{},
 0,0,0,-99,
 0,0,0,0,0.1,0,0,
 pal,
 0--,false
-
 
 local _g=_ENV --for writing to global vars
 
 -- [entry point]
 
 function _init()
-  max_djump,deaths,frames,seconds,minutes,berry_count=1,0,0,0,0,0
+  max_djump,deaths,frames,seconds,minutes,berry_count=args"1,0,0,0,0,0"
   music(args"0,0,7")
   load_level(1)
 end
@@ -1260,7 +1259,7 @@ mirror=create_type(
 )
 
 --a="\z
--- [=["
+--[=["
 function mirror_cutscene(_ENV)
   music(-1,500)
   wait"30"
@@ -1550,7 +1549,7 @@ function init_object(_type,sx,sy,tile)
   function bottom() return top()+hitbox.h-1 end
 
   function is_solid(ox,oy,require_safe_ground)
-    for o in all(objects) do
+    for o in all(obj_bins.solids) do
       if o!=_ENV and (o.solid_obj or o.semisolid_obj and not objcollide(o,ox,0) and oy>0) and objcollide(o,ox,oy) and not (require_safe_ground and o.unsafe_ground) then
         return true
       end
@@ -1594,7 +1593,7 @@ function init_object(_type,sx,sy,tile)
     other.top()<=bottom()+oy
   end
   function check(type,ox,oy)
-    for other in all(objects) do
+    for other in all(obj_bins[type]) do
       if other.type==type and other~=_ENV and objcollide(other,ox,oy) then
         return other
       end
@@ -1666,14 +1665,21 @@ function init_object(_type,sx,sy,tile)
 
 
   add(objects,_ENV);
-
+  obj_bins[type]=obj_bins[type] or {}
+  add(obj_bins[type],_ENV);
   (type.init or time)(_ENV)
+
+  if solid_obj or semisolid_obj then
+    add(obj_bins.solids,_ENV)
+  end
 
   return _ENV
 end
 
 function destroy_object(obj)
   del(objects,obj)
+  del(obj_bins[obj.type],obj)
+  del(obj_bins.solids,obj)
 end
 
 function kill_player(obj)
