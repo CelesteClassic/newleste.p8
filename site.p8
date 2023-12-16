@@ -157,13 +157,16 @@ player=create_type(
     end
 
     for i,f in inext,fruitrain do
-      if f.type==fruit and not f.golden and berry_timer>5 then
+      if f.type==fruit and (not f.golden or lvl_id==35 and x>=60) and berry_timer>5 then
         -- to be implemented:
         -- save berry
         -- save golden
 
         berry_count+=1
         _g.berry_count+=1
+        if f.golden then
+          _g.collected_golden=true
+        end
         berry_timer, got_fruit[f.fruit_id]=-5, true
         init_object(lifeup, f.x, f.y,berry_count)
         del(fruitrain, f)
@@ -1481,7 +1484,11 @@ function(t)
   if t=="pal" then
     pal()
   else
-    spr(args(t))
+    local a=split(t)
+    if a[1]==10 and collected_golden then
+      a[1]=11
+    end
+    spr(unpack(a))
   end
 end)
   end
