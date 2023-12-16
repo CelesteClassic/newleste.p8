@@ -40,7 +40,7 @@ local _g=_ENV --for writing to global vars
 -- [entry point]
 
 function _init()
-  max_djump,deaths,frames,seconds,minutes,berry_count=args"1,0,0,0,0,0"
+  max_djump,deaths,frames,seconds_f,seconds,minutes,berry_count=args"1,0,0,0,0,0,0"
   music(args"0,0,7")
   load_level(1)
 end
@@ -1814,6 +1814,7 @@ function _update()
     seconds+=frames\30
     minutes+=seconds\60
     seconds%=60
+    seconds_f=frames%30
   end
   frames%=30
 
@@ -2056,7 +2057,7 @@ function _draw()
   -- draw time
   if ui_timer>=-30 then
     if ui_timer<0 then
-      rectfill(draw_x+4,draw_y+4,draw_x+36,draw_y+10,0)
+      rectfill(draw_x+4,draw_y+4,draw_x+48,draw_y+10,0)
       draw_time(draw_x+5,draw_y+5,7)
     end
     ui_timer-=1
@@ -2065,12 +2066,6 @@ function _draw()
   -- <transition> --
   if (co_trans and costatus(co_trans) != "dead") coresume(co_trans)
   color"0"
-
---   if seconds>0 then
---   max_cpu = max(max_cpu,stat(1))
---   camera()
---   print(max_cpu,0,0,7)
--- end
 end
 
 function draw_object(_ENV)
@@ -2083,7 +2078,7 @@ function draw_obj_sprite(_ENV)
 end
 
 function draw_time(x,y,c)
-  ?two_digit_str(minutes\60)..":"..two_digit_str(minutes%60)..":"..two_digit_str(seconds),x,y,c
+  ?two_digit_str(minutes\60)..":"..two_digit_str(minutes%60)..":"..two_digit_str(seconds)..'.'..two_digit_str(round(seconds_f/30*100)),x,y,c
 end
 
 
