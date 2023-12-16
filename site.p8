@@ -1417,6 +1417,12 @@ end_screen=create_type(
     for i=0,#data-1 do
       sset(i%16,i\16,ord(data[i+1])-1)
     end
+    foreach(fruitrain, function(f)
+      _g.berry_count+=1
+      if f.golden then
+        _g.collected_golden=true
+      end
+    end)
   end,
   nil,
   function (_ENV) --draw
