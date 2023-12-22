@@ -23,25 +23,24 @@ end
 -- [globals]
 
 
-objects,got_fruit, --tables
+objects,obj_bins,got_fruit, --tables
 freeze,delay_restart,sfx_timer,ui_timer, --timers
 cam_x,cam_y,cam_spdx,cam_spdy,cam_gain,cam_offx,cam_offy, --camera values <camtrigger>
 _pal, --for outlining
-shake,screenshake
+shake--,screenshake
 =
-{},{},
+{},{solids={}},{},
 0,0,0,-99,
 0,0,0,0,0.1,0,0,
 pal,
-0,false
-
+0--,false
 
 local _g=_ENV --for writing to global vars
 
 -- [entry point]
 
 function _init()
-  max_djump,deaths,frames,seconds,minutes,time_ticking,berry_count=1,0,0,0,0,true,0
+  max_djump,deaths,frames,seconds_f,seconds,minutes,berry_count=args"1,0,0,0,0,0,0"
   music(args"0,0,7")
   load_level(1)
 end
@@ -72,11 +71,14 @@ for i=0,15 do
 end
 --</stars>--
 
+function create_type(init,update,draw)
+  return {init=init,update=update,draw=draw}
+end
 
 -- [player entity]
 
-player={
-  init=function(_ENV)
+player=create_type(
+  function(_ENV) -- init
     djump, hitbox, collides,layer = max_djump, rectangle(args"1,3,6,5"), true,2
 
     --<fruitrain>--
@@ -88,7 +90,7 @@ player={
     dream_particles={}
 
   end,
-  update=function(_ENV)
+  function(_ENV) -- update
     -- <dream_block> --
     foreach(dream_particles,function(p)
       p.x+=p.dx
@@ -154,13 +156,16 @@ player={
     end
 
     for i,f in inext,fruitrain do
-      if f.type==fruit and not f.golden and berry_timer>5 then
+      if f.type==fruit and (not f.golden or lvl_id==35 and x>=60) and berry_timer>5 then
         -- to be implemented:
         -- save berry
         -- save golden
 
         berry_count+=1
         _g.berry_count+=1
+        if f.golden then
+          _g.collected_golden=true
+        end
         berry_timer, got_fruit[f.fruit_id]=-5, true
         init_object(lifeup, f.x, f.y,berry_count)
         del(fruitrain, f)
@@ -321,7 +326,7 @@ player={
     was_on_ground,ph_input=on_ground, h_input
   end,
 
-  draw=function(_ENV)
+  function(_ENV) -- draw
     -- draw player hair and sprite
     -- <dream_block> --
     draw_dreams(_ENV,1,12)
@@ -332,7 +337,7 @@ player={
       pal()
     end
   end
-}
+)
 
 function draw_dreams(_ENV,cdark,clight)
   foreach(dream_particles,function(_ENV)
@@ -395,8 +400,8 @@ end
 
 -- [other entities]
 
-player_spawn={
-  init=function(_ENV)
+player_spawn=create_type(
+  function(_ENV) -- init
     layer,sprite,target=2,3,y
     sfx"15"
 
@@ -435,7 +440,7 @@ player_spawn={
     end)
     --- </fruitrain> ---
   end,
-  update=function(_ENV)
+  function(_ENV) --update
     -- jumping up
     if state==0 and y<target+16 then
         state,delay=1, 3
@@ -472,14 +477,14 @@ player_spawn={
     end
     update_hair(_ENV)
   end,
-  draw=player.draw
-  -- draw=function(this)
+  player.draw
+  -- function(this) -- draw
   --   set_hair_color(max_djump)
   --   draw_hair(this,1)
   --   draw_obj_sprite(this)
   --   unset_hair_color()
   -- end
-}
+)
 
 --<camtrigger>--
 camera_trigger={
@@ -533,11 +538,11 @@ spring={
 }
 ]]
 
-refill={
-  init=function(_ENV)
+refill=create_type(
+  function(_ENV) -- init
     offset,timer,hitbox=rnd(),0,rectangle(args"-1,-1,10,10")
   end,
-  update=function(_ENV)
+  function(_ENV) -- update
     if timer>0 then
       timer-=1
       if timer==0 then
@@ -554,7 +559,7 @@ refill={
       end
     end
   end,
-  draw=function(_ENV)
+  function(_ENV) -- draw
     if timer==0 then
       spr(15,x,y+sin(offset)+0.5)
 
@@ -564,13 +569,13 @@ refill={
       palt()
     end
   end
-}
+)
 
-fall_floor={
-  init=function(_ENV)
+fall_floor=create_type(
+  function(_ENV) -- init
     solid_obj,state,unsafe_ground,delay=true,0,true,0
   end,
-  update=function(_ENV)
+  function(_ENV) -- update
     --it looks like weird stuff goes on here with the decimal constants (mostly to ensure rounding correctly), but it should be equivalent to vanilla
     --(and if i made an error, probably no one cares)
     -- idling
@@ -599,33 +604,32 @@ fall_floor={
     --if sprite 0 is not empty, need to fixup this
     sprite=state==1 and 25.8-delay or state==0 and 23
   end
-}
+)
 
-smoke={
-  init=function(_ENV)
+smoke=create_type(
+  function(_ENV) -- init
     layer,spd,flip=3,vector(0.3+rnd"0.2",-0.1),vector(rnd()<0.5,rnd()<0.5)
     x+=-1+rnd"2"
     y+=-1+rnd"2"
   end,
-  update=function(_ENV)
+  function(_ENV) -- update
     sprite+=0.2
     if sprite>=29 then
       destroy_object(_ENV)
     end
   end
-}
+)
 
 --- <fruitrain> ---
 fruitrain={}
-fruit={
-  check_fruit=true,
-  init=function(_ENV)
+fruit=create_type(
+  function(_ENV) -- init
     y_,off,tx,ty,golden=y,0,x,y,sprite==11
     if golden and deaths>0 then
       destroy_object(_ENV)
     end
   end,
-  update=function(_ENV)
+  function(_ENV) -- update
     if target then
       tx+=0.2*(target.x-tx)
       ty+=0.2*(target.y-ty)
@@ -644,30 +648,31 @@ fruit={
     off+=0.025
     y=y_+sin(off)*2.5
   end
-}
+)
+fruit.check_fruit=true
 --- </fruitrain> ---
 
-lifeup={
-  init=function(_ENV)
+lifeup=create_type(
+  function(_ENV) -- init
     spd.y,duration,flash,_g.sfx_timer,outline=-0.25,30,0,20--,false
     sfx"9"
   end,
-  update=function(_ENV)
+  function(_ENV) -- update
     duration-=1
     if duration<=0 then
       destroy_object(_ENV)
     end
     flash+=0.5
   end,
-  draw=function(_ENV)
+  function(_ENV) -- draw
     --<fruitrain>--
     ?split"1000,2000,3000,4000,5000,1up"[min(sprite,6)],x-4,y-4,7+flash%2
     --<fruitrain>--
   end
-}
+)
 
-badeline={
-  init=function(_ENV)
+badeline=create_type(
+  function(_ENV) -- init
     for o in all(objects) do
       if (o.type==player_spawn or o.type==badeline) and not o.tracked then
         bade_track(_ENV,o)
@@ -677,7 +682,7 @@ badeline={
     states,timer={},0
     --TODO: rn hitbox is 8x8, need to test if a hitbox matching the player obj is more fitting
   end,
-  update=function(_ENV)
+  function(_ENV) -- update
     player_input=player_input or btn()!=0
     if tracking.type==player_spawn then
       --search for player to replace player spawn
@@ -727,7 +732,7 @@ badeline={
       kill_player(hit)
     end
   end,
-  draw=function(_ENV)
+  function(_ENV) -- draw
     if timer>=30 then
       draw_dreams(_ENV,2,8)
       if not dreaming then
@@ -738,7 +743,7 @@ badeline={
       end
     end
   end
-}
+)
 function bade_track(_ENV,o)
   o.tracked,tracking=true,o
   local f=o.init_smoke
@@ -760,12 +765,12 @@ function resize_rect_obj(_ENV,tr,td)
 end
 --</fall_plat> </dream_block> </touch_switch>
 
-fall_plat={
-  init=function(_ENV)
+fall_plat=create_type(
+  function(_ENV) -- init
     resize_rect_obj(_ENV,67,67)
     collides,solid_obj,timer=true,true,0
   end,
-  update=function(_ENV)
+  function(_ENV) -- update
     --states:
     -- nil - before activation
     -- 0 - shaking
@@ -792,7 +797,7 @@ fall_plat={
       spd.y=appr(spd.y,4,0.4)
     end
   end,
-  draw=function(_ENV)
+  function(_ENV) -- draw
     local x,y=x,y
     if timer>0 then
       x+=rnd"2"-1
@@ -836,14 +841,13 @@ fall_plat={
     end
     palt()
   end
-
-}
+)
 -- <touch_switch> --
-touch_switch={
-  init=function(_ENV)
+touch_switch=create_type(
+  function(_ENV) -- init
     off=2
   end,
-  update=function(_ENV)
+  function(_ENV) -- update
     if not collected and player_here() then
       collected=true
       controller.missing-=1
@@ -853,7 +857,7 @@ touch_switch={
     off+=collected and 0.5 or 0.2
     off%=4
   end,
-  draw=function(_ENV)
+  function(_ENV) -- draw
     --set color 8 as transparent
     palt"0x80"
     if controller.active then
@@ -871,28 +875,13 @@ touch_switch={
     palt()
     pal()
   end
-}
-switch_block={
-  init=function(_ENV)
+)
+switch_block=create_type(
+  function(_ENV) -- init
     delay,end_delay,solid_obj=0,0,true
     resize_rect_obj(_ENV,72,87)
   end,
-  end_init=function(_ENV)
-    switches={}
-    foreach(objects, function(o)
-      if o.type==touch_switch then
-        add(switches,o)
-        o.controller=_ENV
-      elseif o.sprite==88 then
-        target=o
-        destroy_object(o)
-        local dx,dy=o.x-x,o.y-y
-        dirx,diry,distx,disty=sign(dx),sign(dy),abs(dx),abs(dy)
-      end
-    end)
-    missing=#switches
-  end,
-  update=function(_ENV)
+  function(_ENV) -- update
     if missing==0 and not active then
       active,delay=true,20
       foreach(switches,function(_ENV)
@@ -937,7 +926,7 @@ switch_block={
       end
     end
   end,
-  draw=function(_ENV)
+  function(_ENV) -- draw
     --TODO: put this into a function to save tokens with fall_plat
     local x,y=x,y
     if delay>3 then
@@ -963,7 +952,23 @@ switch_block={
 
     spr(88,x+hitbox.w/2-4,y+hitbox.h/2-4)
   end
-}
+)
+switch_block.end_init=function(_ENV)
+  switches={}
+  foreach(objects, function(o)
+    if o.type==touch_switch then
+      add(switches,o)
+      o.controller=_ENV
+    elseif o.sprite==88 then
+      target=o
+      destroy_object(o)
+      local dx,dy=o.x-x,o.y-y
+      dirx,diry,distx,disty=sign(dx),sign(dy),abs(dx),abs(dy)
+    end
+  end)
+  missing=#switches
+end
+
 
 switch_target={}
 -- <touch_switch> --
@@ -1032,8 +1037,8 @@ function draw_outline(_ENV, x,right,draw_y,ysegs,transpose,outline_color)
 end
 
 --dream_blocks_active=false
-dream_block={
-  init=function(_ENV)
+dream_block=create_type(
+  function(_ENV) -- init
     layer,kill_timer,particles=3,0,{}
     resize_rect_obj(_ENV,65,65)
     for i=1,hitbox.w*hitbox.h/32 do
@@ -1050,7 +1055,7 @@ dream_block={
     outline_size=0
     -- </cutscene> --
   end,
-  update=function(_ENV)
+  function(_ENV) -- update
     --[[hitbox.w+=2
     hitbox.h+=2]]
     local hit=player_here()
@@ -1116,7 +1121,7 @@ dream_block={
       end
     end)
   end,
-  draw=function(_ENV)
+  function(_ENV) -- draw
     rectfill(x+1,y+1,right()-1,bottom()-1,0)
 
     if not dream_blocks_active then
@@ -1171,7 +1176,7 @@ dream_block={
       end
     end
   end
-}
+)
 
 
 function displace(tbl, px,py)
@@ -1200,28 +1205,28 @@ function displace(tbl, px,py)
 end
 
 --</dream_block>--
-phone_booth={
-  init=function(_ENV)
+phone_booth=create_type(
+  function(_ENV) -- init
     hitbox.h=24
   end,
-  update=function(_ENV)
+  function(_ENV) -- update
     if not done and player_here() then
       _g.co_trans,done=cocreate(circ_transition),true
     end
   end,
-  draw=function(_ENV)
+  function(_ENV) -- draw
     palt"0"
     spr(148,x,y,1,3)
     palt()
   end
-}
+)
 
 -- <cutscene> --
-mirror={
-  init=function(_ENV)
+mirror=create_type(
+  function(_ENV) -- init
     hitbox,reflect_off,mirror_col,outline=rectangle(args"-5,-20,42,60"),0,12--,false
   end,
-  update=function(_ENV)
+  function(_ENV) -- update
     if p and not player_here() and not cutscene and not _g.mirror_broken then
       p.spd.x,p.dash_time=0,0
       _g.cutscene,_g.cutscene_env,_g.pause_player=cocreate(mirror_cutscene),_ENV,true
@@ -1229,7 +1234,7 @@ mirror={
       p=p or player_here()
     end
   end,
-  draw=function(_ENV)
+  function(_ENV) -- draw
     rectfill(x+3,y+7,x+28,y+23,mirror_col)
     if p then
       palsplit"8,2,1,4,5,6,5,2,9,10,11,8,13,14,15"
@@ -1251,10 +1256,10 @@ mirror={
     palt()
     -- rect(x+3,y+7,x+20,y+15,7)
   end
-}
+)
 
 --a="\z
--- [=["
+--[=["
 function mirror_cutscene(_ENV)
   music(-1,500)
   wait"30"
@@ -1331,19 +1336,19 @@ function mirror_cutscene(_ENV)
 end
 --]=]
 function wait(frames,func, ...) for i=1,frames do (func or stat)(...); yield() end end
-cutscene_badeline={
-  init=function(_ENV)
+cutscene_badeline=create_type(
+  function(_ENV) -- init
     player.init(_ENV)
     create_hair(_ENV)
   end,
-  update=player.update,
-  draw=function(_ENV)
+  player.update, -- update
+  function(_ENV) -- draw
     palsplit"8,2,1,4,5,6,5,2,9,10,11,8,13,14,15"
     draw_hair(_ENV)
     draw_obj_sprite(_ENV)
     pal()
   end
-}
+)
 function cutscene_transition()
   for _t=1,305 do
     local t=_t<=15 and _t or _t<=245 and 15 or 306-_t
@@ -1357,30 +1362,30 @@ function cutscene_transition()
 end
 -- </cutscene> --
 
-campfire={
-  init=function(_ENV)
-    off,outline=0,false
+campfire=create_type(
+  function(_ENV) -- init
+    off,layer,outline=0,0--,false
   end,
-  update=function(_ENV)
+  function(_ENV) -- update
     off+=0.2
   end,
-  draw=function(_ENV)
-    palt"0"
+  function(_ENV) -- draw
+    rectfill(x-8,y,x+16,y+8,0)
     spr(8,x,y,2,1)
     if stars_falling then
       palsplit"1,2,3,4,5,6,7,11,7"
     end
-    palt()
     spr(split"12,13,14"[flr(off)%3+1],x+4,y-2)
     pal()
   end
-}
+)
 
-memorial={
-  init=function(_ENV)
+memorial=create_type(
+  function(_ENV) -- init
     index,text,hitbox.w,outline=6,"-- celeste mountain --\nthis memorial to those\n perished on the climb",16--,false
   end,
-  draw=function(_ENV)
+  nil, -- update
+  function(_ENV) -- draw
     spr(149,x,y-16,2,3)
     spr(183,x+4,y-24)
     if player_here() then
@@ -1403,15 +1408,22 @@ memorial={
       ptext,index = text,0
     end
   end
-}
-end_screen={
-  init=function(_ENV)
+)
+end_screen=create_type(
+  function(_ENV) -- init
     local data = "⁶⁶⁵⁵⁵¹³⁵⁵⁵⁵⁵⁵⁵⁶⁶²²⁵⁵⁵³⁵⁵⁵⁵⁵⁵⁵⁵²²¹¹⁵⁵⁵⁵⁵⁵⁵⁵⁵⁵⁵⁵¹¹¹¹⁵⁵³⁵³⁵³⁵³⁵⁵⁵¹¹¹¹⁵⁵³³³³³³³⁵⁵⁵¹¹¹¹⁵⁵³³³³³³³⁵⁵⁵¹¹¹¹⁵⁵⁵³³³³³⁵⁵⁵⁵¹¹¹¹⁵⁵⁵⁵³³⁵³⁵⁵⁵⁵¹¹¹¹⁵⁵⁵³⁵³³³⁵⁵⁵⁵¹¹¹¹⁵⁵⁵³³³³³⁵⁵⁵⁵¹¹¹¹⁵⁵³³³³³⁵³⁵⁵⁵¹¹¹¹⁵⁵⁵⁵⁵⁵⁵⁵⁵⁵⁵⁵¹¹¹¹⁵⁵⁵³¹⁵⁵⁵⁵⁵⁵³¹¹¹¹⁵¹⁵³¹¹⁵⁵⁵⁵⁵³¹¹¹¹³¹³¹¹¹³¹¹⁵³¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹"
     for i=0,#data-1 do
       sset(i%16,i\16,ord(data[i+1])-1)
     end
+    foreach(fruitrain, function(f)
+      _g.berry_count+=1
+      if f.golden then
+        _g.collected_golden=true
+      end
+    end)
   end,
-  draw=function (_ENV)
+  nil,
+  function (_ENV) --draw
     foreach(split([[
 17,16,110,91,7
 16,17,111,91,7
@@ -1476,11 +1488,15 @@ function(t)
   if t=="pal" then
     pal()
   else
-    spr(args(t))
+    local a=split(t)
+    if a[1]==10 and collected_golden then
+      a[1]=11
+    end
+    spr(unpack(a))
   end
 end)
   end
-}
+)
 
 psfx=function(num)
   if sfx_timer<=0 then
@@ -1532,7 +1548,7 @@ function init_object(_type,sx,sy,tile)
   function bottom() return top()+hitbox.h-1 end
 
   function is_solid(ox,oy,require_safe_ground)
-    for o in all(objects) do
+    for o in all(obj_bins.solids) do
       if o!=_ENV and (o.solid_obj or o.semisolid_obj and not objcollide(o,ox,0) and oy>0) and objcollide(o,ox,oy) and not (require_safe_ground and o.unsafe_ground) then
         return true
       end
@@ -1576,7 +1592,7 @@ function init_object(_type,sx,sy,tile)
     other.top()<=bottom()+oy
   end
   function check(type,ox,oy)
-    for other in all(objects) do
+    for other in all(obj_bins[type]) do
       if other.type==type and other~=_ENV and objcollide(other,ox,oy) then
         return other
       end
@@ -1648,14 +1664,21 @@ function init_object(_type,sx,sy,tile)
 
 
   add(objects,_ENV);
-
+  obj_bins[type]=obj_bins[type] or {}
+  add(obj_bins[type],_ENV);
   (type.init or time)(_ENV)
+
+  if solid_obj or semisolid_obj then
+    add(obj_bins.solids,_ENV)
+  end
 
   return _ENV
 end
 
 function destroy_object(obj)
   del(objects,obj)
+  del(obj_bins[obj.type],obj)
+  del(obj_bins.solids,obj)
 end
 
 function kill_player(obj)
@@ -1699,7 +1722,6 @@ function next_level()
   if mu then
     music(args(mu))
   end
-  if lvl_id==35 then time_ticking=false end
   load_level(lvl_id+1)
 end
 
@@ -1787,10 +1809,11 @@ end
 
 function _update()
   frames+=1
-  if time_ticking then
+  if lvl_id<35 then
     seconds+=frames\30
     minutes+=seconds\60
     seconds%=60
+    seconds_f=frames%30
   end
   frames%=30
 
@@ -2033,7 +2056,7 @@ function _draw()
   -- draw time
   if ui_timer>=-30 then
     if ui_timer<0 then
-      rectfill(draw_x+4,draw_y+4,draw_x+36,draw_y+10,0)
+      rectfill(draw_x+4,draw_y+4,draw_x+48,draw_y+10,0)
       draw_time(draw_x+5,draw_y+5,7)
     end
     ui_timer-=1
@@ -2042,12 +2065,6 @@ function _draw()
   -- <transition> --
   if (co_trans and costatus(co_trans) != "dead") coresume(co_trans)
   color"0"
-
---   if seconds>0 then
---   max_cpu = max(max_cpu,stat(1))
---   camera()
---   print(max_cpu,0,0,7)
--- end
 end
 
 function draw_object(_ENV)
@@ -2060,7 +2077,7 @@ function draw_obj_sprite(_ENV)
 end
 
 function draw_time(x,y,c)
-  ?two_digit_str(minutes\60)..":"..two_digit_str(minutes%60)..":"..two_digit_str(seconds),x,y,c
+  ?two_digit_str(minutes\60)..":"..two_digit_str(minutes%60)..":"..two_digit_str(seconds)..'.'..two_digit_str(round(seconds_f/30*100)),x,y,c
 end
 
 
@@ -2215,8 +2232,8 @@ end
 --@conf
 --[[
 autotiles={{52, 54, 53, 39, 33, 35, 34, 55, 49, 51, 50, 48, 36, 38, 37, 32, 29, 30, 31, 41, 42, 43, nil, nil, nil, nil, nil, 56, 45, 46, 47, 80, 44, 81, [41] = 61, [42] = 62, [43] = 63, [0] = 48, [44] = 57, [45] = 58, [46] = 59, [56] = 40, [57] = 60}, {122, 124, 123, 121, 29, 31, 30, 119, 61, 63, 62, 120, 45, 47, 46, 48, 52, 53, 54, 32, 41, 42, 43, nil, nil, nil, nil, 39, 33, 34, 35, 56, 80, 44, 81, nil, nil, nil, nil, 48, 36, 37, 38, [45] = 57, [46] = 58, [47] = 59, [52] = 55, [53] = 49, [0] = 29, [54] = 50, [55] = 51, [57] = 40, [58] = 60}, {41, 43, 42, 41, 41, 43, 42, 57, 57, 59, 58, 80, 80, 81, 44, 44, 48, 52, 53, 54, 32, 56, nil, nil, nil, nil, nil, 60, 39, 33, 34, 35, 29, 30, 31, nil, nil, nil, nil, 40, 48, 36, 37, 38, 45, 46, 47, [53] = 49, [54] = 49, [55] = 50, [0] = 41, [56] = 51, [57] = 61, [58] = 62, [59] = 63}}
-param_names={"entrance dir", "badeline num"}
 param_names={"entrance dir", "badeline num", "comment"}
+composite_shapes={}
 ]]
 --@begin
 --level table
@@ -2679,10 +2696,10 @@ __map__
 0000000000000000000000000000000026000015162123000000007300740024265b7400000000000000000000213825252032334d4d4c4d4100005f0021382526252525243300750000000073007324266f00000000760000004100000000242032323232323232322525252640412425265525256e25212222222341000000
 00000000000000000000000000000000260000000024265d0000007400000024266f007000000000000000000031323825335f7300004e004100006f0024252526252555305f00000000000073747324267f00000021234f0000410000006c2426257e7f00111111112425252641002425252222223535323238252641000000
 00000000000000000000000000000000260000000024266d5f00000000000024266f4d4c4f6c000000000010106d253726256f745c4d4e004100006f002432322625252530255e404141412122222238260000000024334d5d5e2123105c4d24267f0a00000000001324382526410024252520323325256f0024253823257f00
-00000000000000000000000000000000260000000031335d6f00000000000031267f4d4d4c4d4f0000000040416d5525336e7f0000005d5e410000555f305800337e7e6e3725254100000024202525252023141500306e537e7e24202b10102426000000101000001324252526410024252526404141414141242025267f0000
+0000000000000000000000000b000000260000000031335d6f00000000000031267f4d4d4c4d4f0000000040416d5525336e7f0000005d5e410000555f305800337e7e6e3725254100000024202525252023141500306e537e7e24202b10102426000000101000001324252526410024252526404141414141242025267f0000
 00000000000000b5000000005e5b5b00267601000000586d255f000000004748260000004e00000000000041006d25557e5f0000005d6e25410000256e3700000000007d6e256e4100000024382525252526000000377f00000031383c2a2a3c26101010292b1200132420323300002425252641000000000031322526000000
 000000000000292a2a2b005d6e25255f3823141621235d256e6f006000005700330000004e00000000000041006d6e2500000000007d7e5541000025255f4748000100006d5625555f0000503c2525252526000000000000000073312c282525264041415051120013313375000000242538264100000000006e253133000000
-2b0000000000502c2c2c2a2b0108256f2526005d24266d6e256f6c6c000057000000005d5b5e5f00000000006d555525000176717200007d4100006e256f575d222223006d666e256f6000502525252538265f00000000000000755f502c252526410000243b0000000000000000002425323341000000000055566f00000000
+2b0000000000502c2c2c2a2b0108006f2526005d24266d6e256f6c6c000057000000005d5b5e5f00000000006d555525000176717200007d4100006e256f575d222223006d666e256f6000502525252538265f00000000000000755f502c252526410000243b0000000000000000002425323341000000000055566f00000000
 2c2a2b1416292c2525252c2c2222222a20265b6e2438222a2a2a2a2a2a22222200005225256e255e5200000f6d6e2525231416292b0000002122222a2a2a2a2a202538222a2a2a2a2a2a2a2c252525252526255f700000000000006e503c25252641000037730000000000000000002426007d6e252122222325666f76717200
 2528510000502c252525252538252528382655252425382c3c252c28383825200060016d2525557f0000005d2525256e265f0050515f0000243825252c252c3c252525252c253c25282c3c252525252525202222237000000100600050252525260000000073000000000010101010242601006d552425252522222222222222
 2525510000502c252525252525202525252625552420252525252525252525252222231415256f000000006d6e25552526255e50516e5f00242025252525252525252525252525252525252525252525252525203822231415162122282525252600000000740000005d56292a2a2a3c26141621222525202525252525252525
