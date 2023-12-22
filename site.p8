@@ -23,26 +23,29 @@ end
 -- [globals]
 
 
-objects,obj_bins,got_fruit, --tables
-freeze,delay_restart,sfx_timer,ui_timer, --timers
-cam_x,cam_y,cam_spdx,cam_spdy,cam_gain,cam_offx,cam_offy, --camera values <camtrigger>
-_pal, --for outlining
-shake--,screenshake
-=
-{},{solids={}},{},
-0,0,0,-99,
-0,0,0,0,0.1,0,0,
-pal,
-0--,false
+function begin_game()
+  objects,obj_bins,got_fruit, --tables
+  freeze,delay_restart,sfx_timer,ui_timer, --timers
+  cam_x,cam_y,cam_spdx,cam_spdy,cam_gain,cam_offx,cam_offy, --camera values <camtrigger>
+  _pal, --for outlining
+  shake--,screenshake
+  =
+  {},{solids={}},{},
+  0,0,0,-99,
+  0,0,0,0,0.1,0,0,
+  pal,
+  0--,false
+  max_djump,deaths,frames,seconds_f,seconds,minutes,berry_count=args"1,0,0,0,0,0,0"
+  music(args"0,0,7")
+  load_level(1)
+end
 
 local _g=_ENV --for writing to global vars
 
 -- [entry point]
 
 function _init()
-  max_djump,deaths,frames,seconds_f,seconds,minutes,berry_count=args"1,0,0,0,0,0,0"
-  music(args"0,0,7")
-  load_level(1)
+  lvl_id=0
 end
 
 
@@ -1808,6 +1811,13 @@ end
 -- [main update loop]
 
 function _update()
+  if lvl_id==0 then
+    --title screen update
+    if btnp(🅾️) or btnp(❎) then
+      begin_game()
+    end
+    return
+  end
   frames+=1
   if lvl_id<35 then
     seconds+=frames\30
@@ -1838,7 +1848,7 @@ function _update()
       -- <fruitrain> --
       if full_restart then
         full_restart=false
-        _init()
+        begin_game()
       -- </fruitrain> --
       else
         load_level(lvl_id)
@@ -1880,6 +1890,12 @@ end
 -- [drawing functions]
 
 function _draw()
+  if lvl_id==0 then
+    --title screen draw
+    cls()
+    print("title screen, press c/x")
+    return
+  end
   if freeze>0 then
     return
   end
@@ -2401,29 +2417,6 @@ split([[-1,5000,0
 -1,32000,7
 0,0,7]],"\n"))
 
---[[
-
-short on tokens?
-everything below this comment
-is just for grabbing data
-rather than loading it
-and can be safely removed!
-
---]]
-
---copy mapdata string to clipboard
---[=[function get_mapdata(x,y,w,h)
-  local reserve=""
-  for i=0,w*h-1 do
-    reserve..=num2base256(mget(i%w,i\w)+1)
-  end
-  printh(reserve,"@clip")
-end
-
---convert mapdata to memory data
-function num2base256(number)
-  return number%256==0 and "\\000" or number==10 and "\\n" or number==13 and "\\r" or number==34 and [[\"]] or number==92 and [[\\]] or chr(number)
-end]=]
 __gfx__
 000000000000000000000000088888800000000000000000000000000000000000000000000000000300b0b00a0aa0a000000000000000000008000000077000
 00000000088888800888888088888888088888800888880000000000088888800000000000000000003b33000aa88aa0000080000008008000000008007bb700
