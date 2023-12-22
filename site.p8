@@ -387,7 +387,7 @@ end
 
 
 function update_hair(_ENV)
-  local last=vector(x+(flip.x and 6 or 1),y+(not pause_player and btn(⬇️) and 4 or 2.9))
+  local last=vector(x+(flip.x and 6 or 1),y+((not pause_player and btn(⬇️) or type==player_spawn and entrance_dir==6) and 4 or 2.9))
   foreach(hair, function(h)
     h.x+=(last.x-h.x)/1.5
     h.y+=(last.y+0.5-h.y)/1.5
@@ -431,6 +431,7 @@ player_spawn=create_type(
     end
 
     create_hair(_ENV)
+    update_hair(_ENV)
     djump=max_djump
     --- <fruitrain> ---
     foreach(fruitrain, function(f)
