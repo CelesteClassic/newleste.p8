@@ -473,11 +473,11 @@ player_spawn=create_type(
       end
     -- landing and spawning player object
     elseif state==2 then
-      if _g.title <= 0 then
+      if title <= 0 then
         delay-=1
-      elseif _g.title < 1 then
-        _g.title = appr(_g.title, 0, max(_g.title/10,0.01))
-      elseif _g.title == 1 and (btn(4) or btn(5)) then
+      elseif title < 1 then
+        _g.title = appr(title, 0, max(title/10,0.01))
+      elseif title == 1 and (btn(4) or btn(5)) then
         _g.title -= 0.01
         sfx"61"
       end
