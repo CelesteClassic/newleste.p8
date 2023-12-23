@@ -38,7 +38,10 @@ pal,
 1--,false
 
 _camera=camera
-camera=function(x,y) _camera(x+title*15,y+title*28) end
+camera=function(x,y)
+  x,y = x or 0,y or 0
+  _camera(x+title*15,y+title*28)
+end
 
 local _g=_ENV --for writing to global vars
 
