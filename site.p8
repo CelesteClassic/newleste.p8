@@ -81,6 +81,7 @@ local _g=_ENV --for writing to global vars
 -- [entry point]
 
 function _init()
+  objects,got_fruit,obj_bins = {},{},{solids={}} --tables
   exec[[gset max_djump,1
 gset deaths,0
 gset frames,0
