@@ -1311,7 +1311,7 @@ sfx 8]]
     wait"2"
   end
   exec[[wait 15
-lset reflect_off -128
+lset reflect_off,-128
 lset broken,True
 gset shake,2]]
   baddy=init_object(cutscene_badeline, 197-p.x, p.y)
@@ -1450,14 +1450,13 @@ end_screen=create_type(
     foreach(fruitrain, function(f)
       _g.berry_count+=1
       if f.golden then
-        exec[[gset collected_golden,true]]
+        exec[[gset collected_golden,True]]
       end
     end)
   end,
   nil,
   function (_ENV) --draw
-    exec[[
-rectfill 17,16,110,91,7
+    exec[[rectfill 17,16,110,91,7
 rectfill 16,17,111,91,7
 rectfill 15,18,112,91,7
 rectfill 15,92,112,110,6
@@ -1466,7 +1465,6 @@ rectfill 17,92,110,112,6
 rectfill 15,22,113,42,1
 rectfill 16,23,113,41,3
 rectfill 15,43,112,43,6
-
 fillp 0b1100000000000000.1000
 rectfill 15,92,112,92,13
 fillp]]
@@ -1839,7 +1837,7 @@ end
 
 function _update()
   frames+=1
-  if lvl_id<35 then
+  if lvl_id<=35 then
     seconds+=frames\30
     minutes+=seconds\60
     seconds%=60
