@@ -1283,8 +1283,8 @@ lset outline,false]]
   end
 )
 
-a="\z
-[=["
+-- a="\z
+-- [=["
 function mirror_cutscene(_ENV)
   exec[[
 music -1,500
