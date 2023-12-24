@@ -20,37 +20,76 @@ function rectangle(x,y,w,h)
   return {x=x,y=y,w=w,h=h}
 end
 
+-- [interperter stuff]
+-- courtesy of meep
+-- set global var
+function gset(k,v)
+ _ENV[k]=_ENV[v] or v
+end
+True=true
+
+-- split, access _𝘦𝘯𝘷, and unpack
+function usplit(str,d,a,env)
+ if str then
+  local tbl=split(str,d)
+  for k,v in pairs(tbl) do
+   tbl[k]=not a and env[v] or v
+  end
+  return unpack(tbl)
+ end
+end
+
+-- execute list of fns
+function exec(fns,env)
+ env=env or _ENV
+ foreach(split(fns,"\n"),function(ln)
+  local fn,params=usplit(ln," ",true)
+  -- print(fn.."\n")
+  -- print(fns)
+  -- assert(env[fn])
+  env[fn](usplit(params,",",fn=="gset" or fn=="lset",env))
+ end)
+end
+
 -- [globals]
-
-
-objects,obj_bins,got_fruit, --tables
-freeze,delay_restart,sfx_timer,ui_timer, --timers
-cam_x,cam_y,cam_spdx,cam_spdy,cam_gain,cam_offx,cam_offy, --camera values <camtrigger>
-_pal, --for outlining
-shake,
-title--,screenshake
-=
-{},{solids={}},{},
-0,0,0,-99,
-0,0,0,0,0.1,0,0,
-pal,
-0,
-1--,false
 
 _camera=camera
 camera=function(x,y)
   x,y = x or 0,y or 0
   _camera(x+title*15,y+title*28)
 end
+exec[[gset freeze,0
+gset delay_restart,0
+gset sfx_timer,0
+gset ui_timer,-99
+gset cam_x,0
+gset cam_y,0
+gset cam_spdx,0
+gset cam_spdy,0
+gset cam_gain,0.1
+gset cam_offx,0
+gset cam_offy,0
+gset _pal,pal
+gset shake,0
+gset title,1]] --timers, camera values <camtrigger> outlining, screenshake
+objects,got_fruit,obj_bins = {},{},{solids={}} --tables
+
+--screenshake=false
 
 local _g=_ENV --for writing to global vars
 
 -- [entry point]
 
 function _init()
-  max_djump,deaths,frames,seconds_f,seconds,minutes,berry_count=args"1,0,0,0,0,0,0"
-  music(args"0,0,7")
-  load_level(1)
+  exec[[gset max_djump,1
+gset deaths,0
+gset frames,0
+gset seconds,0
+gset seconds_f,0
+gset minutes,0
+gset berry_count,0
+music 0,0,7
+load_level 1]]
 end
 
 
@@ -87,13 +126,25 @@ end
 
 player=create_type(
   function(_ENV) -- init
-    djump, hitbox, collides,layer = max_djump, rectangle(args"1,3,6,5"), true,2
+    hitbox= rectangle(args"1,3,6,5")
 
+    exec[[
+lset djump,max_djump
+lset collides,True
+lset layer,2
+lset grace,0
+lset jbuffer,0
+lset dash_time,0
+lset dash_effect_time,0
+lset dash_target_x,0
+lset dash_target_y,0
+lset dash_accel_x,0
+lset dash_accel_y,0
+lset spr_off,0
+lset berry_timer,0
+lset berry_count,0]]
     --<fruitrain>--
     -- ^ refers to setting berry_timer and berry_count to 0
-    foreach(split"grace,jbuffer,dash_time,dash_effect_time,dash_target_x,dash_target_y,dash_accel_x,dash_accel_y,spr_off,berry_timer,berry_count", function(var)
-      _ENV[var]=0
-    end)
     --create_hair(_ENV)
     dream_particles={}
 
@@ -410,8 +461,10 @@ end
 
 player_spawn=create_type(
   function(_ENV) -- init
-    layer,sprite,target=2,3,y
-    sfx"15"
+    exec[[lset layer,2
+lset sprite,3
+lset target,y
+sfx 15]]
 
     local offx,offy,c=0,0,check(camera_trigger,0,0)
     if c then
@@ -419,7 +472,9 @@ player_spawn=create_type(
       _g.cam_offx,_g.cam_offy=offx,offy
     end
     _g.cam_x,_g.cam_y=mid(x+offx+4,64,lvl_pw-64),mid(y+offy+4,64,lvl_ph-64)
-    state,delay,flip.x=0,0,entrance_dir%2==1
+    exec[[lset state,0
+lset delay,0]]
+    flip.x=entrance_dir%2==1
     --top entrance
     if entrance_dir<=1 then
       y,spd.y=lvl_ph,-4
@@ -437,7 +492,7 @@ player_spawn=create_type(
 
     create_hair(_ENV)
     update_hair(_ENV)
-    djump=max_djump
+    exec[[lset djump,max_djump]]
     --- <fruitrain> ---
     foreach(fruitrain, function(f)
       --this gets called many times but saves tokens for checking if fruitrain is empty
@@ -557,7 +612,10 @@ refill=create_type(
 
 fall_floor=create_type(
   function(_ENV) -- init
-    solid_obj,state,unsafe_ground,delay=true,0,true,0
+    exec[[lset solid_obj,True
+lset state,0
+lset unsafe_ground,True
+lset delay,0]]
   end,
   function(_ENV) -- update
     --it looks like weird stuff goes on here with the decimal constants (mostly to ensure rounding correctly), but it should be equivalent to vanilla
@@ -608,7 +666,11 @@ smoke=create_type(
 fruitrain={}
 fruit=create_type(
   function(_ENV) -- init
-    y_,off,tx,ty,golden=y,0,x,y,sprite==11
+    exec[[lset y_,y
+lset off,0
+lset tx,x
+lset ty,y]]
+    golden=sprite==11
     if golden and deaths>0 then
       destroy_object(_ENV)
     end
@@ -639,8 +701,12 @@ fruit.check_fruit=true
 
 lifeup=create_type(
   function(_ENV) -- init
-    spd.y,duration,flash,_g.sfx_timer,outline=-0.25,30,0,20--,false
-    sfx"9"
+    spd.y=-0.25
+    exec[[lset duration,30
+lset flash,0
+gset sfx_timer,20
+lset outline,false
+sfx 9]]
   end,
   function(_ENV) -- update
     duration-=1
@@ -752,8 +818,10 @@ end
 
 fall_plat=create_type(
   function(_ENV) -- init
-    resize_rect_obj(_ENV,67,67)
-    collides,solid_obj,timer=true,true,0
+    resize_rect_obj(_ENV,args"67,67")
+    exec[[lset collides,True
+lset solid_obj,True
+lset timer,0]]
   end,
   function(_ENV) -- update
     --states:
@@ -806,7 +874,7 @@ fall_plat=create_type(
 -- <touch_switch> --
 touch_switch=create_type(
   function(_ENV) -- init
-    off=2
+    exec[[lset off,2]]
   end,
   function(_ENV) -- update
     if not collected and player_here() then
@@ -839,7 +907,9 @@ touch_switch=create_type(
 )
 switch_block=create_type(
   function(_ENV) -- init
-    delay,end_delay,solid_obj=0,0,true
+    exec[[lset delay,0
+lset end_delay,0
+lset solid_obj,True]]
     resize_rect_obj(_ENV,72,87)
   end,
   function(_ENV) -- update
@@ -1176,7 +1246,10 @@ phone_booth=create_type(
 -- <cutscene> --
 mirror=create_type(
   function(_ENV) -- init
-    hitbox,reflect_off,mirror_col,outline=rectangle(args"-5,-20,42,60"),0,12--,false
+    hitbox=rectangle(args"-5,-20,42,60")
+    exec[[lset reflect_off,0
+lset mirror_col,12
+lset outline,false]]
   end,
   function(_ENV) -- update
     if p and not player_here() and not cutscene and not _g.mirror_broken then
@@ -1213,9 +1286,10 @@ mirror=create_type(
 a="\z
 [=["
 function mirror_cutscene(_ENV)
-  music(-1,500)
-  wait"30"
-  music(16,500)
+  exec[[
+music -1,500
+wait 30
+music 16,500]]
   p.flip.x=not p.flip.x
   wait"20"
   p.h_input=sgn(x+6-p.x)
@@ -1227,41 +1301,42 @@ function mirror_cutscene(_ENV)
   p.flip.x=false
   wait"30"
   _g.co_trans=cocreate(cutscene_transition)
-  sfx"10"
-  wait"50"
+  exec[[sfx 10
+wait 50]]
   for i=0,-3,-1 do reflect_off=i yield() end
-  wait"30"
-  sfx"8"
+  exec[[wait 30
+sfx 8]]
   for i=1,6 do
     mirror_col=split"12,7"[i%2+1]
     wait"2"
   end
-  wait"15"
-  reflect_off,baddy,broken=-128, init_object(cutscene_badeline, 197-p.x, p.y),true
-  _g.shake=2
+  exec[[wait 15
+lset reflect_off -128
+lset broken,True
+gset shake,2]]
+  baddy=init_object(cutscene_badeline, 197-p.x, p.y)
   baddy.flip.x=true
-  init_smoke(4,8)
-  init_smoke(24,8)
+  exec[[init_smoke 4,8
+init_smoke 24,8]]
   wait(3,rectfill, x, y+5, x+32, y+23, 7)
-  wait"20"
-  baddy.h_input=-1
-  --wait"5"
-  --baddy.d_input=true
-  wait"10"
-  --baddy.d_input=false
-  baddy.j_input=true
-  wait"10"
-  baddy.d_input=true
-  wait"50"
+  baddy.exec[[
+wait 20
+lset h_input,-1
+wait 10
+lset j_input,True
+wait 10
+lset d_input,True
+wait 50]]
   destroy_object(baddy)
   p.u_input=true
   while _g.cam_offy>-60 do _g.cam_offy+=-12-0.2*_g.cam_offy yield() end
-  _g.dream_blocks_active=true
+  exec[[gset dream_blocks_active,True]]
   block = check(dream_block,0,-16)
   block.outline_size=2
-  _g.shake=100
-  sfx"28"
-  pitch=-6
+
+  exec[[gset shake,100
+sfx 28
+lset pitch,-6]]
   for _y=block.bottom()-1,block.y+8,-0.50 do
     rectfill(block.x+1,block.y+1,block.right()-1,_y,7)
     if _y%2<0.5 then
@@ -1274,17 +1349,19 @@ function mirror_cutscene(_ENV)
     pitch+=0.5
     yield()
   end
-  sfx(28,-2)
-  sfx"27"
-  _g.shake=0
-  wait"3"
-  block.outline_size=1
-  wait"3"
-  block.outline_size=0
-  music(args"17,0,7")
-  wait"20"
+  block.exec[[sfx 28,-2
+sfx 27
+gset shake,0
+wait 3
+lset outline_size,1
+wait 3
+lset outline_size,0
+music 17,0,7
+wait 20]]
   while _g.cam_offy<-1 do _g.cam_offy+=-0.2*_g.cam_offy yield() end
-  _g.cam_offy,_g.mirror_broken,p.u_input=0,true--false
+  p.exec[[gset cam_offy,0
+gset mirror_broken,True
+lset u_input,false]]
 end
 --]=]
 function wait(frames,func, ...) for i=1,frames do (func or stat)(...); yield() end end
@@ -1316,19 +1393,23 @@ end
 
 campfire=create_type(
   function(_ENV) -- init
-    off,layer,outline=0,0--,false
+    exec[[lset off,0
+lset layer,0
+lset outline,false]]
   end,
   function(_ENV) -- update
     off+=0.2
   end,
   function(_ENV) -- draw
-    rectfill(x-8,y,x+16,y+8,0)
-    spr(8,x,y,2,1)
+    camera(-x,-y)
+    exec[[rectfill -8,0,16,8,0
+spr 8,0,0,2,1]]
     if stars_falling then
       palsplit"1,2,3,4,5,6,7,11,7"
     end
-    spr(split"12,13,14"[flr(off)%3+1],x+4,y-2)
-    pal()
+    spr(split"12,13,14"[flr(off)%3+1],4,-2)
+exec[[pal
+camera]]
   end
 )
 
@@ -1338,8 +1419,10 @@ memorial=create_type(
   end,
   nil, -- update
   function(_ENV) -- draw
-    spr(149,x,y-16,2,3)
-    spr(183,x+4,y-24)
+    camera(-x,-y)
+    exec[[spr 149,0,-16,2,3
+spr 183,4,-24
+camera]]
     if player_here() then
       if stars_falling then
         for i = 1,8 do
@@ -1357,7 +1440,8 @@ memorial=create_type(
         ?"\as4i6<<<x5d#4"
       end
     else
-      ptext,index = text,0
+      exec[[lset ptext,text
+lset index,0]]
     end
   end
 )
@@ -1366,28 +1450,26 @@ end_screen=create_type(
     foreach(fruitrain, function(f)
       _g.berry_count+=1
       if f.golden then
-        _g.collected_golden=true
+        exec[[gset collected_golden,true]]
       end
     end)
   end,
   nil,
   function (_ENV) --draw
-    foreach(split([[
-17,16,110,91,7
-16,17,111,91,7
-15,18,112,91,7
-15,92,112,110,6
-16,92,111,111,6
-17,92,110,112,6
-15,22,113,42,1
-16,23,113,41,3
-15,43,112,43,6]], "\n"),
-function(t) rectfill(args(t)) end)
+    exec[[
+rectfill 17,16,110,91,7
+rectfill 16,17,111,91,7
+rectfill 15,18,112,91,7
+rectfill 15,92,112,110,6
+rectfill 16,92,111,111,6
+rectfill 17,92,110,112,6
+rectfill 15,22,113,42,1
+rectfill 16,23,113,41,3
+rectfill 15,43,112,43,6
 
-
-    fillp"0b1100000000000000.1000"
-    rectfill(args"15,92,112,92,13")
-    fillp()
+fillp 0b1100000000000000.1000
+rectfill 15,92,112,92,13
+fillp]]
 
     for _x=7,16 do
       line(_x,16+_x, 18, 16+_x, 3)
@@ -1410,39 +1492,28 @@ function(t) rectfill(args(t)) end)
 
     --manually draw outlines
     palsplit"0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
-    foreach(split([[
-10,43,49
-10,41,49
-10,42,50
-10,42,48
-151,43,63
-151,41,63
-151,42,64
-151,42,62
-167,43,76
-167,41,76
-167,42,77
-167,42,75
-212,94,25,2,2
-212,92,25,2,2
-212,93,26,2,2
-212,93,24,2,2
+    berry_sprite=collected_golden and 11 or 10
+    exec[[spr berry_sprite,43,49
+spr berry_sprite,41,49
+spr berry_sprite,42,50
+spr berry_sprite,42,48
+spr 151,43,63
+spr 151,41,63
+spr 151,42,64
+spr 151,42,62
+spr 167,43,76
+spr 167,41,76
+spr 167,42,77
+spr 167,42,75
+spr 212,94,25,2,2
+spr 212,92,25,2,2
+spr 212,93,26,2,2
+spr 212,93,24,2,2
 pal
-10,42,49
-151,42,63
-167,42,76
-212,93,25,2,2]], "\n"),
-function(t)
-  if t=="pal" then
-    pal()
-  else
-    local a=split(t)
-    if a[1]==10 and collected_golden then
-      a[1]=11
-    end
-    spr(unpack(a))
-  end
-end)
+spr berry_sprite,42,49
+spr 151,42,63
+spr 167,42,76
+spr 212,93,25,2,2]]
   end
 )
 
@@ -1605,6 +1676,14 @@ function init_object(_type,sx,sy,tile)
 
   function init_smoke(ox,oy)
     init_object(smoke,x+(ox or 0),y+(oy or 0),26)
+  end
+
+  function lset(k,v)
+   _ENV[k]=_ENV[v] or v
+  end
+
+  function exec(fns)
+    _g.exec(fns,_ENV)
   end
 
 
@@ -1854,26 +1933,27 @@ function _draw()
 
   if title > 0 then
     local xe,yt,yb = flr(15*(1-title)),ceil(28*(1-title)),flr(30*(1-title))
-    _camera()
 
-    rectfill(args"0, 60, 128, 128, 1")
-    fillp"0b1111000011110000"
-    rectfill(args"0, 50, 128, 60, 1")
-    fillp()
-    spr(args"192, 27, 2, 7, 1")
-    spr(args"208, 83, 2, 3, 1")
-    spr(args"224, 34, 12, 4, 1")
-    spr(args"240, 66, 12, 4, 1")
+    exec[[_camera
+rectfill 0,60,128,128,1
+fillp 0b1111000011110000
+rectfill 0,50,128,60,1
+fillp
+spr 192,27,2,7,1
+spr 208,83,2,3,1
+spr 224,34,12,4,1
+spr 240,66,12,4,1]]
     ?args"•-                     -•, 14, 8, 7"
     ?args"based on celeste by exok games, 5, 120, 13"
 
-    rectfill(9-xe, 22-yt, 118+xe, 116+yb, 7)
-    rectfill(15-xe, 28-yt, 112+xe, 97+yb, 0)
-    color"1"
-    pset(9-xe, 22-yt)
-    pset(9-xe, 116+yb)
-    pset(118+xe, 22-yt)
-    pset(118+xe, 116+yb)
+    tmp_a,tmp_b,tmp_c,tmp_d,tmp_e,tmp_f,tmp_g,tmp_h=9-xe,22-yt,118+xe,116+yb,15-xe, 28-yt, 112+xe, 97+yb
+    exec[[rectfill tmp_a,tmp_b,tmp_c,tmp_d,7
+rectfill tmp_e,tmp_f,tmp_g,tmp_h,0
+color 1
+pset tmp_a,tmp_b
+pset tmp_a,tmp_d
+pset tmp_c,tmp_b
+pset tmp_c,tmp_d]]
 
     ?"press 🅾️/❎", 42, 101+yb, 13
     ?"by the n.p8 team", 32, 109+yb, 1
@@ -1902,22 +1982,22 @@ function _draw()
       end
       if c.size==2 then
         if _s==-1 then
-          spr(args"73,-3,-3")
+          exec[[spr 73,-3,-3]]
         elseif _s==0 then
-          line(args"-5,0,5,0,13")
-          line(args"0,-5,0,5,13")
-          spr(args"74,-3,-3")
+          exec[[line -5,0,5,0,13
+line 0,-5,0,5,13
+spr 74,-3,-3]]
         elseif _s>0 then
-          spr(args"89,-7,-7,1.875,1.875")
+          exec[[spr 89,-7,-7,1.875,1.875]]
           -- sspr(args"72,40,16,16,-7,-7")
         end
       else
         if _s==-1 then
-          line(args"-1,-1,1,1,13")
-          line(args"-1,1,1,-1,13")
+          exec[[line -1,-1,1,1,13
+line -1,1,1,-1,13]]
         elseif s>-1 then
-          line(args"-2,-2,2,2,13")
-          line(args"-2,2,2,-2,13")
+          exec[[line -2,-2,2,2,13
+line -2,2,2,-2,13]]
         end
       end
       if dy==0 then
@@ -1989,21 +2069,6 @@ function _draw()
 
   -- draw platforms
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,8)
-  -- particles
-  --[[
-  foreach(particles,function(_ENV)
-    x+=spd-_g.cam_spdx
-    y+=_g.sin(off)-_g.cam_spdy
-    y%=128
-    off+=_g.min(0.05,spd/32)
-    _g.rectfill(x+_g.draw_x,y+_g.draw_y,x+s+_g.draw_x,y+s+_g.draw_y,c)
-    if x>132 then
-      x,y=-4,_g.rnd"128"
-    elseif x<-4 then
-      x,y=128,_g.rnd"128"
-    end
-  end)
-  ]]
 
   -- dead particles
   foreach(dead_particles,function(_ENV)
@@ -2207,11 +2272,6 @@ end
 --[map metadata]
 
 --@conf
---[[
-param_names={"entrance dir", "badeline num", "comment"}
-composite_shapes={}
-autotiles={{52, 54, 53, 39, 33, 35, 34, 55, 49, 51, 50, 48, 36, 38, 37, 32, 29, 30, 31, 41, 42, 43, nil, nil, nil, nil, nil, 56, 45, 46, 47, 80, 44, 81, [41] = 61, [42] = 62, [43] = 63, [0] = 48, [44] = 57, [45] = 58, [46] = 59, [56] = 40, [57] = 60}, {122, 124, 123, 121, 29, 31, 30, 119, 61, 63, 62, 120, 45, 47, 46, 48, 52, 53, 54, 32, 41, 42, 43, nil, nil, nil, nil, 39, 33, 34, 35, 56, 80, 44, 81, nil, nil, nil, nil, 48, 36, 37, 38, [45] = 57, [46] = 58, [47] = 59, [52] = 55, [53] = 49, [0] = 29, [54] = 50, [55] = 51, [57] = 40, [58] = 60}, {41, 43, 42, 41, 41, 43, 42, 57, 57, 59, 58, 80, 80, 81, 44, 44, 48, 52, 53, 54, 32, 56, nil, nil, nil, nil, nil, 60, 39, 33, 34, 35, 29, 30, 31, nil, nil, nil, nil, 40, 48, 36, 37, 38, 45, 46, 47, [53] = 49, [54] = 49, [55] = 50, [0] = 41, [56] = 51, [57] = 61, [58] = 62, [59] = 63}}
-]]
 --@begin
 --level table
 --"x,y,w,h,exit_dirs,entrance_dir,badeline num"
