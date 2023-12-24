@@ -1837,7 +1837,7 @@ end
 
 function _update()
   frames+=1
-  if lvl_id<=35 then
+  if lvl_id<=35 and title==0 then
     seconds+=frames\30
     minutes+=seconds\60
     seconds%=60
