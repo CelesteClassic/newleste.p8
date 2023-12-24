@@ -1409,8 +1409,8 @@ spr 8,0,0,2,1]]
       palsplit"1,2,3,4,5,6,7,11,7"
     end
     spr(split"12,13,14"[flr(off)%3+1],4,-2)
-exec[[pal
-camera]]
+    pal()
+    camera()
   end
 )
 
