@@ -39,6 +39,10 @@ function usplit(str,d,a,env)
  end
 end
 
+function args(a)
+  return unpack(split(a))
+end
+
 -- execute list of fns
 function exec(fns,env)
  env=env or _ENV
@@ -89,6 +93,8 @@ gset seconds,0
 gset seconds_f,0
 gset minutes,0
 gset berry_count,0
+gset dream_blocks_active
+gset stars_falling,True
 music 0,0,7
 load_level 1]]
 end
@@ -672,7 +678,7 @@ lset off,0
 lset tx,x
 lset ty,y]]
     golden=sprite==11
-    if golden and deaths>0 then
+    if golden and (deaths>0 or not target and lvl_id!=1) then
       destroy_object(_ENV)
     end
   end,
@@ -1362,7 +1368,7 @@ wait 20]]
   while _g.cam_offy<-1 do _g.cam_offy+=-0.2*_g.cam_offy yield() end
   p.exec[[gset cam_offy,0
 gset mirror_broken,True
-lset u_input,false]]
+lset u_input]]
 end
 --]=]
 function wait(frames,func, ...) for i=1,frames do (func or stat)(...); yield() end end
@@ -1486,7 +1492,7 @@ fillp]]
     -- ?"⁙ "..deaths,args"55,64,0"
     -- ?args"⁙ ,55,77,0"
 
-    ?"\^jd6\|i\fbCHAPTER 2\^je8\|i\f7old site\^j7p\-j\f0chapter complete!\^jdc\+jj\f0⁙ "..berry_count.."/18\^jdj\+jh\f0⁙ \^jdg\-j\f0⁙ "..deaths
+    ?"\^jd6\|i\fbCHAPTER 2\^je8\|i\f7old site\^j7p\-j\f0chapter complete!\^jdc\+jj\f0⁙ "..berry_count.."/8\^jdj\+jh\f0⁙ \^jdg\-j\f0⁙ "..deaths
     draw_time(args"63,77,0")
 
     --manually draw outlines
@@ -1541,7 +1547,7 @@ foreach(split([[
 181,memorial
 128,mirror
 ]],"\n"),function(t)
- local tile,obj=unpack(split(t))
+ local tile,obj=args(t)
  tiles[tile]=_ENV[obj]
 end)
 
@@ -1806,7 +1812,7 @@ function load_level(id)
   local c=camera_offsets[lvl_id]
   if c!='{}' then
     for s in all(split(c,"|")) do
-      local tx,ty,tw,th,offx_,offy_=unpack(split(s))
+      local tx,ty,tw,th,offx_,offy_=args(s)
       local _ENV=init_object(camera_trigger,tx*8,ty*8)
       hitbox.w,hitbox.h,offx,offy=tw*8,th*8,offx_,offy_
     end
@@ -2140,10 +2146,6 @@ function sign(v)
   return v~=0 and sgn(v) or 0
 end
 
-function args(a)
-  return unpack(split(a))
-end
-
 function palsplit(x)
   pal(split(x))
 end
@@ -2393,7 +2395,7 @@ mapdata={
 }
 
 --@end
-linked_levels=bt("9,12",split"3,2")
+linked_levels=bt("10,12",split"3,2")
 music_triggers=bt("12,13,28,31",
 split([[-1,5000,0
 38,0,7
