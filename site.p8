@@ -79,7 +79,7 @@ gset title,1]] --timers, camera values <camtrigger> outlining, screenshake
 objects,got_fruit,obj_bins = {},{},{solids={}} --tables
 
 cartdata"np8_oldsite_1"
-screenshake=dget(1)==1
+screenshake=dget"1"==1
 local screenshake_toggle=function()
   screenshake=not screenshake
   dset(1,screenshake and 1 or 0)
@@ -134,8 +134,8 @@ for i=0,15 do
 end
 --</stars>--
 
-function create_type(init,update,draw)
-  return {init=init,update=update,draw=draw}
+function create_type(...)
+  return bt("init,update,draw",{...})
 end
 
 -- [player entity]
@@ -239,7 +239,7 @@ lset berry_count,0]]
         berry_count+=1
         _g.berry_count+=1
         if f.golden then
-          _g.collected_golden=true
+          exec[[gset collected_golden,True]]
         end
         berry_timer, got_fruit[f.fruit_id]=-5, true
         init_object(lifeup, f.x, f.y,berry_count)
@@ -536,7 +536,9 @@ lset delay,0]]
           -- clamp at target y
           state,spd=2,zerovec()
           if not player_start_spdy then
-            y,delay,_g.shake=target,5,4
+            exec[[lset y,target
+lset delay,5
+gset shake,4]]
             init_smoke(0,4)
             sfx"16"
           end
@@ -548,7 +550,7 @@ lset delay,0]]
         delay-=1
       elseif title < 1 then
         _g.title = appr(title, 0, max(title/10,0.01))
-      elseif title == 1 and (btn(4) or btn(5)) then
+      elseif title == 1 and (btn"4" or btn"5") then
         _g.title -= 0.01
         sfx"61"
       end
@@ -687,7 +689,7 @@ lset off,0
 lset tx,x
 lset ty,y]]
     golden=sprite==11
-    if golden and (deaths>0 or not target and lvl_id!=1 or dget(0)==0) then
+    if golden and (deaths>0 or not target and lvl_id!=1 or dget"0"==0) then
       destroy_object(_ENV)
     end
   end,
@@ -872,11 +874,9 @@ lset timer,0]]
       x+=rnd"2"-1
       y+=rnd"2"-1
     end
-    local r,d=hitbox.w-8,hitbox.h-8
+    local r,d,sprites,pals=hitbox.w-8,hitbox.h-8,split"37,80,81,?,42,41,43,42,58,57,59,58,?,80,81,?",split"0,0,0,0,0,0x8000,0x8000,0,0,0x8000,0x8000,0,0,0,0,0"
 
     --can probably be optimized slightly farther
-    local sprites=split"37,80,81,?,42,41,43,42,58,57,59,58,?,80,81,?"
-    local pals=split"0,0,0,0,0,0x8000,0x8000,0,0,0x8000,0x8000,0,0,0,0,0"
     for i=0,r,8 do
       for j=0,d,8 do
         local typ=(i==0 and 1 or i==r and 2 or (i==8 or i==r-8) and 3 or 0) + (j==0 and 4 or j==d and 8 or (j==8 or j==d-8) and 12 or 0) + 1
@@ -1056,8 +1056,7 @@ function draw_outline(_ENV, x,right,draw_y,ysegs,transpose,outline_color)
       ly,ry=segs[idx][1],segs[idx+1][1]
       if ry<draw_y or ly>=draw_y+129 then goto continue end
       local lx,rx=i+dir*calc_seg(segs[idx]), i+dir*calc_seg(segs[idx+1])
-      local m=(rx-lx)/(ry-ly)
-      local px_=lx
+      local m,px_=(rx-lx)/(ry-ly),lx
       for j=ly,ry do
         px_+=m
         -- <cutscene> --
@@ -1073,7 +1072,7 @@ function draw_outline(_ENV, x,right,draw_y,ysegs,transpose,outline_color)
         -- </cutscene> --
         else
           local d,dx,dy,ds=displace(disp_shapes,px,j)
-          d=max((4-d), 0)
+          d=max(4-d, 0)
           pset(px+dx*d*ds,j+dy*d*ds,outline_color)
         end
       end
@@ -1396,8 +1395,7 @@ cutscene_badeline=create_type(
 )
 function cutscene_transition()
   for _t=1,305 do
-    local t=_t<=15 and _t or _t<=245 and 15 or 306-_t
-    local c=_t<=245 and 15 or 60
+    local t,c=_t<=15 and _t or _t<=245 and 15 or 306-_t,_t<=245and 15or 60
     local fac=15-15*(1-t/c)^3
     camera()
     rectfill(0, 0, 128, fac, 0)
@@ -1463,7 +1461,7 @@ lset index,0]]
 )
 end_screen=create_type(
   function(_ENV) -- init
-    first_clear=dget(0)==0
+    first_clear=dget"0"==0
     dset(0,1)
     foreach(fruitrain, function(f)
       _g.berry_count+=1
@@ -2000,10 +1998,8 @@ pal 10,12]]
 pal 10,7]]
   end
   foreach(stars, function(c)
-    local x=c.x
-    local y=c.y
     --avoid the edge case where sin(c.off) is exactly 1
-    local s=flr(min(1,sin(c.off)*2))
+    local x,y,s=c.x,c.y,flr(min(1,sin(c.off)*2))
     camera(-x,-y)
     if c.size==2 then
       if s==-2 then
@@ -2027,9 +2023,9 @@ pal 10,7]]
       end
     end
 
-    c.x+=(-cam_spdx/4)*(2-c.size)
-    c.y+=(-cam_spdy/4)*(2-c.size)
-    c.off+=0.01
+    c.x+=-cam_spdx/4*(2-c.size)
+    c.y+=-cam_spdy/4*(2-c.size)
+    c.off+=.01
     if c.x>128 then
       c.x=-8
       c.y=rnd"120"
