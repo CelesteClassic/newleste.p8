@@ -1558,8 +1558,15 @@ function init_object(_type,sx,sy,tile)
   --generate and check berry id
   --hardcoded level 29 berry to match level 2 berry
   local id=lvl_id==29 and "320,48,2" or sx..","..sy..","..(linked_levels[lvl_id] or lvl_id)
-  if _type.check_fruit and got_fruit[id] then
-    return
+  if _type.check_fruit then
+    if got_fruit[id] then
+      return
+    end
+    for f in all(fruitrain) do
+      if f.fruit_id==id then
+        return
+      end
+    end
   end
   --local _g=_g
   local _ENV=setmetatable({},{__index=_g})
