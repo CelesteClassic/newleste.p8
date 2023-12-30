@@ -687,7 +687,7 @@ lset off,0
 lset tx,x
 lset ty,y]]
     golden=sprite==11
-    if golden and (deaths>0 or not target and lvl_id!=1) then
+    if golden and (deaths>0 or not target and lvl_id!=1 or dget(0)==0) then
       destroy_object(_ENV)
     end
   end,
@@ -1463,6 +1463,8 @@ lset index,0]]
 )
 end_screen=create_type(
   function(_ENV) -- init
+    first_clear=dget(0)==0
+    dset(0,1)
     foreach(fruitrain, function(f)
       _g.berry_count+=1
       if f.golden then
@@ -1502,6 +1504,9 @@ fillp]]
     -- ?args"⁙ ,55,77,0"
 
     ?"\^jd6\|i\fbCHAPTER 2\^je8\|i\f7old site\^j7p\-j\f0chapter complete!\^jdc\+jj\f0⁙ "..berry_count.."/8\^jdj\+jh\f0⁙ \^jdg\-j\f0⁙ "..deaths
+    if first_clear then
+      print(args"golden berry unlocked!,22,106")
+    end
     draw_time(args"63,77,0")
 
     --manually draw outlines
