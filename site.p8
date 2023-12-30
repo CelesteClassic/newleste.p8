@@ -104,6 +104,7 @@ gset minutes,0
 gset berry_count,0
 gset dream_blocks_active
 gset stars_falling,True
+gset mirror_broken
 music 0,0,7
 load_level 1]]
 end
@@ -1264,7 +1265,8 @@ mirror=create_type(
     hitbox=rectangle(args"-5,-20,42,60")
     exec[[lset reflect_off,0
 lset mirror_col,12
-lset outline,false]]
+lset outline,false
+lset layer,0]]
   end,
   function(_ENV) -- update
     if p and not player_here() and not cutscene and not _g.mirror_broken then
