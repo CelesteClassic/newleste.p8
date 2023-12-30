@@ -1967,7 +1967,7 @@ rectfill 0,50,128,60,1
 fillp
 spr 192,23,2,8,1
 spr 208,87,2,3,1
-spr 224,34,12,4,1
+spr 224,34,12,3,1
 spr 240,66,12,4,1]]
     ?args"•-                       -•, 10, 8, 7"
     ?args"based on celeste by exok games, 5, 120, 13"
