@@ -79,6 +79,13 @@ gset title,1]] --timers, camera values <camtrigger> outlining, screenshake
 objects,got_fruit,obj_bins = {},{},{solids={}} --tables
 
 --screenshake=false
+local screenshake_toggle=function()
+  screenshake=not screenshake
+  menuitem(1, "screenshake: ".. (screenshake and "on" or "off"), screenshake_toggle)
+  return true
+end
+
+menuitem(1, "screenshake: off", screenshake_toggle)
 
 local _g=_ENV --for writing to global vars
 
@@ -1408,7 +1415,7 @@ lset outline,false]]
     off+=0.2
   end,
   function(_ENV) -- draw
-    camera(-x,-y)
+    camera(draw_x-x,draw_y-y)
     exec[[rectfill -8,0,16,8,0
 spr 8,0,0,2,1]]
     if stars_falling then
@@ -1416,7 +1423,7 @@ spr 8,0,0,2,1]]
     end
     spr(split"12,13,14"[flr(off)%3+1],4,-2)
     pal()
-    camera()
+    camera(draw_x,draw_y)
   end
 )
 
@@ -1426,10 +1433,10 @@ memorial=create_type(
   end,
   nil, -- update
   function(_ENV) -- draw
-    camera(-x,-y)
+    camera(draw_x-x,draw_y-y)
     exec[[spr 149,0,-16,2,3
 spr 183,4,-24
-camera]]
+camera draw_x,draw_y]]
     if player_here() then
       if stars_falling then
         for i = 1,8 do
