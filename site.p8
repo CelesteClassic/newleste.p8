@@ -78,9 +78,11 @@ gset shake,0
 gset title,1]] --timers, camera values <camtrigger> outlining, screenshake
 objects,got_fruit,obj_bins = {},{},{solids={}} --tables
 
---screenshake=false
+cartdata"np8_oldsite_1"
+screenshake=dget(1)==1
 local screenshake_toggle=function()
   screenshake=not screenshake
+  dset(1,screenshake and 1 or 0)
   menuitem(1, "screenshake: ".. (screenshake and "on" or "off"), screenshake_toggle)
   return true
 end
@@ -1876,7 +1878,7 @@ function _update()
 
   -- screenshake toggle
   if btnp(⬆️,1) then
-    screenshake=not screenshake
+    screenshake_toggle()
   end
 
   -- restart (soon)
