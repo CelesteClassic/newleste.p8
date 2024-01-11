@@ -206,7 +206,7 @@ player={
         else
           -- wall jump
           local wall_dir=is_solid(-3,0) and -1 or is_solid(3,0) and 1
-          if wall_dir then
+          if wall_dir and not invisible then
             psfx"19"
             jbuffer,spd=0,vector(wall_dir*-2,-2)
             -- wall jump smoke
