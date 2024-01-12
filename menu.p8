@@ -111,9 +111,8 @@ function _init()
 	cartdata("collab_newleste_save")
 	load_gamedata()
 
- 	sel_level = 1
- 	sel_menu = 1
- 	level_selected = false
+	parse_argv()
+
 
  	idlecamtimer=0
 	cam_x = cam_positions[1][1][1]
@@ -136,6 +135,25 @@ function _init()
 	lift=load_object(read_vector_string(lift_v), read_face_string(lift_f),0,0,0,0,0,0,false,k_colorize_static,13)
 	hotel=load_object(read_vector_string(hotel_v), read_face_string(hotel_f),0,0,0,0,0,0,false,k_colorize_static,14)
 	flag=load_object(read_vector_string(flag_v), read_face_string(flag_f),0,0,0,0,0,0,false,k_colorize_static,14)
+end
+
+function parse_argv()
+	argv = #stat(6)>0 and split_ex(stat(6)) or split_ex("title,1,1,false,128")
+	uidata.uistate,sel_level,sel_menu,level_selected,uidata.panel_pos = unpack(argv, 1, #argv)
+	if uidata.uistate ~= "title" then
+		transition_action, tstate, tcol = function() end, 1, 1
+	end
+end
+
+function split_ex(str)
+	s = split(str)
+	for i=1,#s do
+		s[i] = s[i] == "true" or s[i]
+		if s[i] == "false" then
+			s[i] = false
+		end
+	end
+	return s
 end
 
 function load_gamedata()
@@ -247,7 +265,7 @@ function load_gamedata()
 	cartnames = {
 		"prologue",
 		"city",
-		"site",
+		"site.p8",
 		"resort",
 		"ridge",
 		"temple",
