@@ -60,7 +60,7 @@ end
 _camera=camera
 camera=function(x,y)
   x,y = x or 0,y or 0
-  _camera(x+title*15,y+title*28)
+  _camera(x,y)
 end
 exec[[gset freeze,0
 gset delay_restart,0
@@ -74,8 +74,7 @@ gset cam_gain,0.1
 gset cam_offx,0
 gset cam_offy,0
 gset _pal,pal
-gset shake,0
-gset title,1]] --timers, camera values <camtrigger> outlining, screenshake
+gset shake,0]] --timers, camera values <camtrigger> outlining, screenshake
 objects,got_fruit,obj_bins = {},{},{solids={}} --tables
 
 cartdata"np8_oldsite_1"
@@ -107,6 +106,8 @@ gset stars_falling,True
 gset mirror_broken
 music 0,0,7
 load_level 1]]
+
+transition(false)
 end
 
 
@@ -547,15 +548,7 @@ gset shake,4]]
       end
     -- landing and spawning player object
     elseif state==2 then
-      if title <= 0 then
-        delay-=1
-      elseif title < 1 then
-        _g.title = appr(title, 0, max(title/10,0.01))
-      elseif title == 1 and (btn"4" or btn"5") then
-        _g.title -= 0.01
-        sfx"61"
-      end
-
+      delay-=1
       sprite=6
       if delay<0 then
         destroy_object(_ENV)
@@ -1461,80 +1454,80 @@ lset index,0]]
     end
   end
 )
-end_screen=create_type(
-  function(_ENV) -- init
-    first_clear=dget"0"==0
-    dset(0,1)
-    foreach(fruitrain, function(f)
-      _g.berry_count+=1
-      if f.golden then
-        exec[[gset collected_golden,True]]
-      end
-    end)
-  end,
-  nil,
-  function (_ENV) --draw
-    exec[[rectfill 17,16,110,91,7
-rectfill 16,17,111,91,7
-rectfill 15,18,112,91,7
-rectfill 15,92,112,110,6
-rectfill 16,92,111,111,6
-rectfill 17,92,110,112,6
-rectfill 15,22,113,42,1
-rectfill 16,23,113,41,3
-rectfill 15,43,112,43,6
-fillp 0b1100000000000000.1000
-rectfill 15,92,112,92,13
-fillp]]
+-- end_screen=create_type(
+--   function(_ENV) -- init
+--     first_clear=dget"0"==0
+--     dset(0,1)
+--     foreach(fruitrain, function(f)
+--       _g.berry_count+=1
+--       if f.golden then
+--         exec[[gset collected_golden,True]]
+--       end
+--     end)
+--   end,
+--   nil,
+--   function (_ENV) --draw
+--     exec[[rectfill 17,16,110,91,7
+-- rectfill 16,17,111,91,7
+-- rectfill 15,18,112,91,7
+-- rectfill 15,92,112,110,6
+-- rectfill 16,92,111,111,6
+-- rectfill 17,92,110,112,6
+-- rectfill 15,22,113,42,1
+-- rectfill 16,23,113,41,3
+-- rectfill 15,43,112,43,6
+-- fillp 0b1100000000000000.1000
+-- rectfill 15,92,112,92,13
+-- fillp]]
 
-    for _x=7,16 do
-      line(_x,16+_x, 18, 16+_x, 3)
-      line(_x,16+_x, _x+3, 16+_x, 10)
+--     for _x=7,16 do
+--       line(_x,16+_x, 18, 16+_x, 3)
+--       line(_x,16+_x, _x+3, 16+_x, 10)
 
-      line(_x,48-_x, 18, 48-_x, 3)
-      line(_x,48-_x, _x+3, 48-_x, 10)
-    end
+--       line(_x,48-_x, 18, 48-_x, 3)
+--       line(_x,48-_x, _x+3, 48-_x, 10)
+--     end
 
-    -- ?args"CHAPTER 2,52,26,11"
-    -- ?args"old site,56,34,7"
-    -- ?args"chapter complete!,31,100,0"
-    --
-    -- ?"⁙ "..berry_count.."/18",args"55,51,0"
-    -- ?"⁙ "..deaths,args"55,64,0"
-    -- ?args"⁙ ,55,77,0"
+--     -- ?args"CHAPTER 2,52,26,11"
+--     -- ?args"old site,56,34,7"
+--     -- ?args"chapter complete!,31,100,0"
+--     --
+--     -- ?"⁙ "..berry_count.."/18",args"55,51,0"
+--     -- ?"⁙ "..deaths,args"55,64,0"
+--     -- ?args"⁙ ,55,77,0"
 
-    ?"\^jd6\|i\fbCHAPTER 2\^je8\|i\f7old site\^j7p\-j\f0chapter complete!\^jdc\+jj\f0⁙ "..berry_count.."/8\^jdj\+jh\f0⁙ \^jdg\-j\f0⁙ "..deaths
-    if first_clear then
-      print(args"golden berry unlocked!,22,106")
-    end
-    draw_time(args"63,77,0")
+--     ?"\^jd6\|i\fbCHAPTER 2\^je8\|i\f7old site\^j7p\-j\f0chapter complete!\^jdc\+jj\f0⁙ "..berry_count.."/8\^jdj\+jh\f0⁙ \^jdg\-j\f0⁙ "..deaths
+--     if first_clear then
+--       print(args"golden berry unlocked!,22,106")
+--     end
+--     draw_time(args"63,77,0")
 
-    --manually draw outlines
-    palsplit"0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
-    berry_sprite=collected_golden and 11 or 10
-    exec[[spr berry_sprite,43,49
-spr berry_sprite,41,49
-spr berry_sprite,42,50
-spr berry_sprite,42,48
-spr 151,43,63
-spr 151,41,63
-spr 151,42,64
-spr 151,42,62
-spr 167,43,76
-spr 167,41,76
-spr 167,42,77
-spr 167,42,75
-spr 212,94,25,2,2
-spr 212,92,25,2,2
-spr 212,93,26,2,2
-spr 212,93,24,2,2
-pal
-spr berry_sprite,42,49
-spr 151,42,63
-spr 167,42,76
-spr 212,93,25,2,2]]
-  end
-)
+--     --manually draw outlines
+--     palsplit"0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+--     berry_sprite=collected_golden and 11 or 10
+--     exec[[spr berry_sprite,43,49
+-- spr berry_sprite,41,49
+-- spr berry_sprite,42,50
+-- spr berry_sprite,42,48
+-- spr 151,43,63
+-- spr 151,41,63
+-- spr 151,42,64
+-- spr 151,42,62
+-- spr 167,43,76
+-- spr 167,41,76
+-- spr 167,42,77
+-- spr 167,42,75
+-- spr 212,94,25,2,2
+-- spr 212,92,25,2,2
+-- spr 212,93,26,2,2
+-- spr 212,93,24,2,2
+-- pal
+-- spr berry_sprite,42,49
+-- spr 151,42,63
+-- spr 167,42,76
+-- spr 212,93,25,2,2]]
+--   end
+-- )
 
 psfx=function(num)
   if sfx_timer<=0 then
@@ -1557,7 +1550,7 @@ foreach(split([[
 88,switch_target
 64,dream_block
 6,phone_booth
-7,end_screen
+
 181,memorial
 128,mirror
 ]],"\n"),function(t)
@@ -1772,6 +1765,9 @@ function next_level()
       poke(a+65, 20)
     end
   end
+  if lvl_id==#levels then
+    load("menu.p8",nil,"map,3,1,true,64")
+  end
   if mu then
     music(args(mu))
   end
@@ -1865,7 +1861,7 @@ end
 
 function _update()
   frames+=1
-  if lvl_id<=35 and title==0 then
+  if lvl_id<=35 then
     seconds+=frames\30
     minutes+=seconds\60
     seconds%=60
@@ -1957,35 +1953,35 @@ function _draw()
   -- draw bg color
   cls()
 
-  if title > 0 then
-    local xe,yt,yb = flr(15*(1-title)),ceil(28*(1-title)),flr(30*(1-title))
+--   if title > 0 then
+--     local xe,yt,yb = flr(15*(1-title)),ceil(28*(1-title)),flr(30*(1-title))
 
-    exec[[_camera
-rectfill 0,60,128,128,1
-fillp 0b1111000011110000
-rectfill 0,50,128,60,1
-fillp
-spr 192,23,2,8,1
-spr 208,87,2,3,1
-spr 224,34,12,3,1
-spr 240,66,12,4,1]]
-    ?args"•-                       -•, 10, 8, 7"
-    ?args"based on celeste by exok games, 5, 120, 13"
+--     exec[[_camera
+-- rectfill 0,60,128,128,1
+-- fillp 0b1111000011110000
+-- rectfill 0,50,128,60,1
+-- fillp
+-- spr 192,23,2,8,1
+-- spr 208,87,2,3,1
+-- spr 224,34,12,3,1
+-- spr 240,66,12,4,1]]
+--     ?args"•-                       -•, 10, 8, 7"
+--     ?args"based on celeste by exok games, 5, 120, 13"
 
-    tmp_a,tmp_b,tmp_c,tmp_d,tmp_e,tmp_f,tmp_g,tmp_h=9-xe,22-yt,118+xe,116+yb,15-xe, 28-yt, 112+xe, 97+yb
-    exec[[rectfill tmp_a,tmp_b,tmp_c,tmp_d,7
-rectfill tmp_e,tmp_f,tmp_g,tmp_h,0
-color 1
-pset tmp_a,tmp_b
-pset tmp_a,tmp_d
-pset tmp_c,tmp_b
-pset tmp_c,tmp_d]]
+--     tmp_a,tmp_b,tmp_c,tmp_d,tmp_e,tmp_f,tmp_g,tmp_h=9-xe,22-yt,118+xe,116+yb,15-xe, 28-yt, 112+xe, 97+yb
+--     exec[[rectfill tmp_a,tmp_b,tmp_c,tmp_d,7
+-- rectfill tmp_e,tmp_f,tmp_g,tmp_h,0
+-- color 1
+-- pset tmp_a,tmp_b
+-- pset tmp_a,tmp_d
+-- pset tmp_c,tmp_b
+-- pset tmp_c,tmp_d]]
 
-    ?"press 🅾️/❎", 42, 101+yb, 13
-    ?"by the n.p8 team", 32, 109+yb, 1
+--     ?"press 🅾️/❎", 42, 101+yb, 13
+--     ?"by the n.p8 team", 32, 109+yb, 1
 
-    clip(15-xe, 28-yt, 98+xe*2, 70+yt+yb)
-  end
+--     clip(15-xe, 28-yt, 98+xe*2, 70+yt+yb)
+--   end
 
   --<stars>--
   -- bg stars effect
@@ -2330,8 +2326,7 @@ levels=split([[0,0,1,1,0b0010,6,0,
   0,0,1,1,0b0010,6,0,
   0,3,3,1,0b0010,4,0,0,
   3,3,3,1,0b0010,4,0,
-  7,3,1,1,0b0000,4,0,
-  8.125,3.875,0.0625,0.0625,0b0001,4,0,0]],"\n")
+  7,3,1,1,0b0000,4,0]],"\n")
 
 --<camtrigger>--
 --camera trigger hitboxes
