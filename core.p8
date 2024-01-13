@@ -291,7 +291,7 @@ player={
     pal(8,djump==1 and 8 or djump==2 and 2 or 12)
     draw_hair(_ENV)
     draw_obj_sprite(_ENV)
-    pal()
+--    pal()
   end
 }
 
@@ -1592,6 +1592,8 @@ function _draw()
   pal=_pal
   camera(draw_x,draw_y)
   pal()
+  
+
 
   --set draw layering
   --0: background layer
@@ -1609,7 +1611,7 @@ function _draw()
   
   -- draw terrain
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,2)
-pal()
+--pal()
   -- draw objects
   foreach(layers,function(l)
     foreach(l,draw_object)
@@ -1619,6 +1621,7 @@ pal()
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,8)
   -- draw fg tiles
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,0x10)
+--  pal()
   -- particles
   foreach(particles,function(_ENV)
     x+=spd-_g.cam_spdx
@@ -1740,12 +1743,16 @@ pal()
     end
     tpos+=14
   end
-  if not lava then
+  
+  if lava then
+  
    pal(14,141,1)
-   pal(2,140,1)
---   pal(8,12)
+   pal(1,130,1)
   else
-   pal(14,141,1)
+   pal(14,140,1)
+   pal(6,12,1)
+   pal(13,7,1)
+   pal(7,15,1)
   end
   -- </transition>
 end
