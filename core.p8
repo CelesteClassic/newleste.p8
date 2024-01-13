@@ -530,264 +530,264 @@ smoke={
 }
 launch={
 init=function(_ENV)
- _ENV.segments={}
- add(_ENV.segments,{x=_ENV.x,y=_ENV.y,s=65})
- _ENV.checkx=8
- _ENV.checky=0
- _ENV.c=true
- _ENV.cd=true
- _ENV.solid_obj=true
- _ENV.maxcheckx=0
- _ENV.maxchecky=0
- _ENV.q=0
- _ENV.hide=false
- _ENV.hide_for=0
- _ENV.ox=_ENV.x
- _ENV.oy=_ENV.y
- _ENV.h=0
- _ENV.e="0"
- _ENV.shatter=false
+ segments={}
+ add(segments,{x=x,y=y,s=65})
+ checkx=8
+ checky=0
+ c=true
+ cd=true
+ solid_obj=true
+ maxcheckx=0
+ maxchecky=0
+ q=0
+ hide=false
+ hide_for=0
+ ox=x
+ oy=y
+ h=0
+ e="0"
+ shatter=false
 end,
 update=function(_ENV)
-if _ENV.c then
+if c then
  if tile_at(
- (_ENV.x+_ENV.checkx)/8,
- (_ENV.y+_ENV.checky)/8)==81 then
-  add(_ENV.segments,
-  {x=_ENV.x+_ENV.checkx,
-  y=_ENV.y+_ENV.checky,
+ (x+checkx)/8,
+ (y+checky)/8)==81 then
+  add(segments,
+  {x=x+checkx,
+  y=y+checky,
   s=tile_at(
-  (_ENV.x+_ENV.checkx)/8,
-  (_ENV.y+_ENV.checky)/8),
+  (x+checkx)/8,
+  (y+checky)/8),
   fx=false,
   fy=false})
-  _ENV.checkx+=8
+  checkx+=8
  else
-  _ENV.maxcheckx=_ENV.checkx
-  _ENV.maxchecky=_ENV.segments[#_ENV.segments].y
-  _ENV.checky+=8
-  _ENV.checkx=0
-  if tile_at((_ENV.x+_ENV.checkx)/8,(_ENV.y+_ENV.checky)/8)!=81 then
-   _ENV.c=false
-   _ENV.hitbox=rectangle(
+  maxcheckx=checkx
+  maxchecky=segments[#segments].y
+  checky+=8
+  checkx=0
+  if tile_at((x+checkx)/8,(y+checky)/8)!=81 then
+   c=false
+   hitbox=rectangle(
    0,
    0,
-   _ENV.maxcheckx,
-   _ENV.checky)
+   maxcheckx,
+   checky)
   end
  end
-elseif _ENV.cd then 
- for i in all(_ENV.segments) do
-  if i.x==_ENV.segments[#_ENV.segments].x then
+elseif cd then 
+ for i in all(segments) do
+  if i.x==segments[#segments].x then
    i.fx=true
-   if i.y==_ENV.y then
+   if i.y==y then
     i.s=65
    end
   end
-  if i.x==_ENV.x and i.y>_ENV.y then
+  if i.x==x and i.y>y then
    i.s=36
   end
-  if i.y==_ENV.segments[#_ENV.segments].y then
+  if i.y==segments[#segments].y then
    i.fy=true
-   if i.x==_ENV.segments[#_ENV.segments].x or i.x==_ENV.x then
+   if i.x==segments[#segments].x or i.x==x then
     i.s=65
    end
   end
   i.ox=i.x
   i.oy=i.y
-  _ENV.x=_ENV.ox
-  _ENV.y=_ENV.oy
+  x=ox
+  y=oy
  end
- _ENV.cd=false
+ cd=false
 end
-if _ENV.hide==false and lava then 
-   _ENV.hitbox=rectangle(
+if hide==false and lava then 
+   hitbox=rectangle(
    -1,
    -1,
-   _ENV.maxcheckx+2,
-   _ENV.checky)
- hit=_ENV.player_here()
-if hit and not _ENV.hide then
-_ENV.q+=0.0333
-if _ENV.q<0.5 then
- for i in all(_ENV.segments) do
-  i.y+=_ENV.q
+   maxcheckx+2,
+   checky)
+ hit=player_here()
+if hit and not hide then
+q+=0.0333
+if q<0.5 then
+ for i in all(segments) do
+  i.y+=q
  end
- _ENV.y+=_ENV.q
- hit.y+=_ENV.q
-elseif _ENV.q>0 then
- _ENV.q-=2
+ y+=q
+ hit.y+=q
+elseif q>0 then
+ q-=2
 end
- _ENV.h+=1
-if _ENV.h>20 then
+ h+=1
+if h>20 then
  psfx"8"
  hit.spd=vector(hit.spd.x,-3.14)
- _ENV.hide=true
- _ENV.hide_for=80
- _ENV.h=0
- _ENV.q=0
+ hide=true
+ hide_for=80
+ h=0
+ q=0
 end
 end
-   _ENV.hitbox=rectangle(
+   hitbox=rectangle(
    0,
    0,
-   _ENV.maxcheckx,
-   _ENV.checky)
-elseif not _ENV.hide then
-   _ENV.hitbox=rectangle(
+   maxcheckx,
+   checky)
+elseif not hide then
+   hitbox=rectangle(
    -1,
    -1,
-   _ENV.maxcheckx+2,
-   _ENV.checky)
-   hit=_ENV.player_here()
+   maxcheckx+2,
+   checky)
+   hit=player_here()
 if hit then
- _ENV.shatter=true
+ shatter=true
 end
-if _ENV.shatter then
+if shatter then
 psfx"15"
-_ENV.q+=0.03
-if _ENV.q<0.5 then
- for i in all(_ENV.segments) do
-  i.y+=_ENV.q
+q+=0.03
+if q<0.5 then
+ for i in all(segments) do
+  i.y+=q
  end
- _ENV.y+=_ENV.q
+ y+=q
 if hit then
- hit.y+=_ENV.q
+ hit.y+=q
 end
-elseif _ENV.q>0 then
+elseif q>0 then
 end
- _ENV.h+=1
-if _ENV.h>20 then
- _ENV.hide=true
- _ENV.hide_for=80
- _ENV.h=0
- _ENV.q=0
+ h+=1
+if h>20 then
+ hide=true
+ hide_for=80
+ h=0
+ q=0
 end
 end
-   _ENV.hitbox=rectangle(
+   hitbox=rectangle(
    0,
    0,
-   _ENV.maxcheckx,
-   _ENV.checky)
+   maxcheckx,
+   checky)
 end
-if _ENV.hide==false then
-_ENV.outline=false
+if hide==false then
+outline=false
 end
-if _ENV.hide then
-_ENV.outline=true
-_ENV.hitbox=rectangle(0,0,_ENV.maxcheckx,_ENV.checky)
-_ENV.solid_obj=false
-_ENV.hide_for-=1
-hit=_ENV.player_here()
-if _ENV.hide_for<=0 and not hit then
- _ENV.hide_for=0
- for i in all(_ENV.segments) do
-  _ENV.init_smoke(0,0)
+if hide then
+outline=true
+hitbox=rectangle(0,0,maxcheckx,checky)
+solid_obj=false
+hide_for-=1
+hit=player_here()
+if hide_for<=0 and not hit then
+ hide_for=0
+ for i in all(segments) do
+  init_smoke(0,0)
  end
- _ENV.hide=false
- _ENV.solid_obj=true
- for i in all(_ENV.segments) do
+ hide=false
+ solid_obj=true
+ for i in all(segments) do
   i.x=i.ox
   i.y=i.oy
  end
-  _ENV.x=_ENV.ox
-  _ENV.y=_ENV.oy
-  _ENV.shatter=false
+  x=ox
+  y=oy
+  shatter=false
 end
 end
-if not hit and _ENV.cd==false then
-if _ENV.shatter==false or _ENV.hide then
- _ENV.x=_ENV.ox
- _ENV.y=_ENV.oy
- for i in all(_ENV.segments) do
+if not hit and cd==false then
+if shatter==false or hide then
+ x=ox
+ y=oy
+ for i in all(segments) do
   i.x=i.ox
   i.y=i.oy
  end
- _ENV.q=0
- _ENV.h=0
+ q=0
+ h=0
 end
 end
 if lava then
- _ENV.shatter=false
+ shatter=false
 end
 end,
 
 draw=function(_ENV)
-if _ENV.hide==false then 
- if _ENV.cd==false then
+if hide==false then 
+ if cd==false then
   pal(2,1)
   pal(8,13)
   pal(11,8)
   pal(3,2)
-  for i in all(_ENV.segments) do
-   if i.y>_ENV.y and i.y<_ENV.segments[#_ENV.segments].y then
-    spr(38,_ENV.segments[#_ENV.segments].x,i.y)
+  for i in all(segments) do
+   if i.y>y and i.y<segments[#segments].y then
+    spr(38,segments[#segments].x,i.y)
    end
    spr(i.s,i.x,i.y,1,1,i.fx,i.fy)
-   rectfill(_ENV.x+8,_ENV.y+8,_ENV.segments[#_ENV.segments].x-1,_ENV.segments[#_ENV.segments].y-1,2)
+   rectfill(x+8,y+8,segments[#segments].x-1,segments[#segments].y-1,2)
    if lava==false then
     pal(11,12)
     pal(3,1)
    end
-   spr(66,(_ENV.x+_ENV.segments[#_ENV.segments].x)/2,(_ENV.y+_ENV.segments[#_ENV.segments].y)/2)
+   spr(66,(x+segments[#segments].x)/2,(y+segments[#segments].y)/2)
   end
   pal()
  end
 elseif player_here() then
- rect(_ENV.x-1,_ENV.y-1,_ENV.segments[#_ENV.segments].x+8,_ENV.segments[#_ENV.segments].y+8,6)
+ rect(x-1,y-1,segments[#segments].x+8,segments[#segments].y+8,6)
 end
 end
 }
 heart={
   init=function(_ENV)
-   _ENV.offset=rnd()
-   _ENV.outline=true
-   _ENV.start=_ENV.y
-   _ENV.e=false
-   _ENV.solid_obj=false
-   _ENV.hitbox=rectangle(0,0,16,16)
-   _ENV.hide=false
+   offset=rnd()
+   outline=true
+   start=y
+   e=false
+   solid_obj=false
+   hitbox=rectangle(0,0,16,16)
+   hide=false
   end,
   update=function(_ENV)
-    _ENV.midx=_ENV.x+8
-    _ENV.midy=_ENV.y+8
-    hit=_ENV.player_here()    
-    if hit and _ENV.hide==false then
-     if hit.x>_ENV.midx then
-      hit.spd=vector(0.3*(hit.x-(_ENV.x+8)),hit.spd.y)
+    midx=x+8
+    midy=y+8
+    hit=player_here()    
+    if hit and hide==false then
+     if hit.x>midx then
+      hit.spd=vector(0.3*(hit.x-(x+8)),hit.spd.y)
      end
-     if hit.x<_ENV.midx then
-      hit.spd=vector(0.3*(hit.x-(_ENV.x)),hit.spd.y)
+     if hit.x<midx then
+      hit.spd=vector(0.3*(hit.x-(x)),hit.spd.y)
      end
-     if hit.y<_ENV.midy then
-      hit.spd=vector(hit.spd.x,0.2*(hit.y-(_ENV.y)))
+     if hit.y<midy then
+      hit.spd=vector(hit.spd.x,0.2*(hit.y-(y)))
      end
-     if hit.y>_ENV.midy then
-      hit.spd=vector(hit.spd.x,0.05*(hit.y-(_ENV.y-8)))
+     if hit.y>midy then
+      hit.spd=vector(hit.spd.x,0.05*(hit.y-(y-8)))
      end         
     end
     if hit and hit.dash_effect_time>0 then
-     _ENV.e=true
+     e=true
      for ox=0,8,8 do
       for oy=0,8,8 do
-       _ENV.init_smoke(ox,oy)
+       init_smoke(ox,oy)
       end
      end
-     _ENV.hide=true
+     hide=true
     end
-    if not _ENV.show and _ENV.e then
+    if not show and e then
       sfx"55"
-      sfx_timer,_ENV.show,time_ticking=30,true,false
+      sfx_timer,show,time_ticking=30,true,false
     end
-      _ENV.offset+=0.01
-      _ENV.y=_ENV.start+sin(_ENV.offset)*2
+      offset+=0.01
+      y=start+sin(offset)*2
   end,
   draw=function(_ENV)
-   if _ENV.hide==false then
-    sspr(112,16,8,16,_ENV.x,_ENV.y)
-    sspr(112,16,8,16,_ENV.x+8,_ENV.y,8,16,true)
+   if hide==false then
+    sspr(112,16,8,16,x,y)
+    sspr(112,16,8,16,x+8,y,8,16,true)
    end
-    if _ENV.show then
+    if show then
       pal()
       camera()
       rectfill(32,2,96,31,0)
@@ -801,50 +801,50 @@ heart={
 }
 bubble={
 init=function(_ENV)
- _ENV.outline=true
- _ENV.hitbox=rectangle(2,5,10,12)
- _ENV.hide=false
+ outline=true
+ hitbox=rectangle(2,5,10,12)
+ hide=false
 end,
 update=function(_ENV)
  if lava==false then
-  _ENV.hitbox=rectangle(2,5,10,12)
+  hitbox=rectangle(2,5,10,12)
  elseif lava then
-  _ENV.hitbox=rectangle(4,4,12,12)
+  hitbox=rectangle(4,4,12,12)
  end
- hit=_ENV.player_here()
+ hit=player_here()
  if hit and lava then
   kill_player(hit)
  end
- if _ENV.hide==false and lava==false then
- if hit and hit.y<_ENV.y+3 then
+ if hide==false and lava==false then
+ if hit and hity<y+3 then
   if btn(🅾️) then
-   hit.spd=vector(hit.spd.x,-2)
+   hitspd=vector(hitspdx,-2)
    psfx"1"
   else
    psfx"2"
-   hit.spd=vector(hit.spd.x,-1.3)
+   hitspd=vector(hitspdx,-13)
   end
-  _ENV.hide=true
+  hide=true
   for ox=1,8,2 do
-   _ENV.init_smoke(ox,2)
+   init_smoke(ox,2)
   end
  elseif hit then
   kill_player(hit) 
  end
  end
- if _ENV.sprite==64 then
-  _ENV.y-=0.3
- elseif _ENV.sprite==80 then
-  _ENV.y+=0.3
- elseif _ENV.sprite==96 then
-  _ENV.x-=0.3
- elseif _ENV.sprite==112 then
-  _ENV.x+=0.3
+ if sprite==64 then
+  y-=03
+ elseif sprite==80 then
+  y+=03
+ elseif sprite==96 then
+  x-=03
+ elseif sprite==112 then
+  x+=03
  end
  
  --placeholder screenwrapping
-_ENV.x=_ENV.x%((lvl_w*8))
-_ENV.y=_ENV.y%((lvl_h*8))
+x=x%((lvl_w*8))
+y=y%((lvl_h*8))
 end,
 draw=function(_ENV)
   if _ENV.hide==false and lava==false then--draw sprs
@@ -858,21 +858,21 @@ end
 }
 booster={
  init=function(_ENV)
-  _ENV.outline=true
-  _ENV.solid_obj=false
-  _ENV.hitbox=rectangle(5,0,3,9)
-  _ENV.s=104
-  _ENV.q=0
-  _ENV.f=false
-  _ENV.off=0
-  _ENV.off2=0
+  outline=true
+  solid_obj=false
+  hitbox=rectangle(5,0,3,9)
+  s=104
+  q=0
+  f=false
+  off=0
+  off2=0
  end,
  update=function(_ENV)
-  if _ENV.sprite==47 then
-   _ENV.f=true
-   _ENV.hitbox=rectangle(-1,0,3,9)
+  if sprite==47 then
+   f=true
+   hitbox=rectangle(-1,0,3,9)
   end
-  hit=_ENV.player_here()
+  hit=player_here()
   if hit and lava==true then
    if hit.spd.y>-2 then
     hit.spd=vector(hit.spd.x,-abs(hit.spd.y)-0.4)
@@ -882,55 +882,55 @@ booster={
    hit.canslide=false
   end
   if lava==true then
-   _ENV.off+=1.2
-   if _ENV.off>8 then _ENV.off=0 end
+   off+=1.2
+   if off>8 then off=0 end
   end
-  _ENV.off2+=0.5
-  if _ENV.off2>2 then _ENV.off2=0 end
+  off2+=0.5
+  if off2>2 then off2=0 end
  end,
  draw=function(_ENV)
   if lava==true then
-   sspr(120,8+_ENV.off,8,8,_ENV.x,_ENV.y,8,8,_ENV.f)
-   if _ENV.off2==0 then
+   sspr(120,8+off,8,8,x,y,8,8,f)
+   if off2==0 then
     pal(2,8)
    end
-   if tile_at(_ENV.x/8,(_ENV.y/8)-1)!=_ENV.sprite then
-    spr(97,_ENV.x,_ENV.y,1,1,_ENV.f)
+   if tile_at(x/8,(y/8)-1)!=sprite then
+    spr(97,x,y,1,1,f)
    end
-   if tile_at(_ENV.x/8,(_ENV.y/8)+1)!=_ENV.sprite then
-    spr(97,_ENV.x,_ENV.y+4,1,1,_ENV.f)
+   if tile_at(x/8,(y/8)+1)!=sprite then
+    spr(97,x,y+4,1,1,f)
    end
    pal()
   else
-   spr(63,_ENV.x,_ENV.y,1,1,_ENV.f)
-   if tile_at(_ENV.x/8,(_ENV.y/8)-1)!=_ENV.sprite then
-    sspr(8,56,8,3,_ENV.x,_ENV.y,8,3,_ENV.f)
+   spr(63,x,y,1,1,f)
+   if tile_at(x/8,(y/8)-1)!=sprite then
+    sspr(8,56,8,3,x,y,8,3,f)
    end
-   if tile_at(_ENV.x/8,(_ENV.y/8)+1)!=_ENV.sprite then
-    sspr(8,61,8,3,_ENV.x,_ENV.y+5,8,3,_ENV.f)
+   if tile_at(x/8,(y/8)+1)!=sprite then
+    sspr(8,61,8,3,x,y+5,8,3,f)
    end
   end
  end
 }
 wall={
  init=function(_ENV)
-  _ENV.id=_ENV.sprite==45 and true or false
+  id=sprite==45 and true or false
  end,
  
  update=function(_ENV)
   hit=player_here()
-  if _ENV.id and hit and lava then
+  if id and hit and lava then
    kill_player(hit)
-  elseif hit and not lava and not _ENV.id then
+  elseif hit and not lava and not id then
    kill_player(hit)
   end
  end,
  
  draw=function(_ENV)
-  if _ENV.id and lava then
-   spr(45,_ENV.x,_ENV.y) 
-  elseif not lava and not _ENV.id then
-   spr(61,_ENV.x,_ENV.y)
+  if id and lava then
+   spr(45,x,y) 
+  elseif not lava and not id then
+   spr(61,x,y)
   else
    
   end
@@ -1859,7 +1859,7 @@ camera_offsets={
 --mapdata string table
 --assigned levels will load from here instead of the map
 mapdata={
-  "¹¹¹¹¹¹¹¹miii{iin¹¹¹¹ziin¹¹¹¹¹¹¹¹¹¹%&&&&&&&&&&&&&¹¹¹¹¹¹¹¹mii|¹zin¹¹¹¹¹miil¹¹¹¹¹¹¹¹¹233&&&&&&&&&&&¹¹¹¹¹¹¹jiin¹¹¹mn¹¹¹¹¹ziin¹¹¹¹¹¹¹¹¹¹¹¹2333&&&&&&&¹¹¹¹¹¹¹mii|¹¹¹mn¹¹¹¹¹¹min¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹%&&&&&&¹¹¹¹¹¹¹min¹¹¹¹mil¹¹¹¹¹miil¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹2333333¹¹¹¹¹¹¹mi|¹¹¹¹min¹¹¹¹¹miin¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹jin¹¹¹¹¹zin¹¹¹¹¹ziiikl¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹jii|¹¹¹¹¹¹mn¹¹¹¹¹¹miiiil¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹min¹¹¹¹¹,jin<¹¹¹¹jiiiiiil¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹jiin¹¹¹¹¹jiiikl¹¹¹\"#####$n¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹²¹¹miin¹¹¹j\"#####$¹¹¹%&&&&&'il¹¹¹¹¹¹\"##################$¹ji%yy&&i'l¹¹%&&&&&'in¹¹¹¹¹¹%&&&&&&&&&&&&&&&&&&'kii%&x&&&'n¹¹2333334in¹¹¹¹¹¹%&&&&&&&&&&&&&&&&&&'ii{%x&&xx'il¹¹¹¹¹¹¹min¹¹¹¹¹¹%&&&&&&&&&&&&&&&&&&'i|¹2333334iil¹¹¹¹¹¹zin¹¹¹¹¹¹%&&&&&&&&&&&&&&&&&&'n¹¹¹¹¹miiiiiil¹¹¹¹¹¹mil¹¹¹¹¹%&&&&&&&&&&"
+  "¹¹¹¹¹¹¹¹miii{iin¹¹¹¹ziin¹¹¹¹¹¹¹¹¹¹%&&&&&&&&&&&&&¹¹¹¹¹¹¹¹mii|¹zin¹¹¹¹¹miil¹¹¹¹¹¹¹¹¹233&&&&&&&&&&&¹¹¹¹¹¹¹jiin¹¹¹mn¹¹¹¹¹ziin¹¹¹¹¹¹¹¹¹¹¹¹2333&&&&&&&¹¹¹¹¹¹¹mii|¹¹¹mn¹¹¹¹¹¹min¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹%&&&&&&¹¹¹¹¹¹¹min¹¹¹¹mil¹¹¹¹¹miil¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹2333333¹¹¹¹¹¹¹mi|¹¹¹¹min¹¹¹¹¹miin¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹jin¹¹¹¹¹zin¹¹¹¹¹ziiikl¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹jii|¹¹¹¹¹¹mn¹¹¹¹¹¹miiiil¹¹¹¹BRR¹¹¹)¹¹¹¹¹¹¹¹¹¹¹¹¹min¹¹¹¹¹,jin<¹¹¹¹jiiiiiil¹¹¹R¹¹¹¹¹¹¹¹¹¹¹/¹¹¹¹¹¹jiin¹¹¹¹¹jiiikl¹¹¹\"#####$n¹¹¹RRR¹¹¹¹¹¹¹¹¹¹¹¹¹²¹¹miin¹¹¹j\"#####$¹¹¹%&&&&&'il¹¹¹¹¹ \"##################$¹ji%yy&&i'l¹¹%&&&&&'in¹¹¹¹¹ %&&&&&&&&&&&&&&&&&&'kii%&x&&&'n¹¹2333334in¹¹¹¹¹ %&&&&&&&&&&&&&&&&&&'ii{%x&&xx'il¹¹¹¹¹¹¹min¹¹¹¹¹ %&&&&&&&&&&&&&&&&&&'i|¹2333334iil¹¹¹¹¹¹zin¹¹¹¹¹ %&&&&&&&&&&&&&&&&&&'n¹¹¹¹¹miiiiiil¹¹¹¹¹¹mil¹¹¹¹ %&&&&&&&&&&"
 }
 --@end
 
@@ -1940,14 +1940,14 @@ e6dde6eee5e66ed66deee6d66de66e5ed6eeeee6eeee66eedddddddeeed6e6ee001ccc2200588111
 ee6d6eeeee566666666ee666666665eee66eee66e6deeeeddddddd6eee66e666000ccc1c05558858000d155508888800006660000ccc1c1c000077cc00000ccc
 eee6edde1ee55e6ee6e11e6ee6e55ee1ee66e66eee66ded6ddddd6ee1eee1e6e000001c10000555800000dd50088800000060000ccccc1c00000077700000ccc
 eededdde111ee1e11e1111e11e1ee111111161111111111111d1111111e111e1000000c1000050550000001d00000000000000000ccccc0000000007000001c1
-00000000062226220001100077777777777777777777777700000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000626266260013310070000700007000070070700700000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000006626dd6d013bb31070770700007077070077700700000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000002666d8d815bbbb3170770777007000070000777700000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000022dd828215bbbb3170000007007077070000070700000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000077762d82222015bb31077770777007777770000077700000000000000000000000000000000000000000000000000000000000000000000000000000000
-00077ccc66d822220015310070070700000000000000000700000000000000000000000000000000000000000000000000000000000000000000000000000000
-007ccccc266d82220001100070077700000000000000000700000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000006222622000dd00077777777777777777777777700000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000006262662600dbbd0070000700007000070070700700000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000006626dd6d0dbbb3d070770700007077070077700700000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000002666d8d8dbbb3bbd70770777007000070000777700000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000022dd8282d3b33bbd70000007007077070000070700000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000077762d822220d3333d077770777007777770000077700000000000000000000000000000000000000000000000000000000000000000000000000000000
+00077ccc66d8222200d33d0070070700000000000000000700000000000000000000000000000000000000000000000000000000000000000000000000000000
+007ccccc266d8222000dd00070077700000000000000000700000000000000000000000000000000000000000000000000000000000000000000000000000000
 007ccccc22622662000000007000000000000000000000070000000000000000000000000000000000000000000000000000000000000000000ff00000000e1e
 007ccccc6666226600000000700000000000000000007777000000000000000000000000000000000000000000000000000000000000000000efff00000fefe1
 0007ccccd666666d0000000077777000000000000000700700000000000000000000000000000000000000000000000000000000000000000f1ffff000ffeff1
