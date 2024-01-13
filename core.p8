@@ -816,13 +816,13 @@ update=function(_ENV)
   kill_player(hit)
  end
  if hide==false and lava==false then
- if hit and hity<y+3 then
+ if hit and hit.y<y+3 then
   if btn(🅾️) then
-   hitspd=vector(hitspdx,-2)
+   hit.spd=vector(hit.spd.x,-2)
    psfx"1"
   else
    psfx"2"
-   hitspd=vector(hitspdx,-13)
+   hit.spd=vector(hit.spd.x,-1.3)
   end
   hide=true
   for ox=1,8,2 do
@@ -833,13 +833,13 @@ update=function(_ENV)
  end
  end
  if sprite==64 then
-  y-=03
+  y-=0.3
  elseif sprite==80 then
-  y+=03
+  y+=0.3
  elseif sprite==96 then
-  x-=03
+  x-=0.3
  elseif sprite==112 then
-  x+=03
+  x+=0.3
  end
  
  --placeholder screenwrapping
@@ -1005,6 +1005,7 @@ bumper={
     hitbox=rectangle(3,3,13,13)
   end,
   draw=function(_ENV)
+  pal()
     sspr(sy,16,8,16,x,y)
     sspr(sy,16,8,16,x+8,y,8,16,true)
     if not is_active and q<15 then
@@ -1186,8 +1187,15 @@ spinner_controller={
         end
       end
     end)
-  end,
+  end, 
   draw=function()
+    if lava then
+     pal()
+    else
+     pal(8,12)
+     pal(2,1)
+    end
+    
     foreach(spinner_controller.connectors,function(c)
       spr(78,c.x,c.y)
     end)
@@ -1244,13 +1252,10 @@ foreach(split([[
 112,bubble
 45,wall
 61,wall
-<<<<<<< Updated upstream
-=======
 76,spinner
 77,spinner
 92,spinner
 93,spinner
->>>>>>> Stashed changes
 ]],"\n"),function(t)
  local tile,obj=unpack(split(t))
  tiles[tile]=_ENV[obj]
@@ -1890,9 +1895,9 @@ end
 
 --@conf
 --[[
-param_names={"lava direction up/true (room)", "lava/ice active", "lava speed (0-1 preferred)", "isepicenter"}
-composite_shapes={}
 autotiles={{52, 54, 53, 39, 33, 35, 34, 55, 49, 51, 50, 48, 36, 38, 37, [0] = 32}, {111, 110, 106, 94, 105, 107, 106, 126, 121, 123, 122, 127, 108, 109, 104, 106, 33, 35, 106, [21] = 50, [23] = 106, [28] = 104, [29] = 36, [30] = 38, [31] = 104, [33] = 104, [0] = 104, [35] = 104, [40] = 122, [41] = 49, [42] = 51, [43] = 122, [45] = 122, [47] = 34}}
+composite_shapes={}
+param_names={"lava direction up/true (room)", "lava/ice active", "lava speed (0-1 preferred)", "isepicenter"}
 ]]
 --@begin
 --[[level table
@@ -1925,8 +1930,9 @@ camera_offsets={
 --mapdata string table
 --assigned levels will load from here instead of the map
 mapdata={
-  "¹¹¹¹¹¹¹¹miii{iin¹¹¹¹ziin¹¹¹¹¹¹¹zii%&&&&&&&&&&&&&¹¹¹¹¹¹¹¹mii|¹zin¹¹¹¹¹miil¹¹¹¹¹¹¹mi233&&&&&&&&&&&¹¹¹¹¹¹¹jiin¹¹¹mn¹¹¹¹¹ziin¹¹¹¹¹¹¹ziiii2333&&&&&&&¹¹¹¹¹¹¹mii|¹¹¹mn¹¹¹¹¹¹min¹¹¹¹¹¹¹¹miin¹¹¹¹%&&&&&&¹¹¹¹¹¹¹min¹¹¹¹mil¹¹¹¹¹miil¹¹¹¹¹¹¹ziin¹¹¹¹2333333¹¹¹¹¹¹¹mi|¹¹¹¹min¹¹¹¹¹miin¹¹¹¹¹¹¹¹miil¹¹¹¹¹¹¹mii¹¹¹¹¹¹jin¹¹¹¹¹zin¹¹¹¹¹ziiikl¹¹¹¹¹¹ziiil¹¹¹¹¹jii{¹¹¹¹¹jii|¹¹¹¹¹¹mn¹¹¹¹¹¹miiiil¹¹¹¹¹¹miiil¹¹¹¹min¹¹¹¹¹¹min¹¹¹¹¹¹jin¹¹¹¹¹jiiiiiil¹¹¹¹¹miiin¹¹¹jii|¹¹¹¹¹jiin¹¹¹¹¹jiiikl¹¹¹\"#####$n¹¹¹¹¹ziiiil¹¹min¹¹¹²¹¹miin¹¹¹j\"#####$¹¹¹%&&&&&'il¹¹¹¹¹m\"##################$¹ji%&&&&&'l¹¹%&&&&&'in¹¹¹¹¹z%&&&&&&&&&&&&&&&&&&'kii%&&&&&'n¹¹2333334in¹¹¹¹¹¹%&&&&&&&&&&&&&&&&&&'ii{%&&&&&'il¹¹¹¹¹¹¹min¹¹¹¹¹¹%&&&&&&&&&&&&&&&&&&'i|¹2333334iil¹¹¹¹¹¹zin¹¹¹¹¹¹%&&&&&&&&&&&&&&&&&&'n¹¹¹¹¹miiiiiil¹¹¹¹¹¹mil¹¹¹¹¹%&&&&&&&&&&"
+  "¹¹¹¹¹¹¹¹miii{iin¹¹¹¹ziin¹¹¹¹¹¹¹zii%&&&&&&&&&&&&&¹¹¹¹¹¹¹¹mii|¹zin¹¹¹¹¹miil¹¹¹¹¹¹¹mi233&&&&&&&&&&&¹¹¹¹M¹¹jiin¹¹¹mn¹R¹¹¹ziin¹¹¹¹¹¹¹ziiii2333&&&&&&&¹¹¹¹¹¹Nmii|¹¹¹mn¹¹¹¹¹¹min¹¹¹¹¹¹¹¹miin¹¹¹¹%&&&&&&¹¹¹¹]¹¹min¹¹¹¹mil¹¹¹¹¹miil,¹¹<¹¹¹ziin¹¹¹¹2333333¹AQ¹¹¹Mmi|¹¹¹¹min¹¹¹¹¹miin¹¹¹¹¹¹¹¹miil¹¹¹¹¹¹¹mii¹aq¹¹¹jin¹¹BRRzin¹¹¹¹¹ziiikl¹¹¹¹¹¹ziiil¹¹¹¹¹jii{¹¹¹¹¹jii|¹¹R¹¹¹mn¹)¹¹¹¹miiiil¹¹¹¹¹¹miiil¹¹¹¹min¹¹¹¹¹¹min¹¹¹RRRjin¹¹¹¹¹jii▮iiil¹¹/¹¹miiin¹¹¹jii|¹¹¹¹¹jiin¹¹¹¹¹jiiikl¹¹¹\"#####$n¹¹¹¹¹ziiiil¹¹min¹¹¹²¹¹miin¹¹¹ \"#####$¹¹¹%&&&&&'il¹¹¹¹¹m\"##################$¹j %&&&&&'l¹¹%&&&&&'in¹¹¹¹¹z%&&&&&&&&&&&&&&&&&&'ki %&&&&&'n¹¹2333334in¹¹¹¹¹¹%&&&&&&&&&&&&&&&&&&'ii %&&&&&'il¹¹¹¹¹¹¹min¹¹¹¹¹¹%&&&&&&&&&&&&&&&&&&'i| 2333334iil¹¹¹¹¹¹zin¹¹¹¹¹¹%&&&&&&&&&&&&&&&&&&'n¹¹¹¹¹miiiiiil¹¹¹¹¹¹mil¹¹¹¹¹%&&&&&&&&&&"
 }
+local __init = _init function _init() __init() load_level(1) music(-1) end
 --@end
 
 
