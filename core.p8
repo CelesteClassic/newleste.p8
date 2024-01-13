@@ -847,12 +847,12 @@ x=x%((lvl_w*8))
 y=y%((lvl_h*8))
 end,
 draw=function(_ENV)
-  if _ENV.hide==false and lava==false then--draw sprs
-    sspr(0,32,8,16,_ENV.x,_ENV.y)
-    sspr(0,32,8,16,_ENV.x+8,_ENV.y,8,16,true)
-  elseif _ENV.hide==false and lava then
-    sspr(0,48,8,16,_ENV.x,_ENV.y)
-    sspr(0,48,8,16,_ENV.x+8,_ENV.y,8,16,true,true)
+  if hide==false and lava==false then--draw sprs
+    sspr(0,32,8,16,x,y)
+    sspr(0,32,8,16,x+8,y,8,16,true)
+  elseif hide==false and lava then
+    sspr(0,48,8,16,x,y)
+    sspr(0,48,8,16,x+8,y,8,16,true,true)
   end
 end
 }
@@ -938,82 +938,82 @@ wall={
 }
 bumper={
   init=function(_ENV)
-    _ENV.outline=true
-    _ENV.solid_obj=false
-    _ENV.hitbox=rectangle(0,0,16,16)
-    _ENV.sy=32
-    _ENV.is_active=true
-    _ENV.eep=0
-    _ENV.j,_ENV.q=0,0
-    _ENV.startx=_ENV.x
-    _ENV.starty=_ENV.y
-    _ENV.off=0
-    _ENV.off2=0
-    _ENV.offj=0.01
-    _ENV.offmul=rnd"1"
+    outline=true
+    solid_obj=false
+    hitbox=rectangle(0,0,16,16)
+    sy=32
+    is_active=true
+    eep=0
+    j,q=0,0
+    startx=x
+    starty=y
+    off=0
+    off2=0
+    offj=0.01
+    offmul=rnd"1"
     if flr(rnd"2")==0 then
-     _ENV.offj=-_ENV.offj
+     offj=-offj
     end
   end,
   update=function(_ENV)
-    _ENV.off+=_ENV.offj
-    _ENV.off2+=_ENV.offj*3
-    _ENV.x=_ENV.startx+sin(_ENV.off2)*1.1+_ENV.offmul
-    _ENV.y=_ENV.starty+cos(_ENV.off)*1.2+_ENV.offmul
-    _ENV.midx=_ENV.x+8
-    _ENV.midy=_ENV.y+8
-    _ENV.hitbox=rectangle(-1,-1,18,18)
-    local hit=_ENV.player_here()
-    if hit and not lava and _ENV.is_active then
+    off+=offj
+    off2+=offj*3
+    x=startx+sin(off2)*1.1+offmul
+    y=starty+cos(off)*1.2+offmul
+    midx=x+8
+    midy=y+8
+    hitbox=rectangle(-1,-1,18,18)
+    local hit=player_here()
+    if hit and not lava and is_active then
      hit.grace=0 
-     if hit.x>_ENV.midx then
-      hit.spd=vector(0.6*(hit.x-(_ENV.x+8)),hit.spd.y)
+     if hit.x>midx then
+      hit.spd=vector(0.6*(hit.x-(x+8)),hit.spd.y)
      end
-     if hit.x<_ENV.midx then
-      hit.spd=vector(0.6*(hit.x-(_ENV.x)),hit.spd.y)
+     if hit.x<midx then
+      hit.spd=vector(0.6*(hit.x-(x)),hit.spd.y)
      end
-     if hit.y<_ENV.midy then
-      hit.spd=vector(hit.spd.x,0.4*(hit.y-(_ENV.y)))
+     if hit.y<midy then
+      hit.spd=vector(hit.spd.x,0.4*(hit.y-(y)))
      end
-     if hit.y>_ENV.midy then
-      hit.spd=vector(hit.spd.x,0.1*(hit.y-(_ENV.y-8)))
+     if hit.y>midy then
+      hit.spd=vector(hit.spd.x,0.1*(hit.y-(y-8)))
      end
      sfx"9"
-     _ENV.is_active=false
-     _ENV.eep=20
+     is_active=false
+     eep=20
     end
     if lava and hit then
      kill_player(hit)
     end
     if lava then
-     _ENV.sy=72
-     _ENV.is_active=true
-    elseif _ENV.is_active then
-     _ENV.sy=64
+     sy=72
+     is_active=true
+    elseif is_active then
+     sy=64
     end
-    if not _ENV.is_active then
-     _ENV.sy=80
-     _ENV.eep-=1
+    if not is_active then
+     sy=80
+     eep-=1
     end
-    if _ENV.eep<=0 and not lava then
-     _ENV.is_active=true
-     _ENV.sy=64
-     _ENV.q=0
-     _ENV.j=0
+    if eep<=0 and not lava then
+     is_active=true
+     sy=64
+     q=0
+     j=0
     end
-    if _ENV.j>2 then _ENV.j=0 end
-    _ENV.hitbox=rectangle(3,3,13,13)
+    if j>2 then j=0 end
+    hitbox=rectangle(3,3,13,13)
   end,
   draw=function(_ENV)
-    sspr(_ENV.sy,16,8,16,_ENV.x,_ENV.y)
-    sspr(_ENV.sy,16,8,16,_ENV.x+8,_ENV.y,8,16,true)
-    if not _ENV.is_active and _ENV.q<15 then
-     circ(_ENV.x+7,_ENV.y+7,10+_ENV.j,12)
-     circ(_ENV.x+8,_ENV.y+7,10+_ENV.j,12)
-     circ(_ENV.x+7,_ENV.y+8,10+_ENV.j,12)
-     circ(_ENV.x+8,_ENV.y+8,10+_ENV.j,12)
-     _ENV.q+=5
-     _ENV.j+=1
+    sspr(sy,16,8,16,x,y)
+    sspr(sy,16,8,16,x+8,y,8,16,true)
+    if not is_active and q<15 then
+     circ(x+7,y+7,10+j,12)
+     circ(x+8,y+7,10+j,12)
+     circ(x+7,y+8,10+j,12)
+     circ(x+8,y+8,10+j,12)
+     q+=5
+     j+=1
     end
   end
 }
@@ -1021,41 +1021,41 @@ bumper={
 switch={
 
 init=function(_ENV) 
- _ENV.outline=true
- _ENV.tp=_ENV.sprite==59 and true or false
- _ENV.active=true
- _ENV.x+=4
- _ENV.hitbox=rectangle(0,0,8,8)
+ outline=true
+ tp=sprite==59 and true or false
+ active=true
+ x+=4
+ hitbox=rectangle(0,0,8,8)
 end,
 
 update=function(_ENV)
  
  local hit=player_here()
  
- if not lava and not _ENV.tp then
-  _ENV.active=false
- elseif not _ENV.tp then
-  _ENV.active=true
+ if not lava and not tp then
+  active=false
+ elseif not tp then
+  active=true
  elseif not lava then
-  _ENV.active=true
+  active=true
  end
  
- if hit and _ENV.active and _ENV.tp then
+ if hit and active and tp then
   _g.lava=true
-  _ENV.active=false
- elseif hit and _ENV.active then
+  active=false
+ elseif hit and active then
   _g.lava=false
-  _ENV.active=false
+  active=false
  end
 
 end,
 
 draw=function(_ENV)
 
-if _ENV.active then
-  spr(_ENV.sprite,_ENV.x,_ENV.y)
+if active then
+  spr(sprite,x,y)
 else
-  spr(_ENV.sprite+1,_ENV.x,_ENV.y)
+  spr(sprite+1,x,y)
 end
 
 end
