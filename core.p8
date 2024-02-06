@@ -1,7 +1,7 @@
 pico-8 cartridge // http://www.pico-8.com
 version 41
 __lua__
---newleste.p8 base cart
+--newleste.p8 core
 
 --original game by:
 --maddy thorson + noel berry
@@ -35,6 +35,8 @@ shake,screenshake
 pal,
 0,false
 
+lava=false
+lt=0
 
 local _g=_ENV --for writing to global vars
 
@@ -78,7 +80,7 @@ dead_particles={}
 player={
   init=function(_ENV)
     djump, hitbox, collides,layer = max_djump, rectangle(1,3,6,5), true,2
-
+    canslide=true
     --<fruitrain>--
     -- ^ refers to setting berry_timer and berry_count to 0
     foreach(split"grace,jbuffer,dash_time,dash_effect_time,dash_target_x,dash_target_y,dash_accel_x,dash_accel_y,spr_off,berry_timer,berry_count", function(var)
@@ -96,8 +98,22 @@ player={
 
     -- spike collision / bottom death
     if is_flag(0,0,-1) or
-	    y>lvl_ph and not exit_bottom then
+	    y>lvl_ph and not exit_bottom and not center then
 	    kill_player(_ENV)
+	   elseif center then
+      if _ENV.y>lvl_ph+16 then
+       _ENV.y=-16
+      end
+    end
+    
+    if lavaactive=="true" then
+     if _ENV.y>ly-4 or _ENV.y<ly-96 then
+      kill_player(_ENV)
+     end
+    elseif lavaactive=="up" then
+     if _ENV.y>ly-4 then
+      kill_player(_ENV)
+     end 
     end
 
     -- on ground checks
@@ -144,7 +160,7 @@ player={
     -- grace frames and dash restoration
     if on_ground then
       grace=7
-      if djump<max_djump then
+      if djump<max_djump and not is_core(0,1) then
         psfx"22"
         djump=max_djump
       end
@@ -180,7 +196,7 @@ player={
       local maxfall=2
 
       -- wall slide
-      if is_solid(h_input,0) then
+      if is_solid(h_input,0) and _ENV.canslide then
         maxfall=0.4
         -- wall slide smoke
         if rnd()<0.2 then
@@ -271,8 +287,10 @@ player={
 
   draw=function(_ENV)
     -- draw player hair and sprite
-    pal(8,djump==1 and 8 or 12)
+    pal(2,djump==2 and 8 or 2)
+    pal(8,djump==1 and 8 or djump==2 and 2 or 12)
     draw_hair(_ENV)
+    pal(7,15,1)
     draw_obj_sprite(_ENV)
     pal()
   end
@@ -510,6 +528,417 @@ smoke={
     end
   end
 }
+launch={
+init=function(_ENV)
+ -- ⬇️ thanks to wuff for this script
+ while tile_at((right()+1)\8,y\8) == 81 do hitbox.w += 8 end
+ while tile_at(x\8,(bottom()+1)\8) == 81 do hitbox.h += 8 end
+ solid_obj=true
+ offy=0
+ _hitbox=hitbox
+ _y=y
+ outline=false
+end,
+update=function(_ENV)
+if not hide then
+ solid_obj=true
+ hitbox=rectangle(-1,-1,_hitbox.w+2,_hitbox.h+1)
+ local hit=player_here()
+ hitbox=_hitbox
+ y+=sin(-offy)
+ if hit then
+  hit.y+=sin(-offy)
+  if not lava then
+   shatter=true
+  end
+ end
+ if (hit or shatter) then
+  offy+=lava and 0.06 or 0.0025
+  if not lava then
+   shatter=true
+  end
+ else
+  y=_y
+  offy=0
+  shatter=false
+ end
+ if y<_y and lava then
+  hide=true
+  hit.spd.y=-3
+  hit.spd.x*=2
+  hidetimer=60
+  y=_y
+ elseif y>_y+8 then
+  hide=true
+  hidetimer=60
+  y=_y
+ end
+else 
+ solid_obj=false
+end
+ hitbox=_hitbox
+ if hide then
+  hidetimer-=1 
+  if hidetimer<0 then
+   hide=false
+  end
+ end
+end,
+
+draw=function(_ENV)
+if not hide then 
+ 
+
+  spr(70,x,y)
+  spr(72,x+(hitbox.w-8),y)
+  spr(102,x,y+(hitbox.h-8))
+  spr(104,x+(hitbox.w-8),y+(hitbox.h-8))
+  for lx=x+8,x+hitbox.w-16,8 do
+   spr(71,lx,y)
+   spr(103,lx,y+hitbox.h-8)
+  end
+  for ly=y+8,y+hitbox.h-16,8 do
+   spr(86,x,ly)
+   spr(88,x+hitbox.w-8,ly)
+  end
+  for ly=y+8,y+hitbox.h-16,8 do
+   for lx=x+8,x+hitbox.w-16,8 do
+    spr(87,lx,ly)
+   end
+  end
+  
+  
+  spr(82,x+hitbox.w/2-4,y+hitbox.h/2-4)
+elseif player_here() then
+ rect(x,y,x+hitbox.w,y+hitbox.h,6)
+end
+pal()
+end
+}
+
+heart={
+  init=function(_ENV)
+   offset=rnd()
+   outline=true
+   start=y
+   e=false
+   solid_obj=false
+   hitbox=rectangle(0,0,16,16)
+   hide=false
+  end,
+  update=function(_ENV)
+    midx=x+8
+    midy=y+8
+    hit=player_here()    
+    if hit and hide==false then
+     if hit.x>midx then
+      hit.spd=vector(0.3*(hit.x-(x+8)),hit.spd.y)
+     end
+     if hit.x<midx then
+      hit.spd=vector(0.3*(hit.x-(x)),hit.spd.y)
+     end
+     if hit.y<midy then
+      hit.spd=vector(hit.spd.x,0.2*(hit.y-(y)))
+     end
+     if hit.y>midy then
+      hit.spd=vector(hit.spd.x,0.05*(hit.y-(y-8)))
+     end         
+    end
+    if hit and hit.dash_effect_time>0 then
+     e=true
+     for ox=0,8,8 do
+      for oy=0,8,8 do
+       init_smoke(ox,oy)
+      end
+     end
+     hide=true
+    end
+    if not show and e then
+      sfx"55"
+      sfx_timer,show,time_ticking=30,true,false
+    end
+      offset+=0.01
+      y=start+sin(offset)*2
+  end,
+  draw=function(_ENV)
+   if hide==false then
+    sspr(112,16,8,16,x,y)
+    sspr(112,16,8,16,x+8,y,8,16,true)
+   end
+    if show then
+      pal()
+      camera()
+      rectfill(32,2,96,31,0)
+      spr(10,55,6)
+      ?"x"..berry_count,64,9,7
+      draw_time(49,16)
+      ?"deaths:"..deaths,48,24,7
+      camera(draw_x,draw_y)
+    end
+  end
+}
+bubble={
+init=function(_ENV)
+ outline=true
+ hitbox=rectangle(2,5,10,12)
+ hide=false
+end,
+update=function(_ENV)
+ if lava==false then
+  hitbox=rectangle(2,5,10,12)
+ elseif lava then
+  hitbox=rectangle(4,4,12,12)
+ end
+ hit=player_here()
+ if hit and lava then
+  kill_player(hit)
+ end
+ if hide==false and lava==false then
+ if hit and hit.y<y+3 then
+  if btn(🅾️) then
+   hit.spd=vector(hit.spd.x,-2)
+   psfx"1"
+  else
+   psfx"2"
+   hit.spd=vector(hit.spd.x,-1.3)
+  end
+  hide=true
+  for ox=1,8,2 do
+   init_smoke(ox,2)
+  end
+ elseif hit then
+  kill_player(hit) 
+ end
+ end
+ if sprite==64 then
+  y-=0.3
+ elseif sprite==80 then
+  y+=0.3
+ elseif sprite==96 then
+  x-=0.3
+ elseif sprite==112 then
+  x+=0.3
+ end
+ 
+ --placeholder screenwrapping
+x=x%((lvl_w*8))
+y=y%((lvl_h*8))
+end,
+draw=function(_ENV)
+  if hide==false and lava==false then--draw sprs
+    sspr(0,32,8,16,x,y)
+    sspr(0,32,8,16,x+8,y,8,16,true)
+  elseif hide==false and lava then
+    sspr(0,48,8,16,x,y)
+    sspr(0,48,8,16,x+8,y,8,16,true,true)
+  end
+end
+}
+booster={
+ init=function(_ENV)
+  outline=true
+  solid_obj=false
+  hitbox=rectangle(5,0,3,9)
+  s=104
+  q=0
+  f=false
+  off=0
+  off2=0
+ end,
+ update=function(_ENV)
+  if sprite==47 then
+   f=true
+   hitbox=rectangle(-1,0,3,9)
+  end
+  hit=player_here()
+  if hit and lava==true then
+   if hit.spd.y>-2 then
+    hit.spd=vector(hit.spd.x,-abs(hit.spd.y)-0.4)
+   end
+  end
+  if hit and lava==false then
+   hit.canslide=false
+  end
+  if lava==true then
+   off+=1.2
+   if off>8 then off=0 end
+  end
+  off2+=0.5
+  if off2>2 then off2=0 end
+ end,
+ draw=function(_ENV)
+  if lava==true then
+   sspr(120,8+off,8,8,x,y,8,8,f)
+   if off2==0 then
+    pal(2,8)
+   end
+   if tile_at(x/8,(y/8)-1)!=sprite then
+    spr(97,x,y,1,1,f)
+   end
+   if tile_at(x/8,(y/8)+1)!=sprite then
+    spr(97,x,y+4,1,1,f)
+   end
+   pal()
+  else
+   spr(63,x,y,1,1,f)
+   if tile_at(x/8,(y/8)-1)!=sprite then
+    sspr(8,56,8,3,x,y,8,3,f)
+   end
+   if tile_at(x/8,(y/8)+1)!=sprite then
+    sspr(8,61,8,3,x,y+5,8,3,f)
+   end
+  end
+ end
+}
+wall={
+ init=function(_ENV)
+  id=sprite==45 and true or false
+ end,
+ 
+ update=function(_ENV)
+  hit=player_here()
+  if id and hit and lava then
+   kill_player(hit)
+  elseif hit and not lava and not id then
+   kill_player(hit)
+  end
+ end,
+ 
+ draw=function(_ENV)
+  if id and lava then
+   spr(45,x,y) 
+  elseif not lava and not id then
+   spr(61,x,y)
+  else
+   
+  end
+ end
+}
+bumper={
+  init=function(_ENV)
+    outline=true
+    solid_obj=false
+    hitbox=rectangle(0,0,16,16)
+    sy=32
+    is_active=true
+    eep=0
+    j,q=0,0
+    startx=x
+    starty=y
+    off=0
+    off2=0
+    offj=0.01
+    offmul=rnd"1"
+    if flr(rnd"2")==0 then
+     offj=-offj
+    end
+  end,
+  update=function(_ENV)
+    off+=offj
+    off2+=offj*3
+    x=startx+sin(off2)*1.1+offmul
+    y=starty+cos(off)*1.2+offmul
+    midx=x+8
+    midy=y+8
+    hitbox=rectangle(-1,-1,18,18)
+    local hit=player_here()
+    if hit and not lava and is_active then
+     hit.grace=0 
+     if hit.x>midx then
+      hit.spd=vector(0.6*(hit.x-(x+8)),hit.spd.y)
+     end
+     if hit.x<midx then
+      hit.spd=vector(0.6*(hit.x-(x)),hit.spd.y)
+     end
+     if hit.y<midy then
+      hit.spd=vector(hit.spd.x,0.4*(hit.y-(y)))
+     end
+     if hit.y>midy then
+      hit.spd=vector(hit.spd.x,0.1*(hit.y-(y-8)))
+     end
+     sfx"9"
+     is_active=false
+     eep=20
+    end
+    if lava and hit then
+     kill_player(hit)
+    end
+    if lava then
+     sy=72
+     is_active=true
+    elseif is_active then
+     sy=64
+    end
+    if not is_active then
+     sy=80
+     eep-=1
+    end
+    if eep<=0 and not lava then
+     is_active=true
+     sy=64
+     q=0
+     j=0
+    end
+    if j>2 then j=0 end
+    hitbox=rectangle(3,3,13,13)
+  end,
+  draw=function(_ENV)
+    sspr(sy,16,8,16,x,y)
+    sspr(sy,16,8,16,x+8,y,8,16,true)
+    if not is_active and q<15 then
+     circ(x+7,y+7,10+j,12)
+     circ(x+8,y+7,10+j,12)
+     circ(x+7,y+8,10+j,12)
+     circ(x+8,y+8,10+j,12)
+     q+=5
+     j+=1
+    end
+  end
+}
+
+switch={
+
+init=function(_ENV) 
+ outline=true
+ tp=sprite==59 and true or false
+ active=false
+ x+=4
+ hitbox=rectangle(0,0,8,8)
+end,
+
+update=function(_ENV)
+ 
+ local hit=player_here()
+ 
+ if not lava and not tp then
+  active=false
+ elseif not tp then
+  active=true
+ elseif not lava then
+  active=true
+ end
+ 
+ if hit and active and tp then
+  _g.lava=true
+  active=false
+ elseif hit and active then
+  _g.lava=false
+  active=false
+ end
+
+end,
+
+draw=function(_ENV)
+
+if active then
+  spr(sprite,x,y)
+else
+  spr(sprite+1,x,y)
+end
+
+end
+
+}
 
 --- <fruitrain> ---
 fruitrain={}
@@ -606,6 +1035,71 @@ lifeup={
   end
 }
 
+--<spinners>--
+spinner_controller={
+  spinners={},
+  connectors={},
+  init=function()
+    spinner_controller.spinners,spinner_controller.connectors,layer={},{},0
+  end,
+  end_init=function()
+    for i,s1 in ipairs(spinner_controller.spinners) do
+      for j=1,i-1 do
+        local s2=spinner_controller.spinners[j]
+        local dx,dy=abs(s1.x-s2.x),abs(s1.y-s2.y)
+        if dx<=16 and dy<=16 and dx+dy<32 then
+          add(spinner_controller.connectors,vector((s1.x+s2.x)/2+4,(s1.y+s2.y)/2+4))
+        end
+      end
+    end
+  end,
+  update=function()
+    foreach(objects,function(o)
+      if o.type==player then
+        for s in all(spinner_controller.spinners) do
+          if s.objcollide(o,0,0) then
+            kill_player(o)
+            break
+          end
+        end
+      end
+    end)
+  end, 
+  draw=function()
+  pal()
+    if lava then
+     pal()
+    else
+     pal(8,140)
+     pal(2,1)
+    end
+    
+    foreach(spinner_controller.connectors,function(c)
+      spr(78,c.x,c.y)
+    end)
+    foreach(spinner_controller.spinners,function(s)
+      spr(76,s.x,s.y,2,2)
+    end)
+    -- for s in all(spinner_controller.spinners) do
+      -- rect(s.left(),s.top(),s.right(),s.bottom(),10)
+    -- end
+    pal()
+  end
+}
+spinner={
+  init=function(_ENV)
+    if sprite%2==1 then
+      x-=8
+    end
+    if sprite>=92 then
+      y-=8
+    end
+    hitbox=rectangle(2,2,12,12)
+    add(spinner_controller.spinners,_ENV)
+    destroy_object(_ENV)
+  end
+}
+--</spinners>--
 
 psfx=function(num)
   if sfx_timer<=0 then
@@ -624,6 +1118,23 @@ foreach(split([[
 12,fly_fruit
 15,refill
 23,fall_floor
+40,bumper
+43,switch
+59,switch
+31,booster
+47,booster
+65,launch
+46,heart
+64,bubble
+80,bubble
+96,bubble
+112,bubble
+45,wall
+61,wall
+76,spinner
+77,spinner
+92,spinner
+93,spinner
 ]],"\n"),function(t)
  local tile,obj=unpack(split(t))
  tiles[tile]=_ENV[obj]
@@ -656,10 +1167,19 @@ function init_object(_type,sx,sy,tile)
     return oy>0 and not is_flag(ox,0,3) and is_flag(ox,oy,3) or  -- one way platform or
             is_flag(ox,oy,0) -- solid terrain
   end
+  function is_core(ox,oy)
+   for o in all(objects) do
+     if o!=ENV and (o.solid_obj or o.semisolid_obj and not obj.objcollide(o,ox,0) and oy>0) and objcollide(o,ox,oy) then
+       return true
+     end
+   end
+   return _ENV.is_flag(ox,oy,6)
+  end
   function oob(ox,oy)
     return not exit_left and left()+ox<0 or not exit_right and right()+ox>=lvl_pw or top()+oy<=-8
   end
 
+  
   function is_flag(ox,oy,flag)
     for i=mid(0,lvl_w-1,(left()+ox)\8),mid(0,lvl_w-1,(right()+ox)/8) do
       for j=mid(0,lvl_h-1,(top()+oy)\8),mid(0,lvl_h-1,(bottom()+oy)/8) do
@@ -825,8 +1345,20 @@ function load_level(id)
   for i,v in inext,split"exit_top,exit_right,exit_bottom,exit_left" do
     _ENV[v]=exits&(0.5<<i)~=0
   end
-
-
+  lvl_li=tbl[6]
+  lavaspd=tonum(tbl[8])
+  if tbl[9]==true then
+   center=true
+  else
+   center=false
+  end
+  lavaactive=lvl_li
+  if tbl[7]=="lava" then
+   lava=true
+  else
+   lava=false
+  end
+  ly=lvl_h*8
   --reload map
   if diff_level then
     reload()
@@ -844,6 +1376,9 @@ function load_level(id)
     end
   end
 
+  --<spinners>--
+  init_object(spinner_controller,0,0)
+  --</spinners>--
   -- entities
   for tx=0,lvl_w-1 do
     for ty=0,lvl_h-1 do
@@ -857,6 +1392,24 @@ function load_level(id)
   foreach(objects,function(_ENV)
     (type.end_init or time)(_ENV)
   end)
+  
+  if lavaactive=="true" then
+   if lava==true then
+    ly-=lavaspd
+   else
+    ly+=lavaspd
+   end
+  elseif lavaactive=="up" then
+   if lava==true then
+    ly-=lavaspd
+    if cam_y+64<ly then ly-=lavaspd*4.2 end
+   else
+    ly-=lavaspd-0.1
+    if cam_y+64<ly then ly-=lavaspd*3.9 end
+   end
+  else
+   ly=lvl_h*8
+  end
 
   --<camtrigger>--
   --generate camera triggers
@@ -922,6 +1475,24 @@ function _update()
       move_camera(_ENV)
     end
   end)
+  
+    if lavaactive=="true" then
+   if lava==true then
+    ly-=lavaspd
+   else
+    ly+=lavaspd
+   end
+  elseif lavaactive=="up" then
+   if lava==true then
+    ly-=lavaspd
+    if cam_y+64<ly then ly-=lavaspd*4.2 end
+   else
+    ly-=lavaspd-0.1
+    if cam_y+64<ly then ly-=lavaspd*3.9 end
+   end
+  else
+   ly=lvl_h*8
+  end
 
 end
 
@@ -931,10 +1502,7 @@ function _draw()
   if freeze>0 then
     return
   end
-
-  -- reset all palette values
-  pal()
-
+  
   --set cam draw position
   draw_x,draw_y=round(cam_x)-64,round(cam_y)-64
 
@@ -958,7 +1526,7 @@ function _draw()
       x,y=-w,_g.rnd"120"
     end
   end)
-
+ 
 		-- draw bg terrain
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,4)
 
@@ -974,7 +1542,9 @@ function _draw()
   end)
   pal=_pal
   camera(draw_x,draw_y)
-  pal()
+--  pal()
+  
+
 
   --set draw layering
   --0: background layer
@@ -989,16 +1559,21 @@ function _draw()
       add(layers[layer or 1],_ENV) --add object to layer, default draw below player
     end
   end)
+  
   -- draw terrain
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,2)
-
+--pal()
   -- draw objects
   foreach(layers,function(l)
+--    _g.pal()
     foreach(l,draw_object)
   end)
 
   -- draw platforms
   map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,8)
+  -- draw fg tiles
+  map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,0x10)
+--  pal()
   -- particles
   foreach(particles,function(_ENV)
     x+=spd-_g.cam_spdx
@@ -1031,6 +1606,73 @@ function _draw()
     ui_timer-=1
   end
 
+  if lavaactive=="true" then
+   lt+=lavaspd
+   if lt>=8 then lt=0 end
+   for x=-8,136,8 do
+     local qz=sin(x/100)*2
+     local lyc=ly+qz
+    if lava==true then
+     spr(30,x+(cam_x-64)-lt,lyc)
+     spr(30,x+(cam_x-64)+lt,lyc-97,1,1,true,true)
+    else
+     spr(29,x+(cam_x-64),ly+qz)
+     spr(29,x+(cam_x-64),ly+qz-97,1,1,true,true)
+    end
+   end
+   if lava==true then
+    rectfill(cam_x-64,ly+6,cam_x+64,cam_y+64,8)
+    rectfill(cam_x-64,ly-96,cam_x+64,cam_y-65,8)
+   else
+    rectfill(cam_x-64,ly+6,cam_x+64,cam_y+65,12)
+    rectfill(cam_x-64,ly-96,cam_x+64,cam_y-65,12)
+   end
+   for x=0,128,6 do
+    if lava==true then
+  
+    end
+   end
+  end
+  if lavaactive=="up" then
+   lt+=lavaspd
+   if lt>=8 then lt=0 end
+   for x=-8,136,8 do
+     local qz=sin(x/100)*2
+     local lyc=ly+qz
+    if lava==true then
+     spr(30,x+(cam_x-64)-lt,lyc)
+    else
+     spr(29,x+(cam_x-64),ly+qz)
+    end
+   end
+   if lava==true then
+    rectfill(cam_x-64,ly+6,cam_x+64,cam_y+65,8)
+   else
+    rectfill(cam_x-64,ly+6,cam_x+64,cam_y+65,12)
+   end
+  end
+  for x=0,128,6 do
+    local cx=cam_x-64
+    local cy=cam_y-64
+    local qz=sin(x/100)*2
+    local lyc=ly+qz
+   if lava==true then
+    circ(x+rnd"2"+2+cx,lyc+7+rnd"2",1,9)
+    circ(x+rnd"2"+5+cx,lyc+5+rnd"2",1,9)
+   else
+    circ(x+2+cx,(ly+qz)+7,1,1)
+    circ(x+5+cx,(ly+qz)+5,1,1)
+   end
+   if lavaactive=="true" then
+    if lava==true then
+     circ(x+rnd"2"+2+cx,lyc+rnd"2"-96,1,9)
+     circ(x+rnd"2"+5+cx,lyc+rnd"2"-98,1,9)
+    else
+     circ(x+2+cx,(ly+qz)-96,1,1)
+     circ(x+5+cx,(ly+qz)-98,1,1)
+    end
+   end
+  end
   -- <transition>
   camera()
   color"0"
@@ -1052,6 +1694,21 @@ function _draw()
       end
     end
     tpos+=14
+  end
+  
+  if lava then
+   pal(14,141,1)
+   pal(1,130,1)
+   pal(15,13,1)
+   pal(4,136,1)
+--   pal(13,129,1)
+  else
+   pal(14,140,1)
+   pal(6,12,1)
+   pal(13,7,1)
+   pal(7,15,1)
+   pal(15,12,1)
+   pal(5,15,1)
   end
   -- </transition>
 end
@@ -1118,25 +1775,47 @@ end
 -->8
 --[map metadata]
 
+--@conf
+--[[
+param_names={"lava direction up/true (room)", "lava/ice active", "lava speed (0-1 preferred)", "isepicenter"}
+composite_shapes={}
+autotiles={{52, 54, 53, 39, 33, 35, 34, 55, 49, 51, 50, 48, 36, 38, 37, [0] = 32}, {111, 110, 106, 94, 105, 107, 106, 126, 121, 123, 122, 127, 108, 109, 118, 106, 33, 35, 106, [21] = 50, [23] = 106, [28] = 124, [29] = 36, [30] = 38, [31] = 124, [33] = 125, [0] = 125, [35] = 125, [40] = 122, [41] = 49, [42] = 51, [43] = 122, [45] = 122, [47] = 34}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [0] = 0}}
+]]
 --@begin
---level table
---"x,y,w,h,exit_dirs"
---exit directions "0b"+"exit_left"+"exit_bottom"+"exit_right"+"exit_top" (default top- 0b0001)
+--[[level table
+"x,y,w,h,exit,lavarising,is_hot,lavaspd,is_epicenter"
+lavarising:up/true(room)
+is_hot:true/false
+lavaspd:int(less then 1 best)
+exit directions 
+"0b"+"exit_left"+
+"exit_bottom"+
+"exit_right"+
+"exit_top" 
+(default top- 0b0001)
+]]
 levels={
-	"0,0,1,1",
- "1,0,3,1"
+  "0,0,3,1,0b0010,false,lava,0,false",
+  "3,0,2,1,0b0010,false,lava,0,false"
 }
 
 --<camtrigger>--
 --camera trigger hitboxes
 --"x,y,w,h,off_x,off_y"
 camera_offsets={
+  {
+    "0,0,25,16,0,0",
+    "26,0,22,16,50,0"
+  },
+  {}
 }
 --</camtrigger>--
 
 --mapdata string table
 --assigned levels will load from here instead of the map
 mapdata={
+  "¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹%&&&&&&&&&&&&&¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹233&&&&&&&&&&&¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹m2333&&&&&&&¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹zwwn¹%&&&&&&¹¹¹¹¹¹¹¹BRR¹¹¹BRRR¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹zwn¹2333333¹¹¹¹¹¹¹¹R¹¹¹¹¹R¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹mwl¹mwniii¹¹¹¹¹¹¹¹R¹¹¹¹¹R¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹mw|¹zwniii¹¹¹¹¹¹¹¹¹¹¹¹¹¹R¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹jwn¹¹¹mnii{¹¹¹¹¹¹¹¹¹¹¹¹¹¹,¹<¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹mwn¹¹¹znin¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹j\"#####$l¹¹¹¹¹¹¹mwwl¹¹¹█in¹¹²¹¹¹¹¹¹¹¹¹¹\"#####$kkw%w&&&&'wkkl¹¹¹¹\"##################$¹jk%w&&&&'ww{%&&&&w'{wwwkkl¹%&&&&&&&&&&&&&&&&&w'kww%&&&&&'w|¹2333334¹z{wwwwk%&&&&&&&&&&&&&&&&&&'ww{%&&&&w'|¹¹¹¹¹¹¹¹¹¹¹¹z{www%&&&&&&&&&&&&&&&&&&'{|¹2333334¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹z{w%&&&&&&&&&&&&&&&&&&'¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹m%&&&&&&&&&&",
+  "¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹min¹¹miin¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹min¹¹miin¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹jii|¹¹ziin¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹min¹¹¹¹min¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹mi|¹¹¹¹miil¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹jin¹¹¹¹¹miin¹¹¹¹¹¹¹¹¹¹M¹N¹¹¹¹¹¹¹min¹¹¹¹¹ziin¹¹¹¹¹¹¹¹¹ \"$¹¹¹¹¹¹¹¹min¹¹¹¹¹¹min¹¹¹¹¹¹¹¹¹ %'N¹¹¹¹¹¹M\"#$N¹¹¹¹¹miil¹¹²¹¹¹¹¹ %'¹¹¹¹¹¹¹¹%&'¹¹¹¹¹¹ziin¹####$¹¹ %'N¹¹¹¹¹¹¹234¹¹*¹¹¹¹min¹&&&&'¹¹ 24¹¹BRR¹¹]¹]¹^¹¹¹¹¹\"####&&&&'¹¹¹¹¹¹¹R¹¹¹¹¹¹¹¹¹¹¹¹¹¹%&&&&&&&&'¹¹¹¹¹¹¹RRR¹¹¹¹¹¹¹¹¹¹¹¹%&&&&&&&&'¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹%&&&&&&&&'¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹¹%&&&&"
 }
 --@end
 
@@ -1186,37 +1865,69 @@ function num2base256(number)
 end
 __gfx__
 000000000000000000000000088888800000000000000000000000000000000000000000000000000300b0b00a0aa0a000000000000000000000000000077000
-00000000088888800888888088888888088888800888880000000000088888800004000000000000003b33000aa88aa0000777770000000000000000007bb700
-000000008888888888888888888ffff888888888888888800888888088f1ff180009505000000000028888200299992000776670000000000000000007bbb370
-00000000888ffff8888ffff888f1ff18888ffff88ffff8808888888888fffff800090505049999400898888009a999900767770000000000000000007bbb3bb7
-0000000088f1ff1888f1ff1808fffff088f1ff1881ff1f80888ffff888fffff800090505005005000888898009999a9007766000077777000000000073b33bb7
-0000000008fffff008fffff00033330008fffff00fffff8088fffff808333380000950500005500008898880099a999007777000077776700770000007333370
-00000000003333000033330007000070073333000033337008f1ff10003333000004000000500500028888200299992007000000070000770777777000733700
-00000000007007000070007000000000000007000000700007733370007007000000000000055000002882000029920000000000000000000007777700077000
-000000006665666555000000000006664fff4fff4fff4fff4fff4fffd666666dd666666dd666066d000000000000000070000000000000000000000000000000
-000000006765676566700000000777764444444444444444444444446dddddd56ddd5dd56dd50dd5007700000770070007000007000000000000000000000000
-00000000677067706777700000000766000450000000000000054000666ddd55666d6d5556500555007770700777000000000000000000000000000000000000
-0070007007000700666000000000005500450000000000000000540066ddd5d5656505d500000055077777700770000000000000000000000000000000000000
-007000700700070055000000000006660450000000000000000005406ddd5dd56dd5065565000000077777700000700000000000000000000000000000000000
-067706770000000066700000000777764500000000000000000000546ddd6d656ddd7d656d500565077777700000077000000000000000000000000000000000
-5676567600000000677770000000076650000000000000000000000505ddd65005d5d65005505650070777000007077007000070000000000000000000000000
-56665666000000006660000000000055000000000000000000000000000000000000000000000000000000007000000000000000000000000000000000000000
-5777777557777777777777777777777577cccccccccccccccccccc77577777755555555555555555555555555555555500000000000000000000000000000000
-77777777777777777777777777777777777cccccccccccccccccc777777777775555555555555550055555555555555500000000000000000000000000000000
-777c77777777ccccc777777ccccc7777777cccccccccccccccccc777777777775555555555555500005555555500005500000000000000000000000000000000
-77cccc77777cccccccc77cccccccc7777777cccccccccccccccc7777777cc7775555555555555000000555555500005500000000000000000000000000000000
-77cccc7777cccccccccccccccccccc777777cccccccccccccccc777777cccc775555555555550000000055555500005555555555000000000000000000000000
-777cc77777cc77ccccccccccccc7cc77777cccccccccccccccccc77777cccc775555555555500000000005555500005555555555000000000000000000000000
-7777777777cc77cccccccccccccccc77777cccccccccccccccccc77777c7cc775555555555000000000000555555555555555555000000000000000000000000
-5777777577cccccccccccccccccccc7777cccccccccccccccccccc7777cccc775555555550000000000000055555555555555555000000000000000000000000
-77cccc7777cccccccccccccccccccc77577777777777777777777775777ccc77cccccccc50000000000000055555555500000005000000000000000000000000
-777ccc7777cccccccccccccccccccc77777777777777777777777777777cc777c77ccccc55000000000000555055555500000055000000000000000000000000
-777ccc7777cc7cccccccccccc77ccc777777ccc7777777777ccc7777777cc777c77cc7cc55500000000005555555005500000555000000000000000000000000
-77ccc77777ccccccccccccccc77ccc77777ccccc7c7777ccccccc77777ccc777cccccccc55550000000055555555005500005555000000000000000000000000
-77ccc777777cccccccc77cccccccc777777ccccccc7777c7ccccc77777cccc77cccccccc55555000000555555555555555555555000000000000000000000000
-777cc7777777ccccc777777ccccc77777777ccc7777777777ccc777777cccc77cc7ccccc55555500005555555505555555555555000000000000000000000000
-777cc777777777777777777777777777777777777777777777777777777cc777ccccc7cc55555550055555555555555555555555000000000000000000000000
-77cccc7757777777777777777777777557777777777777777777777557777775cccccccc55555555555555555555555555555555000000000000000000000000
+00000000088888800888888088288888088888800888880000000000088888800004000000000000003b33000aa88aa0000777770000000000000000007bb700
+00000000882888888828888882277778882888888888828008888880227177180009505000000000028888200299992000776670000000000000000007bbb370
+000000008227777882277778887177188227777887777220882888888277777800090505049999400898888009a999900767770000000000000000007bbb3bb7
+000000008871771888717718087777708871771881771780822777788877777800090505005005000888898009999a9007766000077777000000000073b33bb7
+0000000008777770087777700022220008777770077777808877777808222280000950500005500008898880099a999007777000077776700770000007333370
+0000000000222200002222000d0000d00d222200002222d008717710002222000004000000500500028888200299992007000000070000770777777000733700
+0000000000d00d0000d000d00000000000000d000000d0000dd222d000d00d000000000000055000002882000029920000000000000000000007777700077000
+000000006665666555000000000006664fff4fff4fff4fff4fff4fffd666666dd666666dd666066d0000000000000000700000000c000c0008880000000000d5
+000000006765676566700000000777764444444444444444444444446dddddd56ddd5dd56dd50dd5007700000770070007000007c7c0c7c08222888800000050
+00000000677067706777700000000766000450000000000000054000666ddd55666d6d5556500555007770700777000000000000c71c711c299922220000000d
+0070007007000700666000000000005500450000000000000000540066ddd5d5656505d500000055077777700770000000000000c1cc11cc98889999000000dd
+007000700700070055000000000006660450000000000000000005406ddd5dd56dd5065565000000077777700000700000000000cccccccc8888888800000dd5
+067706770000000066700000000777764500000000000000000000546ddd6d656ddd7d656d500565077777700000077000000000cccccccc8888888800000d50
+5676567600000000677770000000076650000000000000000000000505ddd65005d5d65005505650070777000007077007000070cccccccc888888880000000d
+56665666000000006660000000000055000000000000000000000000000000000000000000000000000000007000000000000000cccccccc888888880000000d
+15555551155555555555555555555550e66ddd11111111111dddd6ee16565551000000c100000505000000d100000000000000000888888000000000000000d5
+6ddddd65556ee666ddddd66d666ee655e66ddde111111111dd6dd66e6d666dd6000001c100500558000001660000000000000000089888880cccc00000000050
+eddddddee6e11e6e66dd6eeee6e11e6ee666ddee11111111dd66d66e6dd6dddd000ccc1c005885550001d6d60cc0cc0000d0d00089898888cc111cc00000000d
+edddddeee6e11e66e666e6dd66e11e6e1e666ede11111111ddd666e1dde6d6ed001ccc225055882200d66644ccccccc00ddddd0088988888c1cc111c000000dd
+e6d6de6e665ee56edeee666de65ee566eee6e1dd11111111ddee6ee16dee6eed00c1c22455558222001d6444ccccccc00ddddd0088888988c1cc111100000dd5
+e666e66ee66556e16e66e6661e65566eee1e1d1d111111116d6eee6ee66eee660cc24442088222220d6244440ccccc0000ddd00088889898c111111100000d50
+ee6ed6eeeee66e11ee66e1ee11e66eeee661dd11111111111ed6e66eeeeeddee11224244552211221642444400ccc000000d000088888980c11c11110000000d
+1eeeeee1ee6ee11111ee11ee111ee6eee6ddddd11111111111ed66eeeeeddddecc421c12052288126d421114000000000000000008888880cc111ccc0000000d
+edddddeeed1d11111111d1d11111d1de155555551e66666665555551edddddddcc421c14582211121d421114000000000000000000ccccc0cccccccc0000071c
+edd6d6deed16111d11ddd1ddd11161de6dd666d6666666d66dd66ddeed6ddd6e11224242052222226642444400000000000000000c1ccccc0ccccccc00000ccc
+edde6edee6d6d1dd16ddd6eddd1d6d6e6d6e6e6dedd66ddddd6ddddeede6d6ee0cc244415582211101d244210880880000606000c1c1ccc00ccccccc00000ccc
+eddeedde5e66d6edde666eddde6d66e5d6eeeee6deddd66e66dddddeedde6eee00c1c244058551880066642188888880066666000c1ccc0000cccccc000001c1
+e6dde6eee5e66ed66deee6d66de66e5ed6eeeee6eeee66eedddddddeeed6e6ee001ccc22005881110016dd44888888800666660000ccc1c000077ccc0000071c
+ee6d6eeeee566666666ee666666665eee66eee66e6deeeeddddddd6eee66e666000ccc1c05558858000d166608888800006660000ccc1c1c000077cc00000ccc
+eee6edde1ee55e6ee6e11e6ee6e55ee1ee66e66eee66ded6ddddd6ee1eee1e6e000001c10000555800000dd60088800000060000ccccc1c00000077700000ccc
+eededdde111ee1e11e1111e11e1ee111111161111111111111d1111111e111e1000000c1000050550000001d00000000000000000ccccc0000000007000001c1
+0000000088888888000dd000777777777777777777777777002222222222222222222200000000000000000000000000000000070070000007ee7e7000000000
+000000008eeeeeee00dbbd00700007000070000700707007022222222222222222222220000000000000000000000000000080080e800070e88ee82700000000
+000000008eee8eee0dbbb3d07077070000707707007770072222222222222222222222220000000000000000000000007000e80278e007807828ee8e00000000
+000000008ee888eedbbb3bbd707707770070000700007777222222222222222222222222000000000000000000000000078007eeee828e00ee82eee700000000
+000000008e8e8e8ed3b33bbd7000000700707707000007072222222222222222222222220000000000000000000000000ee8288e8e28e000e7ee7eee00000000
+000007778eee8eee0d3333d0777707770077777700000777022222222222222222222220000000000000000000000000002eee88228e878072eeee8800000000
+00077ccc8eee8eee00d33d0070070700000000000000000702222222222222222222222000000000000000000000000000022228828820008227e82800000000
+007ccccc8eeeeeee000dd00070077700000000000000000722222222222222222222222200000000000000000000000000eee882222e8ee8087ee88000000000
+007ccccceeeeeeee000990007000000000000000000000072222222222222222222222220000000000000000000000007782ee2822822770000ff00000000e1e
+007ccccceeeee8ee009289007000000000000000000077772222222222222222222222220000000000000000000000000e88e28e88e888e700efff00000fefe1
+0007ccccee88888e0982289077777000000000000000700722222222222222222222222200000000000000000000000000008e72827e28000f1ffff000ffeff1
+007cccccee8ee8ee988828897000700000000000000077772222222222222222222222220000000000000000000000000008e728e82770000ff1ffff0fff1ff1
+0cc0c0ccee8eeeee9888288970707000000000000000070722222222222222222222222200000000000000000000000000e880e8e2ee8e00ffffeffffff1fff1
+0c00c00ce888eeee0982aa90700070000000000000007777222222222222222222222222000000000000000000000000007e000e8000e700ffff1ffffff1fff1
+0000cc0cee8eeeee0092a9007777700000000000000070072222222222222222222222220000000000000000000000000000000000000000ffff1fff0ffefffe
+00000c00eeeeeeee000990007000000000000000000077772222222222222222222222220000000000000000000000000000000000000000eee111ee0000ffee
+000000000000dddd0000000070000000000000000077700722222222222222222222222200000000000fff000000000000fffffeee1eef0000ffff0000000000
+000980000000d22d00000000700000000000000000707007222222222222222222222222000000ff00fffff0ff0000000fefffffe1fffff00efffff00ffff000
+00a000220000d22d7777777770000000000000007770777722222222222222222222222200fe1fff0efffffffff1ef00fffe1fffe1fffffffeffffffffffffef
+080022220000dddd770077007000000000777000700000072222222222222222222222220fffefffffeffffefffefff0ffff1fff11fffffffeffffffffffff1f
+0a02298800000000777777777000000000707000777077072222222222222222222222220fff1fffff11fffefff1fff0fffff1ffff1fffffffefffffffffff1f
+0002999800000000770077007000000077777000007077072222222222222222222222220fff1fffffff1111fff1fff00ffff111fff11ee0ff1fffffffffe1ff
+0022998800000000770077007000000070007000007000070222222222222222222222200111fffefffff1eeefff111000fff1eeffeffff00ff11e000eeeffff
+002288880000000077007700777777777777777777777777002220022222222220022200ff1ffeeeeffff1eeeeeff1ff00fff1eeeefffff00fffff0000ffff00
+002288980000077177777770000000000000000000000000fe1eee11111f111111111111eee1fffeeee1eeeeeeeff1ffeeeeee1eeeee111eff111e111feffff0
+002289990000017770070077770000000000000077777770ffeffe1111ff1f111ee11e110111fffeee111eeeefff1110eeeeee1eee11fe1efff1ffff1ffeffff
+0002289900000ccc77077770077770000000077770070070fffff11e11f1fff1eeee1ee10eee1fefe1eee1e1fff1fff0eeeee1eee11fff11ffff1fffefffeee0
+0002228800000000000700777700777700777700777707701fff111e1f11fff1eee1eeee0ffee1ff1eeffe1efff1fff0eeeee111e1effe1effffefff1ffffff0
+00002222000000000007007007777007777007777007000011f11ffffff1fff11e11ee110fffe1ffffeffffffffefff01eee111111eeee1e0ffffeff11ffffff
+0000002200000ccc0007007007007777007777007007000011111ffffff11f1111e1e1e100fff1fffffffffffff1ef00e1111111ee1ee1ee0ffffef01f1efff0
+000000000000017700070070070070077770070070070000111ff1111f111111111e1eee000ffeff0fffff0fff000000ee11ee11eee111ee00ffff00fff1ef00
+000000000000077100070070070070070070070070070000111ff11111111111111111e1000000000efff00000000000ee1eee1eeeeeee1e000ff000ffff0000
 __label__
 cccccccccccccccccccccccccccccccccccccc775500000000000000000000000000000000070000000000000000000000000000000000000000000000000000
 cccccccccccccccccccccccccccccccccccccc776670000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1348,25 +2059,8 @@ ccccccccccccccccccccccccccccccccccccccccccccc77700000000000000000000000000000000
 cccccccccccccccccccccccccccccccccccccccccccccc7700000000000000000000000000000000000000000000000000000000000000000000000000000000
 
 __gff__
-0000000000000000000000000000000002020202080808000000000000000000030303030303030304040404040000000303030303030303030404040400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000002020202484848000000000000000000434343434343434300000000000000004343434343434343000000000000000000001083838300000000000000040404000000939393000000000000000404040000008383830000000404040404040400000000000004040404040404040404
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-__map__
-2b3b29000000000000000000002a3b2b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-3b290000000000000000000000002a3b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-2900000000000001000000000000002a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000132122222312000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000133132323312000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-1000000000001111111100000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-2708000000000000000000000000082700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-37080000000000000b0000000000083700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000a0000000000000c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000001717170000000014151600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000009090000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-2222222223171720201717212222222223000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-3825252526000000000000242525253826000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
 010100000f0001e000120002200017000260001b0002c000210003100027000360002b0003a000300003e00035000000000000000000000000000000000000000000000000000000000000000000000000000000
 010100000970009700097000970008700077000670005700357003470034700347003470034700347003570035700357003570035700347003470034700337003370033700337000070000700007000070000700
