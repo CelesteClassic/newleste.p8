@@ -682,6 +682,7 @@ init=function(_ENV)
  outline=true
  hitbox=rectangle(2,5,10,12)
  hide=false
+ pathid=1
 end,
 update=function(_ENV)
  if lava==false then
@@ -724,7 +725,7 @@ update=function(_ENV)
  
 end,
 draw=function(_ENV)
-  if hide==false and lava==false then--draw sprs
+  if not hide and not lava then--draw sprs
     sspr(0,32,8,16,x,y)
     sspr(0,32,8,16,x+8,y,8,16,true)
   elseif hide==false and lava then
