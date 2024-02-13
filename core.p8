@@ -739,12 +739,12 @@ bpath={
 init=function(_ENV)
  _g.paths=_g.paths or {}
  
- add(_g.paths,{x=x,y=y,num=tile==80 and 1 or 96 and 2 or 3})
+ add(_g.paths,{x=x,y=y,num=sprite==80 and 1 or sprite==96 and 2 or 3})
  _g.paths[1].next=true
 end,
 
 update=function(_ENV)
-
+ 
 end,
 
 draw=function(_ENV)
