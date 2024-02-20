@@ -72,11 +72,16 @@ Following is a single screen level.
 
 F-05, i.e. the second image, and the related rooms can take up a lot of space and hence might be hard to implement with other chapters.
 Due to this, there arises a need to shorten, distribute and modify the rooms to fit the needs.
+
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/f-03.png" alt="f-03" />
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/f-05.png" alt="f-05" />
+
 and the related rooms of it like f-06, 07, etc.
+
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/f-10.png" alt="f-10" />
+
 This level has a significant amount of vertical scrolling and hence might have to be distributed into two rooms due to the already big F-05 and related rooms.
+
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/f-11.png" alt="f-11" />
 
 ### Summit-Specific Ending Levels
