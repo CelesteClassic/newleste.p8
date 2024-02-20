@@ -16,25 +16,38 @@ This document lists and talks about possible design choices and levels that shou
 All the images are from [Berrycamp](https://berrycamp.github.io). Check out the maps on the website for the full levels.
 
 ### Early Summit-Specific Levels
+
 These levels will have decent amount of horizontal scrolling but can be implemented without distribution/segmentation/shortening.
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/a-02.png" alt="a-02" />
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/a-03.png" alt="a-03" />
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/a-04.png" alt="a-04" />
+
 ### Summit-City Levels
-Following levels also have some amount of vertical and horizontal scrolling but can still be implemented wihtou distribution/segmentation/shortening.
+
+Following levels also have some amount of vertical and horizontal scrolling but can still be implemented wihtout distribution/segmentation/shortening.
+
+<br />
+
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/b-00.png" alt="b-00" />
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/b-02.png" alt="b-02" />
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/b-00.png" alt="b-00" />
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/b-05.png" alt="b-05" />
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/b-09.png" alt="b-09" />
+
 ## Summit-Old-site Levels
+
 C-01 and C-05, i.e. the second and the third image shown here, have significant amount of vertical scrolling in them.
 This, hence, can cause a need to distribute/shorten/segment them arise but can be implemented with clever manipulation of space in the level and the levels in the carts.
+
+<br />
+
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/c-00.png" alt="c-00" />
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/c-01.png" alt="c-01" />
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/c-05.png" alt="c-05" />
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/c-09.png" alt="c-09" />
+
 ### Summit-Resort Levels
+
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/d-01.png" alt="d-01" />
 Following is a single screen level.
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/d-02.png" alt="d-02" />
@@ -46,13 +59,17 @@ Following has a decent amount of scroll but can be implemented without too many 
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/d-10.png" alt="d-10" />
 Following is a single screen level.
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/d-11.png" alt="d-11" />
+
 ### Summit-Ridge Levels
+
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/e-00.png" alt="e-00" />
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/e-03.png" alt="e-03" />
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/e-06.png" alt="e-06" />
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/e-07.png" alt="e-07" />
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/e-13.png" alt="e-13" />
+
 ### Summit-Reflection Levels
+
 F-05, i.e. the second image, and the related rooms can take up a lot of space and hence might be hard to implement with other chapters.
 Due to this, there arises a need to shorten, distribute and modify the rooms to fit the needs.
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/f-03.png" alt="f-03" />
@@ -61,8 +78,11 @@ and the related rooms of it like f-06, 07, etc.
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/f-10.png" alt="f-10" />
 This level has a significant amount of vertical scrolling and hence might have to be distributed into two rooms due to the already big F-05 and related rooms.
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/f-11.png" alt="f-11" />
+
 ### Summit-Specific Ending Levels
+
 Due to the amount of scrolling required in these rooms, they are to be either shortened or be distributed if necessary.
+
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/g-01.png" alt="g-01" />
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/g-02.png" alt="g-02" />
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/g-03.png" alt="g-03" />
