@@ -1,6 +1,5 @@
 # Summit Design for Newleste.p8
 
-
 This document lists and talks about possible design choices and levels that should be added in the summit chapter for the newleste.p8 project.
 
 # What will be the levels?
@@ -18,9 +17,9 @@ All the images are from [Berrycamp](https://berrycamp.github.io). Check out the 
 ### Early Summit-Specific Levels
 
 These levels will have decent amount of horizontal scrolling but can be implemented without distribution/segmentation/shortening.
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/a-02.png" alt="a-02" />
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/a-03.png" alt="a-03" />
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/a-04.png" alt="a-04" />
+<img src="./summit_assets/celeste-summit-a_380x264.png" alt="a-02" />
+<img src="./summit_assets/celeste-summit-a_664x184.png" alt="a-03" />
+<img src="./summit_assets/celeste-summit-a_482x336.png" alt="a-04" />
 
 ### Summit-City Levels
 
@@ -28,11 +27,10 @@ Following levels also have some amount of vertical and horizontal scrolling but 
 
 <br />
 
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/b-00.png" alt="b-00" />
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/b-02.png" alt="b-02" />
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/b-00.png" alt="b-00" />
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/b-05.png" alt="b-05" />
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/b-09.png" alt="b-09" />
+<img src="./summit_assets/celeste-summit-a_320x240.png" alt="b-00" />
+<img src="./summit_assets/celeste-summit-a_632x440.png" alt="b-02" />
+<img src="./summit_assets/celeste-summit-a_368x224.png" alt="b-05" />
+<img src="./summit_assets/celeste-summit-a_1084x1208.png" alt="b-09" />
 
 ## Summit-Old-site Levels
 
