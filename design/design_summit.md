@@ -39,10 +39,10 @@ This, hence, can cause a need to distribute/shorten/segment them arise but can b
 
 <br />
 
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/c-00.png" alt="c-00" />
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/c-01.png" alt="c-01" />
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/c-05.png" alt="c-05" />
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/c-09.png" alt="c-09" />
+<img src="./summit_assets/summit-oldsite-c-00.png" alt="c-00" />
+<img src="./summit_assets/summit-oldsite-c-01.png" alt="c-01" />
+<img src="./summit_assets/summit-oldsite-c-05.png" alt="c-05" />
+<img src="./summit_assets/summit-oldsite-c-09.png" alt="c-09" />
 
 ### Summit-Resort Levels
 
