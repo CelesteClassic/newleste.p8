@@ -41,20 +41,21 @@ This, hence, can cause a need to distribute/shorten/segment them arise but can b
 
 <img src="./summit_assets/summit-oldsite-c-00.png" alt="c-00" />
 <img src="./summit_assets/summit-oldsite-c-01.png" alt="c-01" />
+In the following room, only the right-hand side room is to be made, the berry one. Instead of the berry, there will be a path to exit on top.
 <img src="./summit_assets/summit-oldsite-c-05.png" alt="c-05" />
 <img src="./summit_assets/summit-oldsite-c-09.png" alt="c-09" />
 
 ### Summit-Resort Levels
 
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/d-01.png" alt="d-01" />
+<img src="./summit_assets/summit-resort-d-01.png" alt="d-01" />
 Following is a single screen level.
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/d-02.png" alt="d-02" />
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/d-05.png" alt="d-05" />
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/d-06.png" alt="d-06" />
+<img src="./summit_assets/summit-resort-d-05.png" alt="d-05" />
+<img src="./summit_assets/summit-resort-d-06.png" alt="d-06" />
 Following is a single screen level.
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/d-09.png" alt="d-09" />
 Following has a decent amount of scroll but can be implemented without too many hardships.
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/d-10.png" alt="d-10" />
+<img src="./summit_assets/summit-resort-d-10.png" alt="d-10" />
 Following is a single screen level.
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/d-11.png" alt="d-11" />
 
