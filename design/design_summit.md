@@ -61,18 +61,18 @@ Following is a single screen level.
 
 ### Summit-Ridge Levels
 
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/e-00.png" alt="e-00" />
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/e-03.png" alt="e-03" />
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/e-06.png" alt="e-06" />
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/e-07.png" alt="e-07" />
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/e-13.png" alt="e-13" />
+<img src="./summit_assets/summit-ridge-e-00.png" alt="e-00" />
+<img src="./summit_assets/summit-ridge-e-03.png" alt="e-03" />
+<img src="./summit_assets/summit-ridge-e-06.png" alt="e-06" />
+<img src="./summit_assets/summit-ridge-e-07.png" alt="e-07" />
+<img src="./summit_assets/summit-ridge-e-13.png" alt="e-13" />
 
 ### Summit-Reflection Levels
 
 F-05, i.e. the second image, and the related rooms can take up a lot of space and hence might be hard to implement with other chapters.
 Due to this, there arises a need to shorten, distribute and modify the rooms to fit the needs.
 
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/f-03.png" alt="f-03" />
+<img src="./summit_assets/summit-reflection-f-03.png" alt="f-03" />
 <img src="https://berrycamp.github.io/img/celeste/previews/summit/a/f-05.png" alt="f-05" />
 
 and the related rooms of it like f-06, 07, etc.
@@ -81,15 +81,15 @@ and the related rooms of it like f-06, 07, etc.
 
 This level has a significant amount of vertical scrolling and hence might have to be distributed into two rooms due to the already big F-05 and related rooms.
 
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/f-11.png" alt="f-11" />
+<img src="./summit_assets/summit-reflection-f-11.png" alt="f-11" />
 
 ### Summit-Specific Ending Levels
 
 Due to the amount of scrolling required in these rooms, they are to be either shortened or be distributed if necessary.
 
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/g-01.png" alt="g-01" />
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/g-02.png" alt="g-02" />
-<img src="https://berrycamp.github.io/img/celeste/previews/summit/a/g-03.png" alt="g-03" />
+<img src="./summit_assets/summit-end-01.png" alt="g-01" />
+<img src="./summit_assets/summit-end-02.png" alt="g-02" />
+<img src="./summit_assets/summit-end.png" alt="g-03" />
 
 # Chapter Arc
 
