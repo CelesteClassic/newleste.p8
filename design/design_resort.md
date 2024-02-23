@@ -51,3 +51,12 @@ All the images are from [Berrycamp](https://berrycamp.github.io). Check out the 
 # Chapter Arc
 
 It should be tried that first 4-6 levels be single screen ones and gradually add scrolling. The most scrolling would be found in mess levels and roof levels.
+
+# Mess Levels Layout
+
+As the mess levels are intertwined, they are beyond the limits of pico-8 and the space limitations of newleste.p8.
+That is why the mess levels are given linear progression in newleste.p8 and the specific levels and their orders are debatable and subject to change.
+A lot of new levels might have to be designed and a lot of given levels might have to be redesigned.
+
+Keeping in mind these constraints should the levels be made.
+If there are demands to change a level or add new levels or change the order of levels they are to be discussed in the official Celeste Classic discord server.
