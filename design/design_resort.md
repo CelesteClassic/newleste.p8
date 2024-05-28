@@ -1,6 +1,6 @@
 # Resort Write-Up
 
-This document features the writeup for the levels to be included in resort chapter of newleste.p8
+This document outlines the writeup for the levels to be included in resort chapter of newleste.p8
 
 # Levels
 
