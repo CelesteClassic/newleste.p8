@@ -8,7 +8,7 @@ This document features the writeup for the levels to be included in resort chapt
 
 - The chapter starts with introductory levels that introduce to main mechanics.
 - Then the mess levels tests those mechanics.
-- The roof levels test the skill of player in those mechanics along in a boss fight.
+- The roof levels test the skill of player in those mechanics along with a boss fight.
 
 ## Key Levels from Celeste (2018)
 
@@ -50,7 +50,7 @@ All the images are from [Berrycamp](https://berrycamp.github.io). Check out the 
 
 # Chapter Arc
 
-It should be tried that first 4-6 levels be single screen ones and gradually add scrolling. The most scrolling would be found in mess levels and roof levels.
+It should be said that first 4-6 levels are single screen ones and scrolling is gradually added later in the chapter. The most scrolling would be found in mess levels and roof levels.
 
 # Mess Levels Layout
 
