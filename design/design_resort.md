@@ -6,8 +6,8 @@ This document outlines the writeup for the levels to be included in resort chapt
 
 ## Summary
 
-- The chapter starts with introductory levels that introduce the player to main mechanics.
-- Then the mess levels then the player's knowledge of the mechanics.
+- The chapter starts with introductory levels that introduce the player to the main mechanics.
+- Then the mess levels test the player's knowledge of the mechanics.
 - The roof levels combine the previously introduced mechanics along with the added challenge of the Oshiro boss fight.
 
 ## Key Levels from Celeste (2018)
@@ -54,11 +54,9 @@ It should be said that first 4-6 levels are single screen ones and scrolling is 
 
 # Oshiro boss fight
 
-Because the fight takes place lineraly, it wouldn't be a challenge to implement. The boss is to be directly adapted for pico-8 from the Celeste 2018 version. The rooms for Oshiro should mostly be the same. Some rooms can be removed upon discussion over it and some new fan-made rooms can be added.
+Because the fight takes place lineraly, it wouldn't be a challenge to implement. The boss is to be directly adapted for pico-8 from the Celeste 2018 version. The rooms for Oshiro should mostly be the same.
 
 Due to the already substantial amount of rooms for the resort chapter, the Oshiro boss fight should be limited to 6 long scrolling rooms. 2 of them being inside the hotel, while the other four being on the roof. At the end the cutscene shall play as in the 2018 version.
-
-There shall not be a need to keep track of Oshiro health as the fight is only over when madeline reaches the last room.
 
 # Mess Levels Layout
 
