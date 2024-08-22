@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 41
+version 42
 __lua__
 --newleste.p8 core
 
@@ -530,65 +530,44 @@ smoke={
 }
 launch={
 init=function(_ENV)
- -- ⬇️ thanks to wuff for this script
  while tile_at((right()+1)\8,y\8) == 81 do hitbox.w += 8 end
  while tile_at(x\8,(bottom()+1)\8) == 81 do hitbox.h += 8 end
  solid_obj=true
  offy=0
  _hitbox=hitbox
- _y=y
+ _y,_x=y,x
+ hidefor=0
  outline=false
+ hide=false
+ flipped=false
+ t2=0
+ tm=10
 end,
 update=function(_ENV)
-if not hide then
- solid_obj=true
- hitbox=rectangle(-1,-1,_hitbox.w+2,_hitbox.h+1)
- local hit=player_here()
- hitbox=_hitbox
- y+=sin(-offy)
- if hit then
-  hit.y+=sin(-offy)
-  if not lava then
-   shatter=true
-  end
- end
- if (hit or shatter) then
-  offy+=lava and 0.06 or 0.0025
-  if not lava then
-   shatter=true
-  end
- else
-  y=_y
-  offy=0
-  shatter=false
- end
- if y<_y and lava then
-  hide=true
-  hit.spd.y=-3
-  hit.spd.x*=2
-  hidetimer=60
-  y=_y
- elseif y>_y+8 then
-  hide=true
-  hidetimer=60
-  y=_y
- end
-else 
- solid_obj=false
-end
- hitbox=_hitbox
- if hide then
-  hidetimer-=1 
-  if hidetimer<0 then
-   hide=false
-  end
- end
+	hitbox=rectangle(-1,-1,hitbox.w+2,hitbox.h+1)
+	local hit=player_here()
+	
+	if not hide then
+	if lava then
+		
+
+	else
+		if hit or shatter then
+			shatter=true
+			y=appr(y,y+9,.3)
+			if (hit) hit.y+=.3
+			if (y>_y+8) hidefor=90 y=_y shatter=false
+		end
+	end
+	end
+	hide=hidefor>0
+	solid_obj=not hide
+	hidefor=max(0,hidefor-1)
+	hitbox=_hitbox
 end,
 
 draw=function(_ENV)
 if not hide then 
- 
-
   spr(70,x,y)
   spr(72,x+(hitbox.w-8),y)
   spr(102,x,y+(hitbox.h-8))
@@ -606,11 +585,9 @@ if not hide then
     spr(87,lx,ly)
    end
   end
-  
-  
   spr(82,x+hitbox.w/2-4,y+hitbox.h/2-4)
 elseif player_here() then
- rect(x,y,x+hitbox.w,y+hitbox.h,6)
+ rect(x,y,right(),bottom(),6)
 end
 pal()
 end
