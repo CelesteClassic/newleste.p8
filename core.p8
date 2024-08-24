@@ -551,7 +551,10 @@ update=function(_ENV)
 	if lava then
 		if hit or khit then
 			if (hit) khit=hit
-			if (not hit) hit=khit
+			if (not hit and khit) hit=khit
+		 	local function a()
+		 		return hit.y<y
+		 	end
 		 	if not moved then
 		 		hx,hy=hit.x+hit.hitbox.w/2,hit.y+hit.hitbox.h/2
 		 		tx,ty=x+hitbox.w/2,y+hitbox.h/2
@@ -562,26 +565,29 @@ update=function(_ENV)
 		 		
 		 		if hy>ty then
 		 			spd=vector(-qq,-qq)
---		 			hit.spd=vector(-qq,-qq)
+					hit.spd=vector(a() and 0 or -qq,-qq) 
 		 			a=true
 		 		else
 		 			spd=vector(-qq,qq)
---		 			hit.spd=vector(-qq,qq)
+					hit.spd=vector(a() and 0 or -qq,qq) 
 		 			b=true
 		 		end
 		 	elseif hx<tx-4 then
 		 		moved=true
 		 		if hy>ty then
 		 			spd=vector(qq,-qq)
-		 		c=true
+					hit.spd=vector(a() and 0 or qq,-qq) 
+		 			c=true
 		 		else
 		 			spd=vector(qq,qq)
+					hit.spd=vector(a() and 0 or qq,qq) 
 		 			d=true
 		 		end
 		 	else
 		 		moved=true
 		 		e=true
 		 		spd=vector(0,qq)
+		 		hit.spd=vector(0,qq)
 		 	end   
      
 		end
@@ -598,17 +604,21 @@ update=function(_ENV)
 			hidefor=80
 			spd=vector(0,0)
 			x,y=_x,_y
-			if not e then
-				khit.spd=vector((qq*(a or b and -1 or 1)/1.3),(qq*(a or c and -1 or 1))/1.3)
-			else
-				khit.spd=vector(0,qq)
+			local hit=player_here()
+			if hit then
+				if not e then
+					hit.spd=vector((qq*((a or b) and -1 or 1)/1.3),(qq*((a or c) and -1 or 1))/1.3)
+				else
+					hit.spd=vector(0,qq)
+				end
 			end
 			q=false
-			khit=nil
 			moved=false
 			t2=4
 			tm=2
 			qq=2
+						khit=nil
+
 			a,b,c,d,e=false,false,false,false,false
 		end
 		
