@@ -1036,7 +1036,7 @@ badeline={
     target_x,target_y=x,y
     rx,ry=x,y
     --hitbox=rectangle(-4,-2,16,12)
-    attack=0 --hardcoded for now, will eventually be loaded from level table
+    attack=2 --hardcoded for now, will eventually be loaded from level table
     --b=_ENV
     attack_timer=0
   end,
@@ -1055,6 +1055,7 @@ badeline={
         if hit then
           attack_timer=1
           destroy_object(laser or {})
+          laser=nil
           if next_node>#nodes then
             target_x=lvl_pw+50
             node=-1
@@ -1112,6 +1113,7 @@ badeline={
             laser.badeline=_ENV
           end
         end
+       
       end
 
     end
@@ -1143,6 +1145,7 @@ badeline={
     end
     draw_obj_sprite(_ENV)
     pal()
+    ?attack_timer,x,y,8
 
   end
 }
@@ -1278,7 +1281,6 @@ end
 laser={
   layer=3,
   init=function(_ENV)
-    local _ENV=_ENV
     outline=false
     timer=0
     particles={}
@@ -1294,6 +1296,7 @@ laser={
       end
     elseif timer>=48 and #particles==0 then
       destroy_object(_ENV)
+      badeline.laser=nil
     end
     foreach(particles, function(p)
       p.x+=p.dx
@@ -1448,6 +1451,7 @@ osc_plat={
   init=fall_plat.init, -- kinda terrible because depends on fall_plat implementation, but tokens
   end_init=function(_ENV)
     hitbox.w+=8
+    
     if not badestate then
       timer=1
     end
