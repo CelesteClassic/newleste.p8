@@ -81,12 +81,15 @@ dead_particles={}
 player={
   layer=2,
   init=function(_ENV)
-    grace,jbuffer,djump,dash_time,dash_effect_time,dash_target_x,dash_target_y,dash_accel_x,dash_accel_y,hitbox=0,0,max_djump,0,0,0,0,0,0,rectangle'1,3,6,5'
-    spr_off,collides,bouncetimer=0,true,0
+    feather,collides,djump,hitbox=false,true,max_djump,rectangle'1,3,6,5'
     create_hair(_ENV)
     -- <fruitrain> --
-    berry_timer,feather,_berry_count=0,false,0
     particles={}
+    
+    --zero vars
+    foreach(split"bouncetimer,grace,jbuffer,dash_time,dash_effect_time,dash_target_x,dash_target_y,dash_accel_x,dash_accel_y,spr_off,berry_timer,_berry_count", function(var)
+      _ENV[var]=0
+    end)
     -- </fruitrain> --
   end,
   update=function(_ENV)
@@ -116,7 +119,7 @@ player={
 
     -- spike collision / bottom death
     if is_flag(0,0,-1) or
-	    y>lvl_ph then
+	    y>lvl_ph and not exit_bottom then
 	    kill_player(_ENV)
     end
 
@@ -361,9 +364,12 @@ player={
         spd.x~=0 and h_input~=0 and 1+spr_off%4 or 1 -- walk or stand
       update_hair(_ENV)
       -- exit level off the top (except summit)
-      if y<-4 and levels[lvl_id+1] then
-        next_level()
-      end
+    if (exit_right and left()>=lvl_pw or
+        exit_top and y<-4 or
+        exit_left and right()<0 or
+        exit_bottom and top()>=lvl_ph) and levels[lvl_id+1] then
+      next_level()
+    end
 
       -- was on the ground
       was_on_ground=on_ground
@@ -436,34 +442,33 @@ end
 -- [other entities]
 
 player_spawn={
-  layer=2,
   init=function(_ENV)
-    sfx(15)
+    layer=2
+    sfx"15"
     sprite=3
     target=y
     y=min(y+48,lvl_ph)
-		_g.cam_x,_g.cam_y=mid(x,64,lvl_pw-64),mid(y,64,lvl_ph-64)
+    _g.cam_x,_g.cam_y=mid(x,64,lvl_pw-64),mid(y,64,lvl_ph-64)
     spd.y=-4
     state=0
     delay=0
     create_hair(_ENV)
-    djump=_g.max_djump
+    djump=max_djump
     --- <fruitrain> ---
-    for i=1,#fruitrain do
-      local f=init_object(fruit,x,y,fruitrain[i].spr)
-      f.follow=true
-      f.target=i==1 and _ENV or fruitrain[i-1]
-      f.r=fruitrain[i].r
-      f.fruit_id=fruitrain[i].fruit_id
-      fruitrain[i]=f
-    end
+    foreach(fruitrain, function(f)
+      --this gets called many times but saves tokens for checking if fruitrain is empty
+      fruitrain[1].target=_ENV
+
+      add(objects,f)
+      f.x,f.y=x,y
+      fruit.init(f)
+    end)
     --- </fruitrain> ---
   end,
   update=function(_ENV)
     -- jumping up
     if state==0 and y<target+16 then
-        state=1
-        delay=3
+        state,delay=1, 3
     -- falling
     elseif state==1 then
       spd.y+=0.5
@@ -474,12 +479,9 @@ player_spawn={
           delay-=1
         elseif y>target then
           -- clamp at target y
-          y=target
-          spd=v0()
-          state=2
-          delay=5
+          y,spd,state,delay,_g.shake=target,vector(0,0),2,5,4
           init_smoke(0,4)
-          sfx(16)
+          sfx"16"
         end
       end
     -- landing and spawning player object
@@ -488,19 +490,19 @@ player_spawn={
       sprite=6
       if delay<0 then
         destroy_object(_ENV)
-        local p=init_object(player,x,y)
+        local p=init_object(player,x,y);
         --- <fruitrain> ---
-        if (fruitrain[1]) fruitrain[1].target=p
+        (fruitrain[1] or {}).target=p
         --- </fruitrain> ---
       end
     end
     update_hair(_ENV)
   end,
   draw=player.draw
-  -- draw=function(_ENV)
-  --   set_hair_color(_g.max_djump)
-  --   draw_hair(_ENV,1)
-  --   draw_obj_sprite(_ENV)
+  -- draw=function(this)
+  --   set_hair_color(max_djump)
+  --   draw_hair(this,1)
+  --   draw_obj_sprite(this)
   --   unset_hair_color()
   -- end
 }
@@ -670,59 +672,50 @@ smoke={
 
 --- <fruitrain> ---
 fruitrain={}
----[[
 fruit={
   check_fruit=true,
   init=function(_ENV)
-    y_,y,off,follow,tx,ty,golden=y,y,0,false,x,y,sprite==11
-    if golden and _g.deaths>0 then
+    y_,off,tx,ty,golden=y,0,x,y,sprite==11
+    if golden and deaths>0 then
       destroy_object(_ENV)
     end
   end,
   update=function(_ENV)
-    if not follow then
+    if target then
+      tx+=0.2*(target.x-tx)
+      ty+=0.2*(target.y-ty)
+      local dtx,dty=x-tx,y_-ty
+      local a,k=atan2(dtx,dty),dtx^2+dty^2 > r^2 and 0.2 or 0.1
+      x+=k*(r*cos(a)-dtx)
+      y_+=k*(r*sin(a)-dty)
+    else
       local hit=player_here()
       if hit then
-        hit.berry_timer=0
-        follow=true
-        target=#fruitrain==0 and hit or fruitrain[#fruitrain]
-        r=#fruitrain==0 and 12 or 8
+        hit.berry_timer,target,r=
+        0,fruitrain[#fruitrain] or hit,fruitrain[1] and 8 or 12
         add(fruitrain,_ENV)
-      end
-    else
-      if target then
-        tx+=0.2*(target.x-tx)
-        ty+=0.2*(target.y-ty)
-        local a=atan2(x-tx,y_-ty)
-        local k=(x-tx)^2+(y_-ty)^2 > r^2 and 0.2 or 0.1
-        x+=k*(tx+r*cos(a)-x)
-        y_+=k*(ty+r*sin(a)-y_)
       end
     end
     off+=0.025
     y=y_+sin(off)*2.5
   end
 }
---]]
 --- </fruitrain> ---
---[[
+--]]
+---[[
 fly_fruit={
   check_fruit=true,
   init=function(_ENV)
-    start=y
-    step=0.5
-    sfx_delay=8
+    start,step,sfx_delay=y,0.5,8
   end,
   update=function(_ENV)
     --fly away
     if has_dashed then
-     if sfx_delay>0 then
       sfx_delay-=1
-      if sfx_delay<=0 then
+      if sfx_delay==0 then
        _g.sfx_timer=20
-       sfx(10)
+       sfx"10"
       end
-     end
       spd.y=appr(spd.y,-3.5,0.25)
       if y<-16 then
         destroy_object(_ENV)
@@ -738,8 +731,8 @@ fly_fruit={
       init_smoke(-6)
       init_smoke(6)
 
-      local f=init_object(fruit,x,y,10) --if _ENV happens to be in the exact location of a different fruit that has already been collected, _ENV'll cause a crash
-      --TODO: fix _ENV if needed
+      local f=init_object(fruit,x,y,10) --if this happens to be in the exact location of a different fruit that has already been collected, this'll cause a crash
+      --TODO: fix this if needed
       f.fruit_id=fruit_id
       fruit.update(f)
       --- </fruitrain> ---
@@ -757,29 +750,23 @@ fly_fruit={
 ---[[
 lifeup={
   init=function(_ENV)
-    spd.y=-0.25
-    duration=30
-    flash=0
-    outline=false
-    _g.sfx_timer=20
-    _g.berry_count+=1
-    sfx(9)
+    spd.y,duration,flash,_g.sfx_timer,outline=-0.25,30,0,20--,false
+    sfx"9"
   end,
   update=function(_ENV)
     duration-=1
     if duration<=0 then
       destroy_object(_ENV)
     end
+    flash+=0.5
   end,
   draw=function(_ENV)
-    flash+=0.5
     --<fruitrain>--
-    ?sprite<=5 and sprite.."000" or "1UP",x-4,y-4,7+flash%2
+    ?split"1000,2000,3000,4000,5000,1up"[min(sprite,6)],x-4,y-4,7+flash%2
     --<fruitrain>--
   end
 }
 --]]
---commented out berries- fix golden berry later
 ---[[
 kevin={
   init=function(_ENV)
@@ -1710,10 +1697,10 @@ function kill_player(_ENV)
     })
   end
     -- <fruitrain> ---
-  for f in all(fruitrain) do
-    if (f.golden) full_restart=true
-    del(fruitrain,f)
-  end
+  foreach(fruitrain,function(f)
+    if (f.golden) _g.full_restart=true
+  end)
+  _g.fruitrain={}
   --- </fruitrain> ---
   _g.delay_restart=15
   -- <transition>
@@ -1737,7 +1724,9 @@ function load_level(id)
 
   --reset camera speed
   cam_spdx,cam_spdy=0,0
+  
 
+  
   local diff_level=lvl_id~=id
 
 		--set level index
@@ -1748,9 +1737,15 @@ function load_level(id)
   lvl_x,lvl_y,lvl_w,lvl_h=tbl[1]*16,tbl[2]*16,tbl[3]*16,tbl[4]*16
   lvl_pw=lvl_w*8
   lvl_ph=lvl_h*8
-  boss_phases=split(tbl[5],"/")
+  boss_phases=split(tbl[6],"/")
 
+  local exits=tonum(tbl[5]) or 0b0001
 
+  -- exit_top,exit_right,exit_bottom,exit_left=exits&1!=0,exits&2!=0,exits&4!=0, exits&8!=0
+  for i,v in inext,split"exit_top,exit_right,exit_bottom,exit_left" do
+    _ENV[v]=exits&(0.5<<i)~=0
+  end
+  
   --drawing timer setup
   ui_timer=5
 
@@ -1825,7 +1820,7 @@ function _update()
   	cam_spdx,cam_spdy=0,0
     delay_restart-=1
     if delay_restart==0 then
-    -- <fruitrain> --
+      -- <fruitrain> --
       if full_restart then
         full_restart=false
         _init()
@@ -1960,13 +1955,13 @@ function _draw()
   camera()
   color(0)
   if tstate==0 then
-  	tlo+=12
-    thi=tlo-180
+  	tlo+=14
+    thi=tlo-320
     po1tri(0,tlo,128,tlo,64,80+tlo)
     rectfill(0,thi,128,tlo)
     po1tri(0,thi-64,0,thi,64,thi)
     po1tri(128,thi-64,128,thi,64,thi)
-    if (tlo>332) tstate=-1 tlo=-100
+    if (tlo>474) tstate=-1 tlo=-64
   end
   -- </transition>
 end
@@ -2016,7 +2011,7 @@ end
 
 -- transition globals
 tstate=-1
-tlo=-100
+tlo=-64
 
 -- triangle functions
 function po1tri(x0,y0,x1,y1,x2,y2)
@@ -2038,11 +2033,12 @@ end
 --[map metadata]
 
 --level table
---"x,y,w,h|phase/phase/phase/..."
+--"x,y,w,h,exit_dirs,phase/phase/phase/..."
+--exit directions "0b"+"exit_left"+"exit_bottom"+"exit_right"+"exit_top" (default top- 0b0001)
 --phase 1 (ball) or 2 (laser)
 levels={
-	"0,0,1,1,0/1/2",
-  "1,0,3,1"
+	"0,0,1,1,0b0001,0/1/2",
+  "1,0,3,1,0b0001"
 }
 
 --<camtrigger>--
@@ -2333,16 +2329,16 @@ __gff__
 0000000000000000000000000000000002020202080808000000000000000404030303030303030303030303040404040303030303030303030303030404040400000000000000000000000000000000000404040000000000000000000000000404040400000000000000000000000004040404000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __map__
-2f1f7300000000000000000000711f6200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-3f73000000000000000000000000712f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-730000000000003c000000000000007100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+2f1f730000002c2c2c00000000711f6200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+3f73000000002c2c2c2c00000000712f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+7300000000002c2c2c2c00000000007100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 4d90000090002526272312000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 4c00000000003537313012000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000004d914b4c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000081004c0000008100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00004400000a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000a009100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000044000b00000000000a0a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000000000910000000a0a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000080000000000000000000004a0000000000000a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000002c25273c0040414100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000253635273c50000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
