@@ -1,16 +1,24 @@
 pico-8 cartridge // http://www.pico-8.com
 version 42
 __lua__
---newleste.p8 - reflection
+--  newleste.p8 - reflection  --
+--    by many contributers    --
+
+-- idk if i spelt "contributers" right lmao
 
 _g=_ENV
 
---original game by:
---maddy thorson + noel berry
+-- original game by:
+-- maddy thorson + noel berry
 
 -- based on evercore v2.0.2
---with major project contributions by
---taco360, meep, gonengazit, and akliant
+-- with major project contributions by
+-- taco360, meep, gonengazit, and akliant
+
+-- todo: 
+--	badeline "sucking player" (who tf picked the name)
+--  need tokens to fit mapdata (like mayb 80 ish?)
+--	level jam in at least one week, gonna wait until each poll is done.
 
 -- [data structures]
 
@@ -701,8 +709,7 @@ fruit={
   end
 }
 --- </fruitrain> ---
---]]
----[[
+
 fly_fruit={
   check_fruit=true,
   init=function(_ENV)
@@ -746,8 +753,7 @@ fly_fruit={
     end
   end
 }
---]]
----[[
+
 lifeup={
   init=function(_ENV)
     spd.y,duration,flash,_g.sfx_timer,outline=-0.25,30,0,20--,false
@@ -766,8 +772,7 @@ lifeup={
     --<fruitrain>--
   end
 }
---]]
----[[
+
 kevin={
   init=function(_ENV)
     while right()<lvl_pw-1 and tile_at(right()/8+1,y/8)==65 do
@@ -887,7 +892,7 @@ kevin={
     spr(active and 67 or 66,x+hitbox.w/2-4,y+hitbox.h/2-4)
   end
 
-}--]]
+}
 
 
 bumper={
@@ -2088,15 +2093,9 @@ end
 --  end
 --end
 
---[[
-
-short on tokens?
-everything below this comment
-is just for grabbing data
-rather than loading it
-and can be safely removed!
-
---]]
+-- ill figure something out once i actually have all the levels
+-- thinking ill just convert them somewhere else. could use that lua script i wrote like a million years ago
+--  -anti
 
 --copy mapdata string to clipboard
 --function get_mapdata(x,y,w,h)
