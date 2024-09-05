@@ -1000,7 +1000,7 @@ garbage={
     hit=check(osc_plat,-1,0)
     if hit then
       hit.target_id=sprite
-      foreach(objects, function(o)
+      foreach(objects,function(o)
         if o.type==garbage and o.sprite==sprite and o!=_ENV then
           hit.targetx,hit.targety=o.x,o.y
           destroy_object(o)
