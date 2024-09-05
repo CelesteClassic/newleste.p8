@@ -1708,7 +1708,7 @@ function kill_player(_ENV)
   --- </fruitrain> ---
   _g.delay_restart=15
   -- <transition>
-  tstate=0
+  _g.tstate=0
   -- </transition>
 end
 
