@@ -949,7 +949,7 @@ bumper={
 		end
   end
 }
-
+ 
 --<feather> --
 function appr_circ(value,target,amount)
 	return (value +sign(sin(value)*cos(target)-cos(value)*sin(target))*amount)%1
