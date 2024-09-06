@@ -199,7 +199,14 @@ player={
         tail,particles={},{}
         for i=0,15 do
           add(tail,{x=x+4,y=y+4,size=mid(1,2,9-i)})
-        end       
+        end    
+        for i=0,10 do
+          local particle = {x=x+rnd'8'-4, y=y+rnd'8'-4, life=10+flr(rnd'5'), big=true}
+          particle.xspd = spd.x/-2-(x-particle.x)/4
+          particle.yspd = spd.y/-2-(y-particle.y)/4
+          particle.flip = vector(rnd'1'>0.5,rnd'1'>0.5)
+          add(particles, particle)
+        end           
       end
     end
     if not feather and not feather_idle then
@@ -380,7 +387,9 @@ player={
 
     -- draw feather particles (if not in feather state draw remaining ones)
     foreach(particles, function(p)
-			pset(p.x+4, p.y+4,10)
+			if p.big then spr(89,p.x-1,p.y-1,1,1,p.flip.x,p.flip.y)
+      else pset(p.x+4, p.y+4,10) end
+
     end)
 
     if feather and lifetime then
@@ -394,7 +403,7 @@ player={
 				circfill(h.x,h.y,h.size,10)
 			end)
     elseif feather_idle then
-      circfill(x+4, y+4, 4, spawn_timer%4<2 and 7 or 10)
+      circfill(x+4, y+4, 3, spawn_timer%4<2 and 7 or 10)
     --</feather> --
     else
       -- draw player hair and sprite
@@ -2180,8 +2189,8 @@ cc511522222222220011110000111100001ccc1111ccc100011111009110000095a0000000995990
 cccc5524444444440111111001d11d10015dc144441cd510011111001100000095a00000009959900666662077c8c8c8cccccccc77c2c2c20000000000000000
 5ccc224444444444001dd10001d11d1001dd14c44c41dd10001110001000000009500000000959000011111077cc888ccccccccc77cc222c0000000000000000
 5551244444444444000dd0000011110001cc14c44c41cc10000010001000000000500000000500000005000577ccc8cccccccccc77ccc2cc0000000000000000
-55512444000bbb03bbb33bb3bb00bbb001cc14444441cc1000033000dddddddd0077770000000000000000000000000000000000000000000000000000000000
-5cc1244400bbbbbdbb33bbbbbbb3dbbb01dd144cc441dd10003dd330d3dd00dd0700aa7000000000000000000000000000000000000000000000000000000000
+55512444000bbb03bbb33bb3bb00bbb001cc14444441cc1000033000dddddddd007777000aa00000000000000000000000000000000000000000000000000000
+5cc1244400bbbbbdbb33bbbbbbb3dbbb01dd144cc441dd10003dd330d3dd00dd0700aa70aa000000000000000000000000000000000000000000000000000000
 ccc1244403bb3d33dbb3dbbdbbbb3db3015dc144441cd510033dddd0ddd0000d700aaa0700000000000000000000000000000000000000000000000000000000
 cc1124443333dd33333dd33d333dd333001ccc1111ccc10033ddddd3ddd0000d7095900700000000000000000000000000000000000000000000000000000000
 cc1124443bb33dddddd3ddd3ddd33bb30001cddccddc100033d33dddddd3000d7059000700000000000000000000000000000000000000000000000000000000
