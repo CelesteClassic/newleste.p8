@@ -381,13 +381,8 @@ player={
     end
   end,
 
-  draw=function(_ENV)-- clamp in screen
+  draw=function(_ENV)
 
-    local clamped=mid(x,-1,lvl_pw-7)
-    if x~=clamped then
-      x=clamped
-      spd.x=0
-    end
     --<feather> --
 
     -- draw feather particles (if not in feather state draw remaining ones)
@@ -424,8 +419,6 @@ function create_hair(_ENV)
     add(hair,vector(x,y))
   end
 end
-
-
 
 function update_hair(_ENV)
   local last=vector(x+(flip.x and 6 or 1),y+(btn(⬇️) and 4 or 2.9))
@@ -1642,7 +1635,6 @@ function init_object(_type,sx,sy,tile)
             movamt=0
           end
         end
-        
         _ENV[axis]+=amt
       end
       if (solid_obj or semisolid_obj) and collideable then
@@ -2052,7 +2044,7 @@ end
 --exit directions "0b"+"exit_left"+"exit_bottom"+"exit_right"+"exit_top" (default top- 0b0001)
 --phase 1 (ball) or 2 (laser)
 levels={
-	"0,0,2,1,0b0001,0/1/2",
+	"0,0,2,1,0b0010,0/1/2",
   "0,1,3,1,0b0001"
 }
 
