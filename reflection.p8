@@ -937,7 +937,7 @@ feather={
       local d=flr(sprtimer%6)
       spr(70+min(d,6-d),x,y, 1, 1,d>3)
     end
-  end
+  end 
 }
 
 -- </feather>
