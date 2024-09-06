@@ -1364,7 +1364,7 @@ function plat_draw(_ENV)
   palt(0,false)
   for i=x+8,r-8,8 do
     for j=y+8,d-8,8 do
-      spr((i+j-x-y)%16==0 and 40 or 41,i,j)
+      spr((i+j-x-y)%16==0 and 41 or 56,i,j)
     end
   end
   palt()
