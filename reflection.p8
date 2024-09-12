@@ -1388,13 +1388,13 @@ end
 end)
 end
 function _draw()
-if freeze>0then
-return
-end
+--if freeze>0then
+--return
+--end
 pal()
 cls'9'
 palt(0,false)
-sspr(0,80,56,32,0,0,lvl_pw,lvl_ph)
+--sspr(0,80,56,32,0,0,lvl_pw,lvl_ph)
 draw_x=round(cam_x)-64
 draw_y=round(cam_y)-64
 camera(draw_x,draw_y)
@@ -1425,18 +1425,18 @@ pal''
 end
 palt(2,true)
 map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,4)
-for n=0,15do pal(n,0)end
-pal=time
-foreach(objects,function(n)
-if n.outline then
-for e=-1,1do for d=-1,1do if e==0or d==0then
-camera(draw_x+e,draw_y+d)draw_object(n)
-end end end
-end
-end)
-pal=_pal
-camera(draw_x,draw_y)
-pal()
+--for n=0,15do pal(n,0)end
+--pal=time
+--foreach(objects,function(n)
+--if n.outline then
+--for e=-1,1do for d=-1,1do if e==0or d==0then
+--camera(draw_x+e,draw_y+d)draw_object(n)
+--end end end
+--end
+--end)
+--pal=_pal
+--camera(draw_x,draw_y)
+--pal()
 palt()
 local e={{},{},{}}
 foreach(objects,function(n)
@@ -1483,17 +1483,17 @@ if ui_timer<0then
 end
 ui_timer-=1
 end
-camera()
-color(0)
-if tstate==0then
-tlo+=14
-thi=tlo-320
-po1tri(0,tlo,128,tlo,64,80+tlo)
-rectfill(0,thi,128,tlo)
-po1tri(0,thi-64,0,thi,64,thi)
-po1tri(128,thi-64,128,thi,64,thi)
-if(tlo>474)tstate=-1tlo=-64
-end
+--camera()
+--color(0)
+--if tstate==0then
+--tlo+=14
+--thi=tlo-320
+--po1tri(0,tlo,128,tlo,64,80+tlo)
+--rectfill(0,thi,128,tlo)
+--po1tri(0,thi-64,0,thi,64,thi)
+--po1tri(128,thi-64,128,thi,64,thi)
+--if(tlo>474)tstate=-1tlo=-64
+--end
 p"9,137"
 p"14,131"
 p"13,139"
@@ -1539,7 +1539,7 @@ end
 function p01traph(n,e,d,o,f,t)
 d,o=(d-n)/(t-f),(o-e)/(t-f)
 for f=f,t do
-rectfill(n,f,e,f)
+--rectfill(n,f,e,f)
 n+=d
 e+=o
 end
@@ -1610,15 +1610,15 @@ end)
 
 
 --replace mapdata with hex
-function replace_mapdata(x,y,w,h,data)
-  for y_=0,h*2-1,2 do
-    local offset=y*2+y_<64 and 8192 or 0
-    for x_=1,w*2,2 do
-      local i=x_+y_*w
-      poke(offset+x+y*128+y_*64+x_/2,"0x"..sub(data,i,i+1))
-    end
-  end
-end
+--function replace_mapdata(x,y,w,h,data)
+--  for y_=0,h*2-1,2 do
+--    local offset=y*2+y_<64 and 8192 or 0
+--    for x_=1,w*2,2 do
+--      local i=x_+y_*w
+--      poke(offset+x+y*128+y_*64+x_/2,"0x"..sub(data,i,i+1))
+--    end
+--  end
+--end
 
 -- ill figure something out once i actually have all the levels
 -- thinking ill just convert them somewhere else. could use that lua script i wrote like a million years ago
