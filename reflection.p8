@@ -194,7 +194,6 @@ n*(e~=0and 3.53553or 5)or
 (e~=0and 0or flip.x and-1or 1)
 ,e~=0and e*(n~=0and 3.53553or 5)or 0)
 psfx(20)
-_g.freeze=2
 dash_target_x=2*sign(spd.x)
 dash_target_y=(spd.y>=0and 2or 1.5)*sign(spd.y)
 dash_accel_x=spd.y==0and 1.5or 1.06066
@@ -718,8 +717,7 @@ destroy_object(laser or{})
 laser=nil
 if next_node>#nodes then
 target_x=lvl_pw+50
-node=-1
-ffreeze=10
+node,ffreeze=-1,10
 else
 target_x,target_y=unpack(nodes[next_node])
 ffreeze=10
@@ -780,6 +778,7 @@ end
 end
 draw_obj_sprite(_ENV)
 pal()
+_g.anxiety=true
 end
 }
 orb={
@@ -1077,7 +1076,7 @@ end
 end
 end
 end
-t=t+1%80
+t+=1t%=80
 end
 shake=max(shake-1)
 end,
@@ -1359,10 +1358,6 @@ end
 if sfx_timer>0then
 sfx_timer-=1
 end
-if freeze>0then
-freeze-=1
-return
-end
 if delay_restart>0then
 cam_spdx,cam_spdy=0,0
 delay_restart-=1
@@ -1388,9 +1383,6 @@ end
 end)
 end
 function _draw()
---if freeze>0then
---return
---end
 pal()
 cls'9'
 palt(0,false)
@@ -1401,13 +1393,13 @@ camera(draw_x,draw_y)
 if anxiety then
 cls'0'
 fillp'0b0101101001011010'
-for i=0,127,2 do 
-offset=sin(frames/15+i/150)*3
-for j=-16,256,12 do
-local shrink=(150+(sin(j/4.5+frames/30)*30)-i)/16
-if (shrink<=7.5) line(j+offset+shrink,i,j+offset+16-shrink,i,1)
-line(j+offset+shrink,i,j+offset+15-shrink,i,(i>96 or i>80 and i<90 or i>70 and i<75 or i>64 and i<67 or i>60 and i%2==1) and 1 or 2)
-end end	
+--for i=0,127,2 do 
+--offset=sin(frames/15+i/150)*3
+--for j=-16,256,12 do
+--local shrink=(150+(sin(j/4.5+frames/30)*30)-i)/16
+--if (shrink<=7.5) line(j+offset+shrink,i,j+offset+16-shrink,i,1)
+--line(j+offset+shrink,i,j+offset+15-shrink,i,(i>96 or i>80 and i<90 or i>70 and i<75 or i>64 and i<67 or i>60 and i%2==1) and 1 or 2)
+--end end	
 fillp()
 palt(2,true)
 function pa(a)
@@ -1423,21 +1415,23 @@ pa'12,-1,4'
 pa'8,1,4'
 pal''
 end
+pal''
 palt(2,true)
 map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,4)
---for n=0,15do pal(n,0)end
---pal=time
---foreach(objects,function(n)
---if n.outline then
---for e=-1,1do for d=-1,1do if e==0or d==0then
---camera(draw_x+e,draw_y+d)draw_object(n)
---end end end
---end
---end)
---pal=_pal
---camera(draw_x,draw_y)
---pal()
+for n=0,15do pal(n,0)end
+pal=time
+foreach(objects,function(n)
+if n.outline then
+for e=-1,1do for d=-1,1do if e==0or d==0then
+camera(draw_x+e,draw_y+d)draw_object(n)
+end end end
+end
+end)
+pal=_pal
+camera(draw_x,draw_y)
+pal()
 palt()
+anxiety=false
 local e={{},{},{}}
 foreach(objects,function(n)
 if n.type.layer==0then
@@ -1483,17 +1477,17 @@ if ui_timer<0then
 end
 ui_timer-=1
 end
---camera()
---color(0)
---if tstate==0then
---tlo+=14
---thi=tlo-320
---po1tri(0,tlo,128,tlo,64,80+tlo)
---rectfill(0,thi,128,tlo)
---po1tri(0,thi-64,0,thi,64,thi)
---po1tri(128,thi-64,128,thi,64,thi)
---if(tlo>474)tstate=-1tlo=-64
---end
+camera()
+color(0)
+if tstate==0then
+tlo+=14
+thi=tlo-320
+po1tri(0,tlo,128,tlo,64,80+tlo)
+rectfill(0,thi,128,tlo)
+po1tri(0,thi-64,0,thi,64,thi)
+po1tri(128,thi-64,128,thi,64,thi)
+if(tlo>474)tstate=-1tlo=-64
+end
 p"9,137"
 p"14,131"
 p"13,139"
@@ -1539,7 +1533,7 @@ end
 function p01traph(n,e,d,o,f,t)
 d,o=(d-n)/(t-f),(o-e)/(t-f)
 for f=f,t do
---rectfill(n,f,e,f)
+rectfill(n,f,e,f)
 n+=d
 e+=o
 end
@@ -1644,7 +1638,7 @@ __gfx__
 000000000000000000000000088888800000000000000000000000000000000000000000000000000300b0b00a0aa0a000000000000000000007700000077000
 00000000088888800888888088888888088888800888880000000000088888800000000000000000003b33000aa88aa0000000000000000000700700007bb700
 00000000888888888888888888877778888888888888888008888880887177180000000000000000028888200299992000000000000000000700007007bbb370
-000000008887777888877778887177188887777887777880888888888877777800000000049999400898888009a999900000000000000000700000077bbb3bb7
+000000008887777888877778887177188887777887777880888888888877777800000000024444200898888009a999900000000000000000700000077bbb3bb7
 000000008871771888717718087777708871771881771780888777788877777800000000005005000888898009999a9000000000000000007000000773b33bb7
 0000000008777770087777700033330008777770077777808877777808333380000000000005500008898880099a999000000000000000000700007007333370
 00000000003333000033330005000050053333000033335008717710003333000000000000500500028888200299992000000000000000000070070000733700
