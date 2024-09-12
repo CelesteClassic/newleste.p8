@@ -964,6 +964,9 @@ n+=rnd"2"-1
 e+=rnd"2"-1
 end
 local d,o,f=n+hitbox.w-8,e+hitbox.h-8,1.5*timer-4.5
+palt(0,false)
+palt(5,true)
+palt(14,true)
 if palswap then
 pal(12,2)
 pal(7,5)
@@ -988,7 +991,6 @@ for e=e+8,o-8,8do
 spr(32,n,e)
 spr(48,d,e)
 end
-palt(0,false)
 for d=n+8,d-8,8do
 for o=e+8,o-8,8do
 spr((d+o-n-e)%16==0and 41or 56,d,o)
@@ -1075,7 +1077,7 @@ end
 end
 end
 end
-t=(t+1)%80
+t=t+1%80
 end
 shake=max(shake-1)
 end,
@@ -1386,31 +1388,52 @@ end
 end)
 end
 function _draw()
-if freeze>0then
-return
-end
+--if freeze>0then
+--return
+--end
 pal()
-cls(9)
+cls'9'
 palt(0,false)
 --sspr(0,80,56,32,0,0,lvl_pw,lvl_ph)
+if anxiety then
+--cls'0'
+--fillp'0b0101101001011010'
+--for i=0,127,1.5 do 
+--offset=sin(frames/15+i/150)*3
+--for j=-16,256,12 do
+--local shrink=(150+(sin(j/4.5+frames/30)*30)-i)/16
+--if (shrink<=7.5) line(j+offset+shrink,i,j+offset+16-shrink,i,1)
+--line(j+offset+shrink,i,j+offset+15-shrink,i,(i>96 or i>80 and i<90 or i>70 and i<75 or i>64 and i<67 or i>60 and i%2==1) and 1 or 2)
+--end end	
+--fillp()
+palt(2,true)
+function pa(a)
+local t,q,l=unpack(split(a))
+for i=1,15 do pal(i,t) end
+map(0,0,q,0,lvl_w,lvl_h,l)
+end
+pa'12,-1,4'
+pa'8,1,4'
+pal''
+end
 draw_x=round(cam_x)-64
 draw_y=round(cam_y)-64
 camera(draw_x,draw_y)
 palt(2,true)
 map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,4)
+--for n=0,15do pal(n,0)end
+--pal=time
+--foreach(objects,function(n)
+--if n.outline then
+--for e=-1,1do for d=-1,1do if e==0or d==0then
+--camera(draw_x+e,draw_y+d)draw_object(n)
+--end end end
+--end
+--end)
+--pal=_pal
+--camera(draw_x,draw_y)
+--pal()
 palt()
-for n=0,15do pal(n,0)end
-pal=time
-foreach(objects,function(n)
-if n.outline then
-for e=-1,1do for d=-1,1do if e==0or d==0then
-camera(draw_x+e,draw_y+d)draw_object(n)
-end end end
-end
-end)
-pal=_pal
-camera(draw_x,draw_y)
-pal()
 local e={{},{},{}}
 foreach(objects,function(n)
 if n.type.layer==0then
@@ -1419,6 +1442,9 @@ else
 add(e[n.type.layer or 1],n)
 end
 end)
+if anxiety then pa'12,-1,2'
+pa'8,1,2' end
+pal''
 palt(0,false)
 palt(2,true)
 map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,2)
@@ -1582,7 +1608,7 @@ not_grass[t]=true
 end)
 
 
---replace mapdata with hex (yessss i got it to fit)
+--replace mapdata with hex
 --function replace_mapdata(x,y,w,h,data)
 --  for y_=0,h*2-1,2 do
 --    local offset=y*2+y_<64 and 8192 or 0
