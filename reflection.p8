@@ -1317,6 +1317,9 @@ _ENV[d]=n&.5<<e~=0
 end
 ui_timer=5
 if e then
+--if mapdata[lvl_id] then
+--replace_mapdata(lvl_x,lvl_y,lvl_w,lvl_h,mapdata[lvl_id])
+--end
 reload()
 end
 init_object(spinner_controller,0,0)
