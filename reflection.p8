@@ -6,13 +6,12 @@ __lua__
 
 
 --[[
-
-need token saves bad!!!
+8125
+need token saves badly!!!
 
 things we cant fit atm:
 
 	hex level loading (88 tokens total)
-	anxiety tentacles (136 tokens total - maaaaaaybe not....)
 
 hex lvls required before jam!
 
@@ -23,6 +22,9 @@ things we can add after lvl jam, to save tokens
 	save all levels as big multiline string (0 token levels)
 	save camera triggers as a string (prbly required)
 	lvl -> base256 (ouch)
+	anxiety tentacles (136 tokens)
+
+compressed space might be an issue
 
 ]]
 
