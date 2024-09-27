@@ -4,30 +4,6 @@ __lua__
 --reflection.p8
 --by many contributers
 
-
---[[
-8125
-need token saves badly!!!
-
-things we cant fit atm:
-
-	hex level loading (88 tokens total)
-
-hex lvls required before jam!
-
-21 tokens needed *minimum*!!!
-
-things we can add after lvl jam, to save tokens
-
-	save all levels as big multiline string (0 token levels)
-	save camera triggers as a string (prbly required)
-	lvl -> base256 (ouch)
-	anxiety tentacles (136 tokens)
-
-compressed space might be an issue
-
-]]
-
 _g=_ENV
 poke(24366,1)
 function vector(n,e)
@@ -1599,7 +1575,9 @@ camera_offsets={
 
 --mapdata string table
 --assigned levels will load from here instead of the map
-mapdata={}
+mapdata={
+
+}
 
 --@end
 
