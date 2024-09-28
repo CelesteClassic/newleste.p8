@@ -1461,8 +1461,8 @@ oval(left()-4,top()-4,right()+4,bottom()+4,7)
 end
 end)
 end)
-for n=1,lvl_w do
-for e=1,lvl_h do
+for n=0,lvl_w do
+for e=0,lvl_h do
 if grass[tile_at(n,e)]and not grass[tile_at(n,e-1)]and not not_grass[tile_at(n,e-1)]then
 spr(60,n*8,(e-1)*8)
 end
