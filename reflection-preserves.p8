@@ -742,7 +742,7 @@ e+=15
 end
 end)
 elseif node~=-1and find_player()then
-hitbox=rectangle'-16,-16,40,40' --try to suck player in
+hitbox=rectangle'-12,-12,32,32' --try to suck player in
 local hit=player_here()
 hitbox=rectangle'0,0,8,8'
 if hit then
