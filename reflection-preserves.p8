@@ -1304,9 +1304,11 @@ _ENV[d]=n&.5<<e~=0
 end
 ui_timer=5
 if e then
---if mapdata[lvl_id] then
---replace_mapdata(lvl_x,lvl_y,lvl_w,lvl_h,mapdata[lvl_id])
---end
+if mapdata[lvl_id] then
+for i=0,#mapdata[lvl_id]-1 do
+  mset(i%lvl_w,i\lvl_w,ord(mapdata[lvl_id][i+1])-1)
+end
+end
 reload()
 end
 init_object(spinner_controller,0,0)
@@ -1599,37 +1601,24 @@ foreach(split'21,22,23,42,43,58,59',function(t)
 not_grass[t]=true
 end)
 
---replace mapdata with hex
---function replace_mapdata(x,y,w,h,data)
---  for y_=0,h*2-1,2 do
---    local offset=y*2+y_<64 and 8192 or 0
---    for x_=1,w*2,2 do
---      local i=x_+y_*w
---      poke(offset+x+y*128+y_*64+x_/2,"0x"..sub(data,i,i+1))
---    end
---  end
---end
-
--- ill figure something out once i actually have all the levels
--- thinking ill just convert them somewhere else. could use that lua script i wrote like a million years ago
---  -anti
 
 --copy mapdata string to clipboard
 --function get_mapdata(x,y,w,h)
+
 --  local reserve=""
---  for y_=0,h*2-1,2 do
---    local offset=y*2+y_<64 and 8192 or 0
---    for x_=1,w*2,2 do
---      reserve=reserve..num2hex(peek(offset+x+y*128+y_*64+x_/2))
---    end
+--  for i=0,w*h-1 do
+--    reserve..=num2base256(mget(i%w,i\w)+1)
 --  end
 --  printh(reserve,"@clip")
 --end
---
-----convert mapdata to memory data
---function num2hex(v)
---  return sub(tostr(v,true),5,6)
+
+--convert mapdata to memory data
+
+--function num2base256(number)
+--  return number%256==0 and "\\000" or number==10 and "\\n" or number==13 and "\\r" or number==34 and [[\"]] or number==92 and [[\\]] or chr(number)
 --end
+
+
 __gfx__
 000000000000000000000000088888800000000000000000000000000000000000000000000000000a0aa0a0000770000007700000000007007000000aa00000
 000000000888888008888880888888880888888008888800000000000888888000000000000000000aa88aa000700700007bb70000000000ff000070aa000000
