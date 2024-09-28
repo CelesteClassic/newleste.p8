@@ -1608,10 +1608,9 @@ grass[t]=true
 end)
 
 not_grass={}
-foreach(split'42,43,58,59',function(t)
+foreach(split'21,22,23,42,43,58,59',function(t)
 not_grass[t]=true
 end)
-
 
 --replace mapdata with hex
 --function replace_mapdata(x,y,w,h,data)
