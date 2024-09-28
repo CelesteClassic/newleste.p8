@@ -1458,6 +1458,7 @@ foreach(n,function(_ENV)
 draw_object(_ENV)
 if bubble and bubbled then
 oval(left()-4,top()-4,right()+4,bottom()+4,7)
+--circ(x+3,y+3,8,7) -- 9 tokens smaller, looks off though.
 end
 end)
 end)
