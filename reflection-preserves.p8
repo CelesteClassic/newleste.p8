@@ -1607,7 +1607,7 @@ grass[t]=true
 end)
 
 not_grass={}
-foreach(split'40,41,42,43,56,57,58,59',function(t)
+foreach(split'42,43,58,59',function(t)
 not_grass[t]=true
 end)
 
