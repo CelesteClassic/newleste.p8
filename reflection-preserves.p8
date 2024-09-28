@@ -1565,6 +1565,7 @@ param_names={"phase/phase/phase/..."}
 levels={
   "0,0,2,1,0b0010,0",
   "2,0,2,1,0b0010,0/1/2"
+ 
 }
 --<camtrigger>--
 --camera trigger hitboxes
