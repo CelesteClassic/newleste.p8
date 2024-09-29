@@ -967,7 +967,7 @@ pal(7,5)
 pal(6,1)
 end
 if f>0and f<12and state==0then
-rect(n-f,e-f,d+f+8,o+f+8,14)
+rect(n-f,e-f,d+f+8,o+f+8,15)
 end
 for n=n,d,d-n do
 for n=e,o,o-e do
