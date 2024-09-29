@@ -739,7 +739,7 @@ if hit then
 hit.spd=vector(mid(-2,2,hit.spd.x),mid(-2,2,hit.spd.y))
 hit.dash_time=0
 hit.spd.x+=hit.left()>right() and -.5 or hit.right()<left() and .5 or 0
-hit.spd.y+=hit.top()>bottom() and -.25 or hit.bottom()<top() and .25 or 0
+hit.spd.y+=hit.top()>bottom() and -.35 or hit.bottom()<top() and .25 or 0
 end
 if attack==1and attack_timer%60==0then
 init_object(orb,flip.x and right()or left(),y+4)
