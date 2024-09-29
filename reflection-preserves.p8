@@ -831,7 +831,7 @@ local f,t,e=cos(2*n)<=-.5and 1or 0,cos(2*n)>.5and 1or 0,1+flr(1.5*n%3)
 for n in all{2.001,round(1-cos(1.5*n))}do
 if n>0or e==3then
 if n~=2.001and e==3then n=2-n end
-ovalfill(d-n-f,o-n-t,d+n,o+n,n~=2.001and split"14,7,8"[e]or e==2and 8or 2)
+ovalfill(d-n-f,o-n-t,d+n,o+n,n~=2.001and split"15,7,8"[e]or e==2and 8or 2)
 end
 pal()
 end
