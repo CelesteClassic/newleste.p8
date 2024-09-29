@@ -1253,7 +1253,7 @@ end
 end
 end
 function init_smoke(n,e)
-init_object(smoke,x+(n or 0),y+(e or 0),26)
+init_object(smoke,x+(n or 0),y+(e or 0),24)
 end
 add(objects,_ENV);
 (type.init or time)(_ENV)
