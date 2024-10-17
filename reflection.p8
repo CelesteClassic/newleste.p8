@@ -570,8 +570,9 @@ end, update = function(_ENV)
     if not bubbled and n then
       init_smoke()
       timer = 60
-      if n.feather_idle then
+      if n.feather_idle or n.feather then
         n.lifetime = 60
+        n.feather = false
       end
       n.spawn_timer, n.feather_idle, n.dash_time, n.dash_effect_time = 10, true, -10, 0
       n.spd = vector(mid(n.spd.x, -1.5, 1.5), mid(n.spd.y, -1.5, 1.5))
