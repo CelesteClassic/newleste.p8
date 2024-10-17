@@ -1,1139 +1,1060 @@
 pico-8 cartridge // http://www.pico-8.com
 version 42
 __lua__
+
 --reflection.p8
 --by many contributers
+_g = _ENV
+poke(24366, 1)
 
-_g=_ENV
-poke(24366,1)
-function vector(n,e)
-return{x=n,y=e}
+function vector(n, e)
+  return {x = n, y = e}
 end
-function v0()return vector(0,0)end
+
+function v0()
+  return vector(0, 0)
+end
+
 function rectangle(n)
-local _g,_ENV=_ENV,{}
-x,y,w,h=_g.unpack(_g.split(n))
-return _ENV
+  local _g, _ENV = _ENV, {}
+  x, y, w, h = _g.unpack(_g.split(n))
+  return _ENV
 end
-objects={}
-freeze,delay_restart,sfx_timer,music_timer,ui_timer=0,0,0,0,-99
-cam_x,cam_y,cam_spdx,cam_spdy,cam_gain,cam_offx,cam_offy=0,0,0,0,.25,0,0
-_pal=pal
+
+objects = {}
+freeze, delay_restart, sfx_timer, music_timer, ui_timer = 0, 0, 0, 0, -99
+cam_x, cam_y, cam_spdx, cam_spdy, cam_gain, cam_offx, cam_offy = 0, 0, 0, 0, .25, 0, 0
+_pal = pal
+
 function _init()
-max_djump,deaths,frames,seconds,minutes,music_timer,time_ticking,berry_count=1,0,0,0,0,0,true,0
-music(0,0,7)
-load_level(1)
-end
-dead_particles={}
-player={
-layer=2,
-init=function(_ENV)
-particles,feather,collides,djump,hitbox={},false,true,max_djump,rectangle"1,3,6,5"
-create_hair(_ENV)
-foreach(split"bouncetimer,grace,jbuffer,dash_time,dash_effect_time,dash_target_x,dash_target_y,dash_accel_x,dash_accel_y,spr_off,berry_timer,_berry_count",function(n)
-_ENV[n]=0
-end)
-end,
-update=function(_ENV)
-local n,e=btn(➡️)and 1or btn(⬅️)and-1or 0,btn(⬆️)and-1or btn(⬇️)and 1or 0
-foreach(particles,function(n)
-n.x+=n.xspd
-n.y+=n.yspd
-n.xspd=appr(n.xspd,0,.03)
-n.yspd=appr(n.yspd,0,.03)
-n.life-=1
-if n.life==0then
-del(particles,n)
-end
-end)
-if y>lvl_ph and not exit_bottom then
-kill_player(_ENV)
-end
-if feather then
-local d=1
-if n~=0or e~=0then
-movedir,d=appr_circ(movedir,atan2(n,e),.04),1.5
-end
-spd=vector(d*cos(movedir),d*sin(movedir))
-local e=vector(x+4.5,y+4.5)
-foreach(tail,function(n)
-n.x+=(e.x-n.x)/1.4
-n.y+=(e.y-n.y)/1.4
-e=n
-end)
-if bouncetimer==0then
-if is_solid(0,2)or is_solid(0,-2)then
-movedir*=-1
-bouncetimer=2
-init_smoke()
-elseif is_solid(2,0)or is_solid(-2,0)then
-movedir=round(movedir)+.5-movedir
-bouncetimer=2
-init_smoke()
-end
-end
-if bouncetimer>0then
-bouncetimer-=1
-end
-local n={x=x+rnd(8)-4,y=y+rnd(8)-4,life=10+flr(rnd(5))}
-n.xspd=-spd.x/2-(x-n.x)/4
-n.yspd=-spd.y/2-(y-n.y)/4
-add(particles,n)
-lifetime-=1
-if lifetime<=0or btn(❎)then
-p_dash=false
-feather=false
-init_smoke()
-player.init(_ENV)
-spd.x/=2
-spd.y=spd.y<0and-1.5or 0
-end
-elseif feather_idle then
-spd.x*=.8
-spd.y*=.8
-spawn_timer-=1
-if spawn_timer<=0then
-feather_idle=false
-feather=true
-if n==0and e==0then
-movedir=flip.x and.5or 0
-else
-movedir=atan2(n,e)
-end
-lifetime=60
-_g.bouncetimer=0
-tail,particles={},{}
-for n=0,15do
-add(tail,{x=x+4,y=y+4,size=mid(1,2,9-n)})
-end
-end
-end
-if not feather and not feather_idle then
-local d=is_solid(0,1)
-if d then
-berry_timer+=1
-else
-berry_timer,_berry_count=0,0
+  max_djump, deaths, frames, seconds, minutes, music_timer, time_ticking, berry_count = 1, 0, 0, 0, 0, 0, true, 0
+  music(0, 0, 7)
+  load_level(1)
 end
 
+dead_particles = {}
+player = {layer = 2, init = function(_ENV)
+  particles, feather, collides, djump, hitbox = {}, false, true, max_djump, rectangle "1,3,6,5"
+  create_hair(_ENV)
+  foreach(split "bouncetimer,grace,jbuffer,dash_time,dash_effect_time,dash_target_x,dash_target_y,dash_accel_x,dash_accel_y,spr_off,berry_timer,_berry_count", function(n)
+    _ENV[n] = 0
+  end)
+end, update = function(_ENV)
+  local n, e = btn(➡️) and 1 or btn(⬅️) and -1 or 0, btn(⬆️) and -1 or btn(⬇️) and 1 or 0
+  foreach(particles, function(n)
+    n.x += n.xspd
+    n.y += n.yspd
+    n.xspd = appr(n.xspd, 0, .03)
+    n.yspd = appr(n.yspd, 0, .03)
+    n.life -= 1
+    if n.life == 0 then
+      del(particles, n)
+    end
+  end)
+  if y > lvl_ph and not exit_bottom then
+    kill_player(_ENV)
+  end
+  if feather then
+    local d = 1
+    if n ~= 0 or e ~= 0 then
+      movedir, d = appr_circ(movedir, atan2(n, e), .04), 1.5
+    end
+    spd = vector(d * cos(movedir), d * sin(movedir))
+    local e = vector(x + 4.5, y + 4.5)
+    foreach(tail, function(n)
+      n.x += (e.x - n.x) / 1.4
+      n.y += (e.y - n.y) / 1.4
+      e = n
+    end)
+    if bouncetimer == 0 then
+      if is_solid(0, 2) or is_solid(0, -2) then
+        movedir *= -1
+        bouncetimer = 2
+        init_smoke()
+      elseif is_solid(2, 0) or is_solid(-2, 0) then
+        movedir = round(movedir) + .5 - movedir
+        bouncetimer = 2
+        init_smoke()
+      end
+    end
+    if bouncetimer > 0 then
+      bouncetimer -= 1
+    end
+    local n = {x = x + rnd(8) - 4, y = y + rnd(8) - 4, life = 10 + flr(rnd(5))}
+    n.xspd = -spd.x / 2 - (x - n.x) / 4
+    n.yspd = -spd.y / 2 - (y - n.y) / 4
+    add(particles, n)
+    lifetime -= 1
+    if lifetime <= 0 or btn(❎) then
+      p_dash = false
+      feather = false
+      init_smoke()
+      player.init(_ENV)
+      spd.x /= 2
+      spd.y = spd.y < 0 and -1.5 or 0
+    end
+  elseif feather_idle then
+    spd.x *= .8
+    spd.y *= .8
+    spawn_timer -= 1
+    if spawn_timer <= 0 then
+      feather_idle = false
+      feather = true
+      if n == 0 and e == 0 then
+        movedir = flip.x and .5 or 0
+      else
+        movedir = atan2(n, e)
+      end
+      lifetime = 60
+      _g.bouncetimer = 0
+      tail, particles = {}, {}
+      for n = 0, 15 do
+        add(tail, {x = x + 4, y = y + 4, size = mid(1, 2, 9 - n)})
+      end
+    end
+  end
+  if not feather and not feather_idle then
+    local d = is_solid(0, 1)
+    if d then
+      berry_timer += 1
+    else
+      berry_timer, _berry_count = 0, 0
+    end
+    if d and not was_on_ground then
+      init_smoke(0, 4)
+    end
+    local f, o = btn(🅾️) and not p_jump, btn(❎) and not p_dash
+    p_jump, p_dash = btn(🅾️), btn(❎)
+    if f then
+      jbuffer = 4
+    elseif jbuffer > 0 then
+      jbuffer -= 1
+    end
+    if d then
+      grace = 6
+      if djump < max_djump then
+        psfx(22)
+        djump = max_djump
+      end
+    elseif grace > 0 then
+      grace -= 1
+    end
+    dash_effect_time -= 1
+    if dash_time > 0 then
+      init_smoke()
+      dash_time -= 1
+      spd = vector(appr(spd.x, dash_target_x, dash_accel_x), appr(spd.y, dash_target_y, dash_accel_y))
+    else
+      local f = d and .6 or .4
+      spd.x = abs(spd.x) <= 1 and appr(spd.x, n * 1, f) or appr(spd.x, sign(spd.x) * 1, .15)
+      if spd.x ~= 0 then
+        flip.x = spd.x < 0
+      end
+      local f = 2
+      if n ~= 0 and is_solid(n, 0) then
+        f = .4
+        if rnd(10) < 2 then
+          init_smoke(n * 6)
+        end
+      end
+      if not d then
+        spd.y = appr(spd.y, f, abs(spd.y) > .15 and .21 or .105)
+      end
+      if jbuffer > 0 then
+        if grace > 0 then
+          psfx(18)
+          jbuffer, grace, spd.y = 0, 0, -2
+          init_smoke(0, 4)
+        else
+          local n = is_solid(-3, 0) and -1 or is_solid(3, 0) and 1 or 0
+          if n ~= 0 then
+            psfx(19)
+            jbuffer = 0
+            spd = vector(n * -2, -2)
+            init_smoke(n * 6)
+          end
+        end
+      end
+      if djump > 0 and o then
+        init_smoke()
+        djump -= 1
+        dash_time = 4
+        has_dashed = true
+        dash_effect_time = 10
+        spd = vector(n ~= 0 and n * (e ~= 0 and 3.53553 or 5) or (e ~= 0 and 0 or flip.x and -1 or 1), e ~= 0 and e * (n ~= 0 and 3.53553 or 5) or 0)
+        psfx(20)
+        dash_target_x = 2 * sign(spd.x)
+        dash_target_y = (spd.y >= 0 and 2 or 1.5) * sign(spd.y)
+        dash_accel_x = spd.y == 0 and 1.5 or 1.06066
+        dash_accel_y = spd.x == 0 and 1.5 or 1.06066
+      elseif djump <= 0 and o then
+        psfx(21)
+        init_smoke()
+      end
+    end
+    spr_off += .25
+    sprite = not d and (is_solid(n, 0) and 5 or 3) or btn(⬇️) and 6 or btn(⬆️) and 7 or spd.x ~= 0 and n ~= 0 and 1 + spr_off % 4 or 1
+    update_hair(_ENV)
+    if (exit_right and left() >= lvl_pw or exit_top and y < -4 or exit_left and right() < 0 or exit_bottom and top() >= lvl_ph) and levels[lvl_id + 1] then
+      next_level()
+    end
+    was_on_ground = d
+  end
+end, draw = function(_ENV)
+  foreach(particles, function(n)
+    if n.big then
+      spr(15, n.x - 1, n.y - 1, 1, 1, n.flip.x, n.flip.y)
+    else
+      pset(n.x + 4, n.y + 4, 10)
+    end
+  end)
+  if feather and lifetime then
+    if lifetime % 5 == 1 then
+      pal(10, 7)
+    end
+    if lifetime < 10 then
+      pal(10, lifetime % 4 < 2 and 8 or 10)
+    end
+    circfill(x + 4, y + 4, 4, 10)
+    foreach(tail, function(n)
+      circfill(n.x, n.y, n.size, 10)
+    end)
+  elseif feather_idle then
+    circfill(x + 4, y + 4, 3, spawn_timer % 4 < 2 and 7 or 10)
+  else
+    pal(8, djump == 1 and 8 or 12)
+    draw_hair(_ENV)
+    draw_obj_sprite(_ENV)
+    pal()
+  end
+end}
 
-if d and not was_on_ground then
-init_smoke(0,4)
-end
-local f,o=btn(🅾️)and not p_jump,btn(❎)and not p_dash
-p_jump,p_dash=btn(🅾️),btn(❎)
-if f then
-jbuffer=4
-elseif jbuffer>0then
-jbuffer-=1
-end
-if d then
-grace=6
-if djump<max_djump then
-psfx(22)
-djump=max_djump
-end
-elseif grace>0then
-grace-=1
-end
-dash_effect_time-=1
-if dash_time>0then
-init_smoke()
-dash_time-=1
-spd=vector(
-appr(spd.x,dash_target_x,dash_accel_x),
-appr(spd.y,dash_target_y,dash_accel_y)
-)
-else
-local f=d and.6or.4
-spd.x=abs(spd.x)<=1and
-appr(spd.x,n*1,f)or
-appr(spd.x,sign(spd.x)*1,.15)
-if spd.x~=0then
-flip.x=spd.x<0
-end
-local f=2
-if n~=0and is_solid(n,0)then
-f=.4
-if rnd(10)<2then
-init_smoke(n*6)
-end
-end
-if not d then
-spd.y=appr(spd.y,f,abs(spd.y)>.15and.21or.105)
-end
-if jbuffer>0then
-if grace>0then
-psfx(18)
-jbuffer,grace,spd.y=0,0,-2
-init_smoke(0,4)
-else
-local n=is_solid(-3,0)and-1or is_solid(3,0)and 1or 0
-if n~=0then
-psfx(19)
-jbuffer=0
-spd=vector(n*-2,-2)
-init_smoke(n*6)
-end
-end
-end
-if djump>0and o then
-init_smoke()
-djump-=1
-dash_time=4
-has_dashed=true
-dash_effect_time=10
-spd=vector(n~=0and
-n*(e~=0and 3.53553or 5)or
-(e~=0and 0or flip.x and-1or 1)
-,e~=0and e*(n~=0and 3.53553or 5)or 0)
-psfx(20)
-dash_target_x=2*sign(spd.x)
-dash_target_y=(spd.y>=0and 2or 1.5)*sign(spd.y)
-dash_accel_x=spd.y==0and 1.5or 1.06066
-dash_accel_y=spd.x==0and 1.5or 1.06066
-elseif djump<=0and o then
-psfx(21)
-init_smoke()
-end
-end
-spr_off+=.25
-sprite=not d and(is_solid(n,0)and 5or 3)or
-btn(⬇️)and 6or
-btn(⬆️)and 7or
-spd.x~=0and n~=0and 1+spr_off%4or 1
-update_hair(_ENV)
-if(exit_right and left()>=lvl_pw or
-exit_top and y<-4or
-exit_left and right()<0or
-exit_bottom and top()>=lvl_ph)and levels[lvl_id+1]then
-next_level()
-end
-was_on_ground=d
-end
-end,
-draw=function(_ENV)
-foreach(particles,function(n)
-if n.big then spr(15,n.x-1,n.y-1,1,1,n.flip.x,n.flip.y)
-else pset(n.x+4,n.y+4,10)end
-end)
-if feather and lifetime then
-if lifetime%5==1then pal(10,7)end
-if lifetime<10then
-pal(10,lifetime%4<2and 8or 10)
-end
-circfill(x+4,y+4,4,10)
-foreach(tail,function(n)
-circfill(n.x,n.y,n.size,10)
-end)
-elseif feather_idle then
-circfill(x+4,y+4,3,spawn_timer%4<2and 7or 10)
-else
-pal(8,djump==1and 8or 12)
-draw_hair(_ENV)
-draw_obj_sprite(_ENV)
-pal()
-end
-end
-}
 function create_hair(_ENV)
-hair={}
-for n=1,5do
-add(hair,vector(x,y))
+  hair = {}
+  for n = 1, 5 do
+    add(hair, vector(x, y))
+  end
 end
-end
+
 function update_hair(_ENV)
-local e=vector(x+(flip.x and 6or 1),y+(btn(⬇️)and 4or 2.9))
-foreach(hair,function(n)
-n.x+=(e.x-n.x)/1.5
-n.y+=(e.y+.5-n.y)/1.5
-e=n
-end)
+  local e = vector(x + (flip.x and 6 or 1), y + (btn(⬇️) and 4 or 2.9))
+  foreach(hair, function(n)
+    n.x += (e.x - n.x) / 1.5
+    n.y += (e.y + .5 - n.y) / 1.5
+    e = n
+  end)
 end
+
 function draw_hair(_ENV)
-for e,n in inext,hair do
-circfill(round(n.x),round(n.y),split"2,2,1,1,1"[e],8)
-end
-end
-player_spawn={
-init=function(_ENV)
-layer=2
-sfx"15"
-sprite=3
-target=y
-y=min(y+48,lvl_ph)
-_g.cam_x,_g.cam_y=mid(x,64,lvl_pw-64),mid(y,64,lvl_ph-64)
-spd.y=-4
-state=0
-delay=0
-create_hair(_ENV)
-djump=max_djump
-foreach(fruitrain,function(n)
-fruitrain[1].target=_ENV
-add(objects,n)
-n.x,n.y=x,y
-fruit.init(n)
-end)
-end,
-update=function(_ENV)
-if state==0and y<target+16then
-state,delay=1,3
-elseif state==1then
-spd.y+=.5
-if spd.y>0then
-if delay>0then
-spd.y=0
-delay-=1
-elseif y>target then
-y,spd,state,delay,_g.shake=target,vector(0,0),2,5,4
-init_smoke(0,4)
-sfx"16"
-end
-end
-elseif state==2then
-delay-=1
-sprite=6
-if delay<0then
-destroy_object(_ENV)
-local n=init_object(player,x,y);
-(fruitrain[1]or{}).target=n
-end
-end
-update_hair(_ENV)
-end,
-draw=player.draw
-}
-camera_trigger={
-update=function(_ENV)
-if timer and timer>0then
-timer-=1
-if timer==0then
-_g.cam_offx,_g.cam_offy=offx,offy
-else
-_g.cam_offx+=cam_gain*(offx-cam_offx)
-_g.cam_offy+=cam_gain*(offy-cam_offy)
-end
-elseif player_here()then
-timer=5
-end
-end
-}
-spring={
-update=function(_ENV)
-delta=delta or 0
-delta*=.75
-local n,e=_ENV,dir
-local _ENV=player_here()and player_here()or n
-if _ENV~=n then
-move(0,n.y-y-4,1)
-spd.x*=.2
-spd.y=-3
-dash_time,dash_effect_time,n.delta,djump=0,0,4,max_djump
-end
-end,
-draw=function(_ENV)
-local n=flr(delta)
-sspr(64,0,8,8-n,x,y+n)
-end
-}
-refill={
-init=function(_ENV)
-offset,timer,hitbox=rnd(),0,rectangle"-1,-1,10,10"
-end,
-update=function(_ENV)
-if timer>0then
-timer-=1
-if timer==0then
-psfx"12"
-init_smoke()
-end
-else
-offset+=.02
-local n=player_here()
-if n and n.djump<max_djump then
-psfx"11"
-init_smoke()
-n.djump,timer=max_djump,60
-end
-end
-end,
-draw=function(_ENV)
-if timer==0then
-spr(12,x,y+sin(offset)+.5)
-else
-spr(11,x,y)
-end
-end
-}
-smoke={
-init=function(_ENV)
-layer,spd,flip=3,vector(.3+rnd"0.2",-.1),vector(rnd()<.5,rnd()<.5)
-x+=-1+rnd"2"
-y+=-1+rnd"2"
-end,
-update=function(_ENV)
-sprite+=.2
-if sprite>=27then
-destroy_object(_ENV)
-end
-end
-}
-fruitrain={}
-fruit={
-init=function(_ENV)
-golden,y_,off,tx,ty=true,y,0,x,y
-if deaths>0then
-destroy_object(_ENV)
-end
-end,
-update=function(_ENV)
-if target then
-tx+=.2*(target.x-tx)
-ty+=.2*(target.y-ty)
-local n,e=x-tx,y_-ty
-local d,o=atan2(n,e),n^2+e^2>r^2and.2or.1
-x+=o*(r*cos(d)-n)
-y_+=o*(r*sin(d)-e)
-else
-local n=player_here()
-if n then
-n.berry_timer,target,r=
-0,fruitrain[#fruitrain]or n,fruitrain[1]and 8or 12
-add(fruitrain,_ENV)
-end
-end
-off+=.025
-y=y_+sin(off)*2.5
-end
-}
-lifeup={
-init=function(_ENV)
-spd.y,duration,flash,_g.sfx_timer,outline=-.25,30,0,20
-sfx"9"
-end,
-update=function(_ENV)
-duration-=1
-if duration<=0then
-destroy_object(_ENV)
-end
-flash+=.5
-end,
-draw=function(_ENV)
-?split"1000,2000,3000,4000,5000,1up"[min(sprite,6)],x-4,y-4,7+flash%2
-end
-}
-kevin={
-init=function(_ENV)
-while(right()<lvl_pw-1and tile_at(right()/8,y/8)!=65)hitbox.w+=8
-while(bottom()<lvl_ph-1and tile_at(x/8,bottom()/8)!=80)hitbox.h+=8
-solid_obj,collides,retrace_list,hit_timer,retrace_timer,shake=true,true
-,{},
-0,
-0,
-0
-end,
-update=function(_ENV)
-shake=max(0,shake-1)
-for n=-1,1do
-for e=-1,1do
-if(n+e)%2==1then
-local d=check(player,n,e)
-if d and d.dash_effect_time>0and
-(n~=0and sign(d.dash_target_x)==-n or e~=0and sign(d.dash_target_y)==-e)and
-(not active or n~=dirx and e~=diry)then
-d.spd=vector(n*1.5,e==1and.5or-1.5)
-d.dash_time=-1
-add(retrace_list,vector(x,y))
-dirx,diry=n,e
-spd=v0()
-hit_timer=10
-active=true
-shake=4
-end
-end
-end
-end
-if hit_timer>0then
-hit_timer-=1
-if hit_timer==0then
-spd=vector(.2*dirx,.2*diry)
-end
-elseif active then
-if spd.x==0and spd.y==0then
-retrace_timer=10
-active=false
-shake=5
-if dirx~=0then
-for n=0,hitbox.h-1,8do
-init_smoke(dirx==-1and-8or hitbox.w,n)
-end
-else
-for n=0,hitbox.w-1,8do
-init_smoke(n,diry==-1and-8or hitbox.h)
-end
-end
-else
-spd=vector(appr(spd.x,3*dirx,.2),appr(spd.y,3*diry,.2))
-end
-elseif retrace_timer>0then
-retrace_timer-=1
-if retrace_timer==0then
-retrace=true
-end
-elseif retrace then
-local n=retrace_list[#retrace_list]
-if not n then
-retrace=false
-elseif n.x==x and n.y==y then
-del(retrace_list,n)
-retrace_timer=5
-shake=4
-spd=v0()
-rem=v0()
-else
-spd=vector(appr(spd.x,sign(n.x-x),.2),appr(spd.y,sign(n.y-y),.2))
-end
-end
-end,
-draw=function(_ENV)
-local n,e=x,y
-if shake>0then
-n+=rnd"2"-1
-e+=rnd"2"-1
-end
-local o,f,t,d,i,r=n+hitbox.w-8,e+hitbox.h-8,active and diry==-1,active and diry==1,active and dirx==-1,active and dirx==1
-for n=n+8,o-8,8do
-pal(12,t and 7or 12)
-spr(65,n,e)
-pal(12,d and 7or 12)
-spr(65,n,f,1,1,false,true)
-end
-for e=e+8,f-8,8do
-pal(12,i and 7or 12)
-spr(80,n,e)
-pal(12,r and 7or 12)
-spr(80,o,e,1,1,true)
-end
-rectfill(n+8,e+8,o,f,4)
-local t={d,i,t,r,d}
-for d=0,3do
-pal(12,(t[d+1]or t[d+2])and 7or 12)
-spr(64,d<=1and n or o,(d-1)\2==0and e or f,1,1,d>=2,(d-1)\2~=0)
-end
-pal()
-spr(active and 63or 47,n+hitbox.w/2-4,e+hitbox.h/2-4)
-end
-}
-bumper={
-init=function(_ENV)
-hitbox=rectangle"1,1,14,14"
-hittimer=0
-startx,starty=x,y
-meep=0
-outline=false
-inc=rnd"1"<.5and-.02or.02
-end,
-update=function(_ENV)
-x=startx+cos(meep*1.5)*2
-y=starty+sin(meep)*1.5
-if hittimer>0then
-hittimer-=1
-if hittimer==0then
-init_smoke(4,4)
-end
-else
-meep+=inc
-local n=player_here()
-if n then
-n.init_smoke()
-local e,d=x+8-(n.x+4),y+8-(n.y+4)
-local o=atan2(e,d)
-n.spd=abs(e)>abs(d)and vector(sign(e)*-2.8,-2)or
-vector(-3*cos(o),-3*sin(o))
-n.dash_time,n.djump=-1,max_djump
-hittimer=20
-end
-end
-end,
-draw=function(_ENV)
-local n,e=x+8,y+8
-if hittimer>0then
-pal(12,1)
-pal(4,2)
-if hittimer>17then
-circ(n,e,26-hittimer,7)
-circfill(n,e,25-hittimer,1)
-if hittimer>19then
-rectfill(n-4,e-9,n+4,e+9,7)
-rectfill(n-9,e-4,n+9,e+4,7)
-end
-end
-end
-sspr(112,16,8,16,x,y)
-sspr(112,16,8,16,x+8,y,8,16,true)
-pal()
-if hittimer==1then
-circfill(n,e,4,6)
-end
-end
-}
-function appr_circ(n,e,d)
-return(n+sign(sin(n)*cos(e)-cos(n)*sin(e))*d)%1
-end
-feather={
-init=function(_ENV)
-sprtimer=0
-offset=0
-starty,startx=y,x
-timer=0
-bubble=sprite==27
-bubbled=bubble
-end,
-update=function(_ENV)
-if timer>0then
-timer-=1
-if timer==0then
-init_smoke()
-bubbled=bubble
-end
-else
-sprtimer+=.2
-offset+=.01
-y=appr(y,starty+.5+2*sin(offset),1)
-x=appr(x,startx,1)
-if(bubbled)hitbox=rectangle"-4,-4,16,16"
-local n=player_here()
-::j::
-if not bubbled and n then
-init_smoke()
-timer=60
-if n.feather_idle then
-n.lifetime=60
+  for e, n in inext, hair do
+    circfill(round(n.x), round(n.y), split "2,2,1,1,1" [e], 8)
+  end
 end
 
-n.spawn_timer,n.feather_idle,n.dash_time,n.dash_effect_time=10,true,-10,0
-n.spd=vector(mid(n.spd.x,-1.5,1.5),mid(n.spd.y,-1.5,1.5))
+player_spawn = {init = function(_ENV)
+  layer = 2
+  sfx "15"
+  sprite = 3
+  target = y
+  y = min(y + 48, lvl_ph)
+  _g.cam_x, _g.cam_y = mid(x, 64, lvl_pw - 64), mid(y, 64, lvl_ph - 64)
+  spd.y = -4
+  state = 0
+  delay = 0
+  create_hair(_ENV)
+  djump = max_djump
+  foreach(fruitrain, function(n)
+    fruitrain[1].target = _ENV
+    add(objects, n)
+    n.x, n.y = x, y
+    fruit.init(n)
+  end)
+end, update = function(_ENV)
+  if state == 0 and y < target + 16 then
+    state, delay = 1, 3
+  elseif state == 1 then
+    spd.y += .5
+    if spd.y > 0 then
+      if delay > 0 then
+        spd.y = 0
+        delay -= 1
+      elseif y > target then
+        y, spd, state, delay, _g.shake = target, vector(0, 0), 2, 5, 4
+        init_smoke(0, 4)
+        sfx "16"
+      end
+    end
+  elseif state == 2 then
+    delay -= 1
+    sprite = 6
+    if delay < 0 then
+      destroy_object(_ENV)
+      local n = init_object(player, x, y);
+      (fruitrain[1] or {}).target = n
+    end
+  end
+  update_hair(_ENV)
+end, draw = player.draw}
+camera_trigger = {update = function(_ENV)
+  if timer and timer > 0 then
+    timer -= 1
+    if timer == 0 then
+      _g.cam_offx, _g.cam_offy = offx, offy
+    else
+      _g.cam_offx += cam_gain * (offx - cam_offx)
+      _g.cam_offy += cam_gain * (offy - cam_offy)
+    end
+  elseif player_here() then
+    timer = 5
+  end
+end}
+spring = {update = function(_ENV)
+  delta = delta or 0
+  delta *= .75
+  local n, e = _ENV, dir
+  local _ENV = player_here() and player_here() or n
+  if _ENV ~= n then
+    move(0, n.y - y - 4, 1)
+    spd.x *= .2
+    spd.y = -3
+    dash_time, dash_effect_time, n.delta, djump = 0, 0, 4, max_djump
+  end
+end, draw = function(_ENV)
+  local n = flr(delta)
+  sspr(64, 0, 8, 8 - n, x, y + n)
+end}
+refill = {init = function(_ENV)
+  offset, timer, hitbox = rnd(), 0, rectangle "-1,-1,10,10"
+end, update = function(_ENV)
+  if timer > 0 then
+    timer -= 1
+    if timer == 0 then
+      psfx "12"
+      init_smoke()
+    end
+  else
+    offset += .02
+    local n = player_here()
+    if n and n.djump < max_djump then
+      psfx "11"
+      init_smoke()
+      n.djump, timer = max_djump, 60
+    end
+  end
+end, draw = function(_ENV)
+  if timer == 0 then
+    spr(12, x, y + sin(offset) + .5)
+  else
+    spr(11, x, y)
+  end
+end}
+smoke = {init = function(_ENV)
+  layer, spd, flip = 3, vector(.3 + rnd "0.2", -.1), vector(rnd() < .5, rnd() < .5)
+  x += -1 + rnd "2"
+  y += -1 + rnd "2"
+end, update = function(_ENV)
+  sprite += .2
+  if sprite >= 27 then
+    destroy_object(_ENV)
+  end
+end}
+fruitrain = {}
+fruit = {init = function(_ENV)
+  golden, y_, off, tx, ty = true, y, 0, x, y
+  if deaths > 0 then
+    destroy_object(_ENV)
+  end
+end, update = function(_ENV)
+  if target then
+    tx += .2 * (target.x - tx)
+    ty += .2 * (target.y - ty)
+    local n, e = x - tx, y_ - ty
+    local d, o = atan2(n, e), n ^ 2 + e ^ 2 > r ^ 2 and .2 or .1
+    x += o * (r * cos(d) - n)
+    y_ += o * (r * sin(d) - e)
+  else
+    local n = player_here()
+    if n then
+      n.berry_timer, target, r = 0, fruitrain[#fruitrain] or n, fruitrain[1] and 8 or 12
+      add(fruitrain, _ENV)
+    end
+  end
+  off += .025
+  y = y_ + sin(off) * 2.5
+end}
+lifeup = {init = function(_ENV)
+  spd.y, duration, flash, _g.sfx_timer, outline = -.25, 30, 0, 20
+  sfx "9"
+end, update = function(_ENV)
+  duration -= 1
+  if duration <= 0 then
+    destroy_object(_ENV)
+  end
+  flash += .5
+end, draw = function(_ENV)
+  ?split "1000,2000,3000,4000,5000,1up" [min(sprite, 6)], x - 4, y - 4, 7 + flash % 2
+end}
+kevin = {init = function(_ENV)
+  while right() < lvl_pw - 1 and tile_at(right() / 8, y / 8) != 65 do
+    hitbox.w += 8
+  end
+  while bottom() < lvl_ph - 1 and tile_at(x / 8, bottom() / 8) != 80 do
+    hitbox.h += 8
+  end
+  solid_obj, collides, retrace_list, hit_timer, retrace_timer, shake = true, true, {}, 0, 0, 0
+end, update = function(_ENV)
+  shake = max(0, shake - 1)
+  for n = -1, 1 do
+    for e = -1, 1 do
+      if (n + e) % 2 == 1 then
+        local d = check(player, n, e)
+        if d and d.dash_effect_time > 0 and (n ~= 0 and sign(d.dash_target_x) == -n or e ~= 0 and sign(d.dash_target_y) == -e) and (not active or n ~= dirx and e ~= diry) then
+          d.spd = vector(n * 1.5, e == 1 and .5 or -1.5)
+          d.dash_time = -1
+          add(retrace_list, vector(x, y))
+          dirx, diry = n, e
+          spd = v0()
+          hit_timer = 10
+          active = true
+          shake = 4
+        end
+      end
+    end
+  end
+  if hit_timer > 0 then
+    hit_timer -= 1
+    if hit_timer == 0 then
+      spd = vector(.2 * dirx, .2 * diry)
+    end
+  elseif active then
+    if spd.x == 0 and spd.y == 0 then
+      retrace_timer = 10
+      active = false
+      shake = 5
+      if dirx ~= 0 then
+        for n = 0, hitbox.h - 1, 8 do
+          init_smoke(dirx == -1 and -8 or hitbox.w, n)
+        end
+      else
+        for n = 0, hitbox.w - 1, 8 do
+          init_smoke(n, diry == -1 and -8 or hitbox.h)
+        end
+      end
+    else
+      spd = vector(appr(spd.x, 3 * dirx, .2), appr(spd.y, 3 * diry, .2))
+    end
+  elseif retrace_timer > 0 then
+    retrace_timer -= 1
+    if retrace_timer == 0 then
+      retrace = true
+    end
+  elseif retrace then
+    local n = retrace_list[#retrace_list]
+    if not n then
+      retrace = false
+    elseif n.x == x and n.y == y then
+      del(retrace_list, n)
+      retrace_timer = 5
+      shake = 4
+      spd = v0()
+      rem = v0()
+    else
+      spd = vector(appr(spd.x, sign(n.x - x), .2), appr(spd.y, sign(n.y - y), .2))
+    end
+  end
+end, draw = function(_ENV)
+  local n, e = x, y
+  if shake > 0 then
+    n += rnd "2" - 1
+    e += rnd "2" - 1
+  end
+  local o, f, t, d, i, r = n + hitbox.w - 8, e + hitbox.h - 8, active and diry == -1, active and diry == 1, active and dirx == -1, active and dirx == 1
+  for n = n + 8, o - 8, 8 do
+    pal(12, t and 7 or 12)
+    spr(65, n, e)
+    pal(12, d and 7 or 12)
+    spr(65, n, f, 1, 1, false, true)
+  end
+  for e = e + 8, f - 8, 8 do
+    pal(12, i and 7 or 12)
+    spr(80, n, e)
+    pal(12, r and 7 or 12)
+    spr(80, o, e, 1, 1, true)
+  end
+  rectfill(n + 8, e + 8, o, f, 4)
+  local t = {d, i, t, r, d}
+  for d = 0, 3 do
+    pal(12, (t[d + 1] or t[d + 2]) and 7 or 12)
+    spr(64, d <= 1 and n or o, (d - 1) \ 2 == 0 and e or f, 1, 1, d >= 2, (d - 1) \ 2 ~= 0)
+  end
+  pal()
+  spr(active and 63 or 47, n + hitbox.w / 2 - 4, e + hitbox.h / 2 - 4)
+end}
+bumper = {init = function(_ENV)
+  hitbox = rectangle "1,1,14,14"
+  hittimer = 0
+  startx, starty = x, y
+  meep = 0
+  outline = false
+  inc = rnd "1" < .5 and -.02 or .02
+end, update = function(_ENV)
+  x = startx + cos(meep * 1.5) * 2
+  y = starty + sin(meep) * 1.5
+  if hittimer > 0 then
+    hittimer -= 1
+    if hittimer == 0 then
+      init_smoke(4, 4)
+    end
+  else
+    meep += inc
+    local n = player_here()
+    if n then
+      n.init_smoke()
+      local e, d = x + 8 - (n.x + 4), y + 8 - (n.y + 4)
+      local o = atan2(e, d)
+      n.spd = abs(e) > abs(d) and vector(sign(e) * -2.8, -2) or vector(-3 * cos(o), -3 * sin(o))
+      n.dash_time, n.djump = -1, max_djump
+      hittimer = 20
+    end
+  end
+end, draw = function(_ENV)
+  local n, e = x + 8, y + 8
+  if hittimer > 0 then
+    pal(12, 1)
+    pal(4, 2)
+    if hittimer > 17 then
+      circ(n, e, 26 - hittimer, 7)
+      circfill(n, e, 25 - hittimer, 1)
+      if hittimer > 19 then
+        rectfill(n - 4, e - 9, n + 4, e + 9, 7)
+        rectfill(n - 9, e - 4, n + 9, e + 4, 7)
+      end
+    end
+  end
+  sspr(112, 16, 8, 16, x, y)
+  sspr(112, 16, 8, 16, x + 8, y, 8, 16, true)
+  pal()
+  if hittimer == 1 then
+    circfill(n, e, 4, 6)
+  end
+end}
 
-particles={}
-for e=0,10do
-local e={x=x+rnd"8"-4,y=y+rnd"8"-4,life=10+flr(rnd(5)),big=true}
-e.xspd=-n.spd.x/2-(x-e.x)/4
-e.yspd=-n.spd.y/2-(y-e.y)/4
-e.flip=vector(rnd"1">.5,rnd"1">.5)
-add(n.particles,e)
+function appr_circ(n, e, d)
+  return (n + sign(sin(n) * cos(e) - cos(n) * sin(e)) * d) % 1
 end
-elseif bubbled and n then
-if n.dash_time>0then
-bubbled=false
-goto j
-else
-local e=atan2(n.y+4-(y+4),n.x+4-(x+4))+.01
-local e,d=sin(e)*2,cos(e)*2
-n.spd=vector(e,d)
-x=startx-e*3
-y=starty-d*3
-n.djump=max_djump
-if(n.movedir)n.movedir+=.5
-end
-end
-hitbox=rectangle"0,0,8,8"
-end
-end,
-draw=function(_ENV)
-if timer==0then
-local n=flr(sprtimer%6)
-spr(66+min(n,6-n),x,y,1,1,n>3)
-end
-end
-}
-garbage={
-init=function(_ENV)
-local n=check(osc_plat,0,-1)
-if n then
-n.badestate=sprite+1
-n.hitbox.h+=8
-destroy_object(_ENV)
-return
-end
-n=check(osc_plat,-1,0)
-if n then
-n.target_id=sprite
-foreach(objects,function(e)
-if e.type==garbage and e.sprite==sprite and e~=_ENV then
-n.targetx,n.targety=e.x,e.y
-destroy_object(e)
-end
-end)
-destroy_object(_ENV)
-else
-foreach(objects,function(n)
-if n.type==osc_plat and n.target_id==sprite then
-n.targetx,n.targety=x,y
-destroy_object(_ENV)
-end
-end)
-end
-end,
-end_init=function(_ENV)
-for n in all(objects)do
-if n.type==badeline then
-n.nodes[sprite+1]={x,y}
-end
-end
-destroy_object(_ENV)
-end
-}
-badeline={
-init=function(_ENV)
-nodes,next_node,ffreeze,outline,off,target_x,target_y,rx,ry,attack,attack_timer={},1,
-0,
-false,
-0,
-x,y,
-x,y,
-boss_phases[1],
-0
-end,
-update=function(_ENV)
-off+=.005
-attack_timer+=1
-x,y=round(rx+4*sin(2*off)),round(ry+4*sin(off))
-if ffreeze>0then
-ffreeze-=1
-else
-if round(rx)~=target_x or round(ry)~=target_y then
-rx+=.2*(target_x-rx)
-ry+=.2*(target_y-ry)
-else
-local n=player_here()
-if n then
-attack_timer=1
-destroy_object(laser or{})
-laser=nil
-if next_node>#nodes then
-target_x=lvl_pw+50
-node,ffreeze=-1,10
-else
-target_x,target_y=unpack(nodes[next_node])
-ffreeze=10
-end
-next_node+=1
-attack=boss_phases[next_node]
-n.dash_time=4
-n.djump=max_djump
-n.spd=vector(-2,-1)
-n.dash_accel_x,n.dash_accel_y=0,0
-off=0
-local e=20
-foreach(objects,function(n)
-if n.type==fall_plat or n.type==osc_plat and next_node-1==n.badestate then
-n.timer=e
-n.state=0
-e+=15
-end
-end)
-elseif node~=-1and find_player()then
-hitbox=rectangle'-12,-12,32,32' --try to suck player in
-local hit=player_here()
-hitbox=rectangle'0,0,8,8'
-if hit then
-hit.spd=vector(mid(-2,2,hit.spd.x),mid(-2,2,hit.spd.y))
-hit.dash_time=0
-hit.spd.x+=hit.left()>right() and -.5 or hit.right()<left() and .5 or 0
-hit.spd.y+=hit.top()>bottom() and -.35 or hit.bottom()<top() and .25 or 0
-end
-if attack==1and attack_timer%60==0then
-init_object(orb,flip.x and right()or left(),y+4)
-elseif attack==2and attack_timer%100==0then
-laser=init_object(laser,x,y)
-laser.badeline=_ENV
-end
-end
-end
-end
-foreach(objects,function(n)
-if n.type==player and ffreeze==0then
-if n.x>x+16then
-flip.x=true
-elseif n.x<x-16then
-flip.x=false
-end
-end
-end)
-end,
-draw=function(_ENV)
-for n=1,2do
-pal(n,ffreeze==0and n or _g.frames%2==0and 14or 7)
-end
-for n in all(split("1,-0.1 1,-0.4 2,0 2,0.5 1,0.125 1,0.375"," "))do
-local d,e=unpack(split(n))
-for n=0,7do
-circfill(x+(flip.x and 2or 6)+1.45*n*cos(e),y+3+1.45*n*sin(e)+(ffreeze>0and 0or sin((_g.frames+3*n+4*e)/14)),split"2,2,1,1,1,1,1"[n],d)
-end
-end
-draw_obj_sprite(_ENV)
-pal()
-_g.anxiety=true
-end
-}
-orb={
-init=function(_ENV)
-for n in all(objects)do
-if n.type==player then
-local n,e=n.x+4-x,n.y+4-y
-local d=sqrt(n^2+e^2)*.65
-spdx,spdy=n/d,e/d
-end
-end
-init_smoke(-4+2*sign(spdx),-4)
-hitbox,t,y_,particles=
-rectangle"-2,-2,5,5",0,y,{}
-end,
-update=function(_ENV)
-t+=.05
-x+=spdx
-y_+=spdy
-y=round(y_+1.5*sin(t))
-local n=player_here()
-if n then
-kill_player(n)
-end
-if maybe()then
-add(particles,{
-x=x,
-y=y,
-dx=-rnd()*spdx,
-dy=-rnd()*spdy,
-c=8,
-d=15
-})
-end
-foreach(particles,function(n)
-n.x+=n.dx
-n.y+=n.dy
-if rnd()<.3then
-n.c=split"7,8,14"[1+flr(rnd"3")]
-end
-n.d-=1
-if n.d<0then
-del(particles,n)
-end
-end)
-end,
-draw=function(_ENV)
-foreach(particles,function(n)
-pset(n.x,n.y,n.c)
-end)
-local d,o,n=x,y,t
-for n=n,n+.08,.01do
-pset(round(d+6*cos(n)),round(o-6*sin(n)),8)
-end
-local f,t,e=cos(2*n)<=-.5and 1or 0,cos(2*n)>.5and 1or 0,1+flr(1.5*n%3)
-for n in all{2.001,round(1-cos(1.5*n))}do
-if n>0or e==3then
-if n~=2.001and e==3then n=2-n end
-ovalfill(d-n-f,o-n-t,d+n,o+n,n~=2.001and split"15,7,8"[e]or e==2and 8or 2)
-end
-pal()
-end
-end
-}
+
+feather = {init = function(_ENV)
+  sprtimer = 0
+  offset = 0
+  starty, startx = y, x
+  timer = 0
+  bubble = sprite == 27
+  bubbled = bubble
+end, update = function(_ENV)
+  if timer > 0 then
+    timer -= 1
+    if timer == 0 then
+      init_smoke()
+      bubbled = bubble
+    end
+  else
+    sprtimer += .2
+    offset += .01
+    y = appr(y, starty + .5 + 2 * sin(offset), 1)
+    x = appr(x, startx, 1)
+    if bubbled then
+      hitbox = rectangle "-4,-4,16,16"
+    end
+    local n = player_here()
+    ::j::
+    if not bubbled and n then
+      init_smoke()
+      timer = 60
+      if n.feather_idle then
+        n.lifetime = 60
+      end
+      n.spawn_timer, n.feather_idle, n.dash_time, n.dash_effect_time = 10, true, -10, 0
+      n.spd = vector(mid(n.spd.x, -1.5, 1.5), mid(n.spd.y, -1.5, 1.5))
+      particles = {}
+      for e = 0, 10 do
+        local e = {x = x + rnd "8" - 4, y = y + rnd "8" - 4, life = 10 + flr(rnd(5)), big = true}
+        e.xspd = -n.spd.x / 2 - (x - e.x) / 4
+        e.yspd = -n.spd.y / 2 - (y - e.y) / 4
+        e.flip = vector(rnd "1" > .5, rnd "1" > .5)
+        add(n.particles, e)
+      end
+    elseif bubbled and n then
+      if n.dash_time > 0 then
+        bubbled = false
+        goto j
+      else
+        local e = atan2(n.y + 4 - (y + 4), n.x + 4 - (x + 4)) + .01
+        local e, d = sin(e) * 2, cos(e) * 2
+        n.spd = vector(e, d)
+        x = startx - e * 3
+        y = starty - d * 3
+        n.djump = max_djump
+        if n.movedir then
+          n.movedir += .5
+        end
+      end
+    end
+    hitbox = rectangle "0,0,8,8"
+  end
+end, draw = function(_ENV)
+  if timer == 0 then
+    local n = flr(sprtimer % 6)
+    spr(66 + min(n, 6 - n), x, y, 1, 1, n > 3)
+  end
+end}
+garbage = {init = function(_ENV)
+  local n = check(osc_plat, 0, -1)
+  if n then
+    n.badestate = sprite + 1
+    n.hitbox.h += 8
+    destroy_object(_ENV)
+    return
+  end
+  n = check(osc_plat, -1, 0)
+  if n then
+    n.target_id = sprite
+    foreach(objects, function(e)
+      if e.type == garbage and e.sprite == sprite and e ~= _ENV then
+        n.targetx, n.targety = e.x, e.y
+        destroy_object(e)
+      end
+    end)
+    destroy_object(_ENV)
+  else
+    foreach(objects, function(n)
+      if n.type == osc_plat and n.target_id == sprite then
+        n.targetx, n.targety = x, y
+        destroy_object(_ENV)
+      end
+    end)
+  end
+end, end_init = function(_ENV)
+  for n in all(objects) do
+    if n.type == badeline then
+      n.nodes[sprite + 1] = {x, y}
+    end
+  end
+  destroy_object(_ENV)
+end}
+badeline = {init = function(_ENV)
+  nodes, next_node, ffreeze, outline, off, target_x, target_y, rx, ry, attack, attack_timer = {}, 1, 0, false, 0, x, y, x, y, boss_phases[1], 0
+end, update = function(_ENV)
+  off += .005
+  attack_timer += 1
+  x, y = round(rx + 4 * sin(2 * off)), round(ry + 4 * sin(off))
+  if ffreeze > 0 then
+    ffreeze -= 1
+  else
+    if round(rx) ~= target_x or round(ry) ~= target_y then
+      rx += .2 * (target_x - rx)
+      ry += .2 * (target_y - ry)
+    else
+      local n = player_here()
+      if n then
+        attack_timer = 1
+        destroy_object(laser or {})
+        laser = nil
+        if next_node > #nodes then
+          target_x = lvl_pw + 50
+          node, ffreeze = -1, 10
+        else
+          target_x, target_y = unpack(nodes[next_node])
+          ffreeze = 10
+        end
+        next_node += 1
+        attack = boss_phases[next_node]
+        n.dash_time = 4
+        n.djump = max_djump
+        n.spd = vector(-2, -1)
+        n.dash_accel_x, n.dash_accel_y = 0, 0
+        off = 0
+        local e = 20
+        foreach(objects, function(n)
+          if n.type == fall_plat or n.type == osc_plat and next_node - 1 == n.badestate then
+            n.timer = e
+            n.state = 0
+            e += 15
+          end
+        end)
+      elseif node ~= -1 and find_player() then
+        hitbox = rectangle '-12,-12,32,32'
+        --try to suck player in
+        local hit = player_here()
+        hitbox = rectangle '0,0,8,8'
+        if hit then
+          hit.spd = vector(mid(-2, 2, hit.spd.x), mid(-2, 2, hit.spd.y))
+          hit.dash_time = 0
+          hit.spd.x += hit.left() > right() and -.5 or hit.right() < left() and .5 or 0
+          hit.spd.y += hit.top() > bottom() and -.35 or hit.bottom() < top() and .25 or 0
+        end
+        if attack == 1 and attack_timer % 60 == 0 then
+          init_object(orb, flip.x and right() or left(), y + 4)
+        elseif attack == 2 and attack_timer % 100 == 0 then
+          laser = init_object(laser, x, y)
+          laser.badeline = _ENV
+        end
+      end
+    end
+  end
+  foreach(objects, function(n)
+    if n.type == player and ffreeze == 0 then
+      if n.x > x + 16 then
+        flip.x = true
+      elseif n.x < x - 16 then
+        flip.x = false
+      end
+    end
+  end)
+end, draw = function(_ENV)
+  for n = 1, 2 do
+    pal(n, ffreeze == 0 and n or _g.frames % 2 == 0 and 14 or 7)
+  end
+  for n in all(split("1,-0.1 1,-0.4 2,0 2,0.5 1,0.125 1,0.375", " ")) do
+    local d, e = unpack(split(n))
+    for n = 0, 7 do
+      circfill(x + (flip.x and 2 or 6) + 1.45 * n * cos(e), y + 3 + 1.45 * n * sin(e) + (ffreeze > 0 and 0 or sin((_g.frames + 3 * n + 4 * e) / 14)), split "2,2,1,1,1,1,1" [n], d)
+    end
+  end
+  draw_obj_sprite(_ENV)
+  pal()
+  _g.anxiety = true
+end}
+orb = {init = function(_ENV)
+  for n in all(objects) do
+    if n.type == player then
+      local n, e = n.x + 4 - x, n.y + 4 - y
+      local d = sqrt(n ^ 2 + e ^ 2) * .65
+      spdx, spdy = n / d, e / d
+    end
+  end
+  init_smoke(-4 + 2 * sign(spdx), -4)
+  hitbox, t, y_, particles = rectangle "-2,-2,5,5", 0, y, {}
+end, update = function(_ENV)
+  t += .05
+  x += spdx
+  y_ += spdy
+  y = round(y_ + 1.5 * sin(t))
+  local n = player_here()
+  if n then
+    kill_player(n)
+  end
+  if maybe() then
+    add(particles, {x = x, y = y, dx = -rnd() * spdx, dy = -rnd() * spdy, c = 8, d = 15})
+  end
+  foreach(particles, function(n)
+    n.x += n.dx
+    n.y += n.dy
+    if rnd() < .3 then
+      n.c = split "7,8,14" [1 + flr(rnd "3")]
+    end
+    n.d -= 1
+    if n.d < 0 then
+      del(particles, n)
+    end
+  end)
+end, draw = function(_ENV)
+  foreach(particles, function(n)
+    pset(n.x, n.y, n.c)
+  end)
+  local d, o, n = x, y, t
+  for n = n, n + .08, .01 do
+    pset(round(d + 6 * cos(n)), round(o - 6 * sin(n)), 8)
+  end
+  local f, t, e = cos(2 * n) <= -.5 and 1 or 0, cos(2 * n) > .5 and 1 or 0, 1 + flr(1.5 * n % 3)
+  for n in all {2.001, round(1 - cos(1.5 * n))} do
+    if n > 0 or e == 3 then
+      if n ~= 2.001 and e == 3 then
+        n = 2 - n
+      end
+      ovalfill(d - n - f, o - n - t, d + n, o + n, n ~= 2.001 and split "15,7,8" [e] or e == 2 and 8 or 2)
+    end
+    pal()
+  end
+end}
+
 function find_player()
-for n in all(objects)do
-if n.type==player or n.type==player_spawn then
-return n
+  for n in all(objects) do
+    if n.type == player or n.type == player_spawn then
+      return n
+    end
+  end
 end
+
+function line_dist(f, t, n, e, d, o)
+  local d, o = d - n, o - e
+  return abs(d * (e - t) - (n - f) * o) / sqrt(d ^ 2 + o ^ 2)
 end
+
+function rectfillr(d, o, f, t, n, i, r, a)
+  local function e(e, d)
+    e, d = e - i, d - r
+    return vector(i + cos(n) * e - sin(n) * d, r + sin(n) * e + cos(n) * d)
+  end
+
+  local d, n, e = {e(d, o), e(d, t), e(f, t), e(f, o)}, 32767.99999, 32768
+  for d in all(d) do
+    n, e = min(n, d.y), max(e, d.y)
+  end
+  for n = ceil(n), e do
+    local o, f = 32767.99999, 32768
+    for t, e in pairs(d) do
+      local d = d[1 + t % 4]
+      if mid(n, e.y, d.y) == n then
+        local n = e.x + (n - e.y) / (d.y - e.y) * (d.x - e.x)
+        o, f = min(o, n), max(f, n)
+      end
+    end
+    rectfill(o, n, f, n, a)
+  end
 end
-function line_dist(f,t,n,e,d,o)
-local d,o=d-n,o-e
-return abs(d*(e-t)-(n-f)*o)/sqrt(d^2+o^2)
-end
-function rectfillr(d,o,f,t,n,i,r,a)
-local function e(e,d)e,d=e-i,d-r return vector(i+cos(n)*e-sin(n)*d,r+sin(n)*e+cos(n)*d)end
-local d,n,e=
-{e(d,o),e(d,t),e(f,t),e(f,o)},32767.99999,32768
-for d in all(d)do
-n,e=min(n,d.y),max(e,d.y)
-end
-for n=ceil(n),e do
-local o,f=32767.99999,32768
-for t,e in pairs(d)do
-local d=d[1+t%4]
-if mid(n,e.y,d.y)==n then
-local n=e.x+(n-e.y)/(d.y-e.y)*(d.x-e.x)
-o,f=min(o,n),max(f,n)
-end
-end
-rectfill(o,n,f,n,a)
-end
-end
+
 function get_laser_coords(_ENV)
-return badeline.x+4,badeline.y-1,playerx+4,playery+6
+  return badeline.x + 4, badeline.y - 1, playerx + 4, playery + 6
 end
-laser={
-layer=3,
-init=function(_ENV)
-outline=false
-timer=0
-particles={}
-end,
-update=function(_ENV)
-timer+=1
-local n=find_player()
-if n then
-if timer<30then
-playerx,playery=appr(playerx or badeline.x,n.x,10),appr(playery or badeline.y,n.y,10)
-elseif timer==45then
-if line_dist(n.x+4,n.y+6,get_laser_coords(_ENV))<6then
-kill_player(n)
-end
-elseif timer>=48and#particles==0then
-destroy_object(_ENV)
-badeline.laser=nil
-end
-foreach(particles,function(n)
-n.x+=n.dx
-n.y+=n.dy
-n.d-=1
-if n.d<0then
-del(particles,n)
-end
-end)
-else
-destroy_object(_ENV)
-end
-end,
-draw=function(_ENV)
-local d=timer
-if d>42and d<45then return end
-if d<48then
-local n,e,o,f=get_laser_coords(_ENV)
-local o,f=n-o,e-f
-local r,a=n-128*o,e-128*f
-for d=0,rnd"4"do
-local d=rnd()
-line(n,e,n+cos(d)*rnd"7",e+sin(d)*rnd"7",7)
-end
-local t,i,l,c,h=n,e,sqrt(o^2+f^2)*.1,d>45and 2or.5,d>=30and d%4<2and 7or 8
-line(n,e,n,e,8)
-for n=0,10do
-t-=o/l
-i-=f/l
-line(t+(rnd"10"-5)*c,i+(rnd"10"-5)*c,maybe()and 0or d>45and h or 2)
-if d==47then
-for n=1,3do
-add(particles,{
-x=t,
-y=i,
-dx=rnd()-.5,
-dy=rnd()-.5,
-d=10
-})
-end
-end
-end
-if d<45or d==47then
-line(n,e,r,a,h)
-local o=d>30and d%4<2and 4or 2
-for d=1,2do
-circfill(n,e,o/d,7+d)
-end
-else
-for d=1,3do
-rectfillr(n+2,e+split"-4,-4,3"[d],n+132,e+split"4,-3,4"[d],atan2(r-n,a-e),n,e,split"7,8,8"[d])
-end
-circfill(n,e,4,7)
-end
-end
-foreach(particles,function(n)
-pset(n.x,n.y,n.d>4and 8or 2)
-end)
-end
-}
+
+laser = {layer = 3, init = function(_ENV)
+  outline = false
+  timer = 0
+  particles = {}
+end, update = function(_ENV)
+  timer += 1
+  local n = find_player()
+  if n then
+    if timer < 30 then
+      playerx, playery = appr(playerx or badeline.x, n.x, 10), appr(playery or badeline.y, n.y, 10)
+    elseif timer == 45 then
+      if line_dist(n.x + 4, n.y + 6, get_laser_coords(_ENV)) < 6 then
+        kill_player(n)
+      end
+    elseif timer >= 48 and #particles == 0 then
+      destroy_object(_ENV)
+      badeline.laser = nil
+    end
+    foreach(particles, function(n)
+      n.x += n.dx
+      n.y += n.dy
+      n.d -= 1
+      if n.d < 0 then
+        del(particles, n)
+      end
+    end)
+  else
+    destroy_object(_ENV)
+  end
+end, draw = function(_ENV)
+  local d = timer
+  if d > 42 and d < 45 then
+    return
+  end
+  if d < 48 then
+    local n, e, o, f = get_laser_coords(_ENV)
+    local o, f = n - o, e - f
+    local r, a = n - 128 * o, e - 128 * f
+    for d = 0, rnd "4" do
+      local d = rnd()
+      line(n, e, n + cos(d) * rnd "7", e + sin(d) * rnd "7", 7)
+    end
+    local t, i, l, c, h = n, e, sqrt(o ^ 2 + f ^ 2) * .1, d > 45 and 2 or .5, d >= 30 and d % 4 < 2 and 7 or 8
+    line(n, e, n, e, 8)
+    for n = 0, 10 do
+      t -= o / l
+      i -= f / l
+      line(t + (rnd "10" - 5) * c, i + (rnd "10" - 5) * c, maybe() and 0 or d > 45 and h or 2)
+      if d == 47 then
+        for n = 1, 3 do
+          add(particles, {x = t, y = i, dx = rnd() - .5, dy = rnd() - .5, d = 10})
+        end
+      end
+    end
+    if d < 45 or d == 47 then
+      line(n, e, r, a, h)
+      local o = d > 30 and d % 4 < 2 and 4 or 2
+      for d = 1, 2 do
+        circfill(n, e, o / d, 7 + d)
+      end
+    else
+      for d = 1, 3 do
+        rectfillr(n + 2, e + split "-4,-4,3" [d], n + 132, e + split "4,-3,4" [d], atan2(r - n, a - e), n, e, split "7,8,8" [d])
+      end
+      circfill(n, e, 4, 7)
+    end
+  end
+  foreach(particles, function(n)
+    pset(n.x, n.y, n.d > 4 and 8 or 2)
+  end)
+end}
+
 function plat_draw(_ENV)
-local n,e=x,y
-if shake>0then
-n+=rnd"2"-1
-e+=rnd"2"-1
+  local n, e = x, y
+  if shake > 0 then
+    n += rnd "2" - 1
+    e += rnd "2" - 1
+  end
+  local d, o, f = n + hitbox.w - 8, e + hitbox.h - 8, 1.5 * timer - 4.5
+  palt(0, false)
+  palt(5, true)
+  palt(14, true)
+  if palswap then
+    pal(12, 2)
+    pal(7, 5)
+    pal(6, 1)
+  end
+  if f > 0 and f < 12 and state == 0 then
+    rect(n - f, e - f, d + f + 8, o + f + 8, 15)
+  end
+  for n = n, d, d - n do
+    for n = e, o, o - e do
+    end
+  end
+  spr(33, n, e)
+  spr(35, d, e)
+  spr(49, n, o)
+  spr(51, d, o)
+  for n = n + 8, d - 8, 8 do
+    spr(34, n, e)
+    spr(50, n, o)
+  end
+  for e = e + 8, o - 8, 8 do
+    spr(32, n, e)
+    spr(48, d, e)
+  end
+  for d = n + 8, d - 8, 8 do
+    for o = e + 8, o - 8, 8 do
+      spr((d + o - n - e) % 16 == 0 and 41 or 56, d, o)
+    end
+  end
+  palt()
+  pal()
 end
-local d,o,f=n+hitbox.w-8,e+hitbox.h-8,1.5*timer-4.5
-palt(0,false)
-palt(5,true)
-palt(14,true)
-if palswap then
-pal(12,2)
-pal(7,5)
-pal(6,1)
+
+fall_plat = {init = function(_ENV)
+  while right() < lvl_pw - 1 and tile_at(right() / 8 + 1, y / 8) == 85 do
+    hitbox.w += 8
+  end
+  while bottom() < lvl_ph - 1 and tile_at(x / 8, bottom() / 8 + 1) == 85 do
+    hitbox.h += 8
+  end
+  collides, solid_obj, timer, shake, state, new = true, true, 0, 0, 0, false
+end, update = function(_ENV)
+  if timer > 0 then
+    timer -= 1
+    if timer == 2 then
+      palswap = true
+    end
+    if timer == 0 then
+      state += 1
+      spd.y, shake = .4, 0
+    elseif state == 0 then
+      shake = 1
+    end
+  elseif state >= 1 then
+    if spd.y == 0 then
+      if not is_solid(0, 1) then
+        new = false
+      end
+      if not new then
+        for n = 0, hitbox.w - 1, 8 do
+          init_smoke(n, hitbox.h - 2)
+        end
+        new, shake = true, 3
+      end
+      timer = 6
+    end
+    spd.y = appr(spd.y, 4, .4)
+  end
+end, draw = plat_draw}
+osc_plat = {init = fall_plat.init, end_init = function(_ENV)
+  hitbox.w += 8
+  if not badestate then
+    timer = 1
+  end
+  local n, e = targetx - x, targety - y
+  local d = sqrt(n ^ 2 + e ^ 2)
+  t, shake, palswap, startx, starty, dirx, diry = 0, 0, not badestate, x, y, n / d, e / d
+end, update = function(_ENV)
+  if timer > 0 then
+    timer -= 1
+    palswap, start = timer <= 2, timer == 0
+  elseif start then
+    if state == 0 then
+      state = t == 0 and 1 or t == 40 and 2 or 0
+    else
+      local n, e, d = 1, targetx, targety
+      if state == 2 then
+        n, e, d = -1, startx, starty
+      end
+      spd = vector(mid(appr(spd.x, n * 5 * dirx, abs(.5 * dirx)), e - x, x - e), mid(appr(spd.y, n * 5 * diry, abs(.5 * diry)), d - y, y - d))
+      if spd.x | spd.y == 0 then
+        shake, state = 3, 0
+        if is_solid(sign(n * dirx), 0) then
+          for e = 0, hitbox.h - 1, 8 do
+            init_smoke(sign(dirx) == n and hitbox.w - 1 or -4, e)
+          end
+        end
+        if is_solid(0, sign(n * diry)) then
+          for e = 0, hitbox.w - 1, 8 do
+            init_smoke(e, sign(diry) == n and hitbox.h - 1 or -4)
+          end
+        end
+      end
+    end
+    t += 1
+    t %= 80
+  end
+  shake = max(shake - 1)
+end, draw = plat_draw}
+psfx = function(n)
+  if sfx_timer <= 0 then
+    sfx(n)
+  end
 end
-if f>0and f<12and state==0then
-rect(n-f,e-f,d+f+8,o+f+8,15)
-end
-for n=n,d,d-n do
-for n=e,o,o-e do
-end
-end
-spr(33,n,e)
-spr(35,d,e)
-spr(49,n,o)
-spr(51,d,o)
-for n=n+8,d-8,8do
-spr(34,n,e)
-spr(50,n,o)
-end
-for e=e+8,o-8,8do
-spr(32,n,e)
-spr(48,d,e)
-end
-for d=n+8,d-8,8do
-for o=e+8,o-8,8do
-spr((d+o-n-e)%16==0and 41or 56,d,o)
-end
-end
-palt()
-pal()
-end
-fall_plat={
-init=function(_ENV)
-while(right()<lvl_pw-1and tile_at(right()/8+1,y/8)==85)hitbox.w+=8
-while(bottom()<lvl_ph-1and tile_at(x/8,bottom()/8+1)==85)hitbox.h+=8
-collides,solid_obj,timer,shake,state,new=true,true,0,0,0,false
-end,
-update=function(_ENV)
-if timer>0then
-timer-=1
-if timer==2then
-palswap=true
-end
-if timer==0then
-state+=1
-spd.y,shake=.4,0
-elseif state==0then
-shake=1
-end
-elseif state>=1then
-if spd.y==0then
-if(not is_solid(0,1))new=false
-if not new then
-for n=0,hitbox.w-1,8do
-init_smoke(n,hitbox.h-2)
-end
-new,shake=true,3
-end
-timer=6
-end
-spd.y=appr(spd.y,4,.4)
-end
-end,
-draw=plat_draw
-}
-osc_plat={
-init=fall_plat.init,
-end_init=function(_ENV)
-hitbox.w+=8
-if not badestate then
-timer=1
-end
-local n,e=targetx-x,targety-y
-local d=sqrt(n^2+e^2)
-t,shake,palswap,
-startx,starty,
-dirx,diry=
-0,0,not badestate,
-x,y,
-n/d,e/d
-end,
-update=function(_ENV)
-if timer>0then
-timer-=1
-palswap,start=timer<=2,timer==0
-elseif start then
-if state==0then
-state=t==0and 1or t==40and 2or 0
-else
-local n,e,d=1,targetx,targety
-if state==2then
-n,e,d=-1,startx,starty
-end
-spd=vector(mid(appr(spd.x,n*5*dirx,abs(.5*dirx)),e-x,x-e),
-mid(appr(spd.y,n*5*diry,abs(.5*diry)),d-y,y-d))
-if spd.x|spd.y==0then
-shake,state=3,0
-if is_solid(sign(n*dirx),0)then
-for e=0,hitbox.h-1,8do
-init_smoke(sign(dirx)==n and hitbox.w-1or-4,e)
-end
-end
-if is_solid(0,sign(n*diry))then
-for e=0,hitbox.w-1,8do
-init_smoke(e,sign(diry)==n and hitbox.h-1or-4)
-end
-end
-end
-end
-t+=1t%=80
-end
-shake=max(shake-1)
-end,
-draw=plat_draw
-}
-psfx=function(n)
-if sfx_timer<=0then
-sfx(n)
-end
-end
-spinner_controller={
-spinners={},
-connectors={},
-layer=0,
-init=function()
-spinner_controller.spinners,spinner_controller.connectors={},{}
-end,
-end_init=function()
-for e,n in ipairs(spinner_controller.spinners)do
-for e=1,e-1do
-local e=spinner_controller.spinners[e]
-local d,o=abs(n.x-e.x),abs(n.y-e.y)
-if d<=16and o<=16and d+o<32then
-add(spinner_controller.connectors,vector((n.x+e.x)/2+4,(n.y+e.y)/2+4))
-end
-end
-end
-end,
-update=function()
-local n=find_player()
-if n and n.type==player then
-for e in all(spinner_controller.spinners)do
-if e.objcollide(n,0,0)then
-kill_player(find_player())
-break
-end
-end
-end
-end,
-draw=function()
-foreach(spinner_controller.connectors,function(n)
-spr(28,n.x,n.y)
-end)
-foreach(spinner_controller.spinners,function(n)
-spr(13,n.x,n.y,2,2)
-end)
-end
-}
-spinner={
-init=function(_ENV)
-if sprite%2==0then
-x-=8
-end
-if sprite>=29then
-y-=8
-end
-hitbox=rectangle"2,2,12,12"
-add(spinner_controller.spinners,_ENV)
-destroy_object(_ENV)
-end
-}
-tiles={}
+spinner_controller = {spinners = {}, connectors = {}, layer = 0, init = function()
+  spinner_controller.spinners, spinner_controller.connectors = {}, {}
+end, end_init = function()
+  for e, n in ipairs(spinner_controller.spinners) do
+    for e = 1, e - 1 do
+      local e = spinner_controller.spinners[e]
+      local d, o = abs(n.x - e.x), abs(n.y - e.y)
+      if d <= 16 and o <= 16 and d + o < 32 then
+        add(spinner_controller.connectors, vector((n.x + e.x) / 2 + 4, (n.y + e.y) / 2 + 4))
+      end
+    end
+  end
+end, update = function()
+  local n = find_player()
+  if n and n.type == player then
+    for e in all(spinner_controller.spinners) do
+      if e.objcollide(n, 0, 0) then
+        kill_player(find_player())
+        break
+      end
+    end
+  end
+end, draw = function()
+  foreach(spinner_controller.connectors, function(n)
+    spr(28, n.x, n.y)
+  end)
+  foreach(spinner_controller.spinners, function(n)
+    spr(13, n.x, n.y, 2, 2)
+  end)
+end}
+spinner = {init = function(_ENV)
+  if sprite % 2 == 0 then
+    x -= 8
+  end
+  if sprite >= 29 then
+    y -= 8
+  end
+  hitbox = rectangle "2,2,12,12"
+  add(spinner_controller.spinners, _ENV)
+  destroy_object(_ENV)
+end}
+tiles = {}
 foreach(split([[
 1,player_spawn
 8,spring
@@ -1150,384 +1071,422 @@ foreach(split([[
 14,spinner
 29,spinner
 30,spinner
-]],"\n"),function(n)
-local n,e=unpack(split(n))
-tiles[n]=_ENV[e]
+]], "\n"), function(n)
+  local n, e = unpack(split(n))
+  tiles[n] = _ENV[e]
 end)
-function init_object(n,e,d,f)
-local _ENV=setmetatable({},{__index=_g})
-type,collideable,sprite,flip,x,y,hitbox,spd,rem,outline,draw_seed=
-n,true,f,vector(),e,d,rectangle"0,0,8,8",vector(0,0),vector(0,0),true,rnd()
-function left()return x+hitbox.x end
-function right()return left()+hitbox.w-1end
-function top()return y+hitbox.y end
-function bottom()return top()+hitbox.h-1end
-function is_solid(e,d,o)
-for n in all(objects)do
-if n~=_ENV and(n.solid_obj or n.semisolid_obj and not objcollide(n,e,0)and d>0)and objcollide(n,e,d)and not(o and n.unsafe_ground)then
-return true
+
+function init_object(n, e, d, f)
+  local _ENV = setmetatable({}, {__index = _g})
+  type, collideable, sprite, flip, x, y, hitbox, spd, rem, outline, draw_seed = n, true, f, vector(), e, d, rectangle "0,0,8,8", vector(0, 0), vector(0, 0), true, rnd()
+
+  function left()
+    return x + hitbox.x
+  end
+
+  function right()
+    return left() + hitbox.w - 1
+  end
+
+  function top()
+    return y + hitbox.y
+  end
+
+  function bottom()
+    return top() + hitbox.h - 1
+  end
+
+  function is_solid(e, d, o)
+    for n in all(objects) do
+      if n ~= _ENV and (n.solid_obj or n.semisolid_obj and not objcollide(n, e, 0) and d > 0) and objcollide(n, e, d) and not (o and n.unsafe_ground) then
+        return true
+      end
+    end
+    return d > 0 and not is_flag(e, 0, 3) and is_flag(e, d, 3) or is_flag(e, d, 0)
+  end
+
+  function oob(n, e)
+    return not exit_left and left() + n < 0 or not exit_right and right() + n >= lvl_pw or top() + e <= -8
+  end
+
+  function is_flag(e, d, n)
+    for o = mid(0, lvl_w - 1, (left() + e) \ 8), mid(0, lvl_w - 1, (right() + e) / 8) do
+      for e = mid(0, lvl_h - 1, (top() + d) \ 8), mid(0, lvl_h - 1, (bottom() + d) / 8) do
+        local d = tile_at(o, e)
+        if n >= 0 then
+          if fget(d, n) and (n ~= 3 or e * 8 > bottom()) then
+            return true
+          end
+        end
+      end
+    end
+  end
+
+  function objcollide(n, e, d)
+    return n.collideable and n.right() >= left() + e and n.bottom() >= top() + d and n.left() <= right() + e and n.top() <= bottom() + d
+  end
+
+  function check(e, d, o)
+    for n in all(objects) do
+      if n.type == e and n ~= _ENV and objcollide(n, d, o) then
+        return n
+      end
+    end
+  end
+
+  function player_here()
+    return check(player, 0, 0)
+  end
+
+  function move(e, d, t)
+    for n in all {"x", "y"} do
+      rem[n] += vector(e, d)[n]
+      local e = round(rem[n])
+      rem[n] -= e
+      local f = n == "y" and e < 0
+      local d, o = not player_here() and check(player, 0, f and e or -1)
+      if collides then
+        local d, i = sign(e), _ENV[n]
+        local f = n == "x" and d or 0
+        for e = t, abs(e) do
+          if is_solid(f, d - f) or oob(f, d - f) then
+            spd[n], rem[n] = 0, 0
+            break
+          else
+            _ENV[n] += d
+          end
+        end
+        o = _ENV[n] - i
+      else
+        o = e
+        if (solid_obj or semisolid_obj) and f and d then
+          o += top() - bottom() - 1
+          local n = round(d.spd.y + d.rem.y)
+          n += sign(n)
+          if o < n then
+            d.spd.y = max(d.spd.y)
+          else
+            o = 0
+          end
+        end
+        _ENV[n] += e
+      end
+      if (solid_obj or semisolid_obj) and collideable then
+        collideable = false
+        local f = player_here()
+        if f and solid_obj then
+          f.move(n ~= "x" and 0 or e > 0 and right() + 1 - f.left() or e < 0 and left() - f.right() - 1, n ~= "y" and 0 or e > 0 and bottom() + 1 - f.top() or e < 0 and top() - f.bottom() - 1, 1)
+          if player_here() then
+            kill_player(f)
+          end
+        elseif d then
+          d.move(vector(o, 0)[n], vector(0, o)[n], 1)
+        end
+        collideable = true
+      end
+    end
+  end
+
+  function init_smoke(n, e)
+    init_object(smoke, x + (n or 0), y + (e or 0), 24)
+  end
+
+  add(objects, _ENV);
+  (type.init or time)(_ENV)
+  return _ENV
 end
-end
-return d>0and not is_flag(e,0,3)and is_flag(e,d,3)or
-is_flag(e,d,0)
-end
-function oob(n,e)
-return not exit_left and left()+n<0or not exit_right and right()+n>=lvl_pw or top()+e<=-8
-end
-function is_flag(e,d,n)
-for o=mid(0,lvl_w-1,(left()+e)\8),mid(0,lvl_w-1,(right()+e)/8)do
-for e=mid(0,lvl_h-1,(top()+d)\8),mid(0,lvl_h-1,(bottom()+d)/8)do
-local d=tile_at(o,e)
-if n>=0then
-if fget(d,n)and(n~=3or e*8>bottom())then
-return true
-end
-end
-end
-end
-end
-function objcollide(n,e,d)
-return n.collideable and
-n.right()>=left()+e and
-n.bottom()>=top()+d and
-n.left()<=right()+e and
-n.top()<=bottom()+d
-end
-function check(e,d,o)
-for n in all(objects)do
-if n.type==e and n~=_ENV and objcollide(n,d,o)then
-return n
-end
-end
-end
-function player_here()
-return check(player,0,0)
-end
-function move(e,d,t)
-for n in all{"x","y"}do
-rem[n]+=vector(e,d)[n]
-local e=round(rem[n])
-rem[n]-=e
-local f=n=="y"and e<0
-local d,o=not player_here()and check(player,0,f and e or-1)
-if collides then
-local d,i=sign(e),_ENV[n]
-local f=n=="x"and d or 0
-for e=t,abs(e)do
-if is_solid(f,d-f)or oob(f,d-f)then
-spd[n],rem[n]=0,0
-break
-else
-_ENV[n]+=d
-end
-end
-o=_ENV[n]-i
-else
-o=e
-if(solid_obj or semisolid_obj)and f and d then
-o+=top()-bottom()-1
-local n=round(d.spd.y+d.rem.y)
-n+=sign(n)
-if o<n then
-d.spd.y=max(d.spd.y)
-else
-o=0
-end
-end
-_ENV[n]+=e
-end
-if(solid_obj or semisolid_obj)and collideable then
-collideable=false
-local f=player_here()
-if f and solid_obj then
-f.move(n~="x"and 0or e>0and right()+1-f.left()or e<0and left()-f.right()-1,
-n~="y"and 0or e>0and bottom()+1-f.top()or e<0and top()-f.bottom()-1,
-1)
-if player_here()then
-kill_player(f)
-end
-elseif d then
-d.move(vector(o,0)[n],vector(0,o)[n],1)
-end
-collideable=true
-end
-end
-end
-function init_smoke(n,e)
-init_object(smoke,x+(n or 0),y+(e or 0),24)
-end
-add(objects,_ENV);
-(type.init or time)(_ENV)
-return _ENV
-end
+
 function destroy_object(_ENV)
-del(objects,_ENV)
+  del(objects, _ENV)
 end
+
 function kill_player(_ENV)
-_g.sfx_timer=12
-sfx(17)
-_g.deaths+=1
-destroy_object(_ENV)
-for n=0,.875,.125do
-add(dead_particles,{
-x=x+4,
-y=y+4,
-t=2,
-dx=sin(n)*3,
-dy=cos(n)*3
-})
+  _g.sfx_timer = 12
+  sfx(17)
+  _g.deaths += 1
+  destroy_object(_ENV)
+  for n = 0, .875, .125 do
+    add(dead_particles, {x = x + 4, y = y + 4, t = 2, dx = sin(n) * 3, dy = cos(n) * 3})
+  end
+  foreach(fruitrain, function(n)
+    if n.golden then
+      _g.full_restart = true
+    end
+  end)
+  _g.fruitrain = {}
+  _g.delay_restart = 15
+  _g.tstate = 0
 end
-foreach(fruitrain,function(n)
-if(n.golden)_g.full_restart=true
-end)
-_g.fruitrain={}
-_g.delay_restart=15
-_g.tstate=0
-end
+
 function next_level()
-local n=lvl_id+1
-load_level(n)
+  local n = lvl_id + 1
+  load_level(n)
 end
+
 function load_level(n)
-has_dashed=false
-foreach(objects,destroy_object)
-cam_spdx,cam_spdy=0,0
-local e=lvl_id~=n
-lvl_id=n
-local n=split(levels[lvl_id])
-lvl_x,lvl_y,lvl_w,lvl_h=n[1]*16,n[2]*16,n[3]*16,n[4]*16
-lvl_pw=lvl_w*8
-lvl_ph=lvl_h*8
-boss_phases=split(n[6],"/")
-local n=tonum(n[5])or 1
-for e,d in inext,split"exit_top,exit_right,exit_bottom,exit_left"do
-_ENV[d]=n&.5<<e~=0
+  has_dashed = false
+  foreach(objects, destroy_object)
+  cam_spdx, cam_spdy = 0, 0
+  local e = lvl_id ~= n
+  lvl_id = n
+  local n = split(levels[lvl_id])
+  lvl_x, lvl_y, lvl_w, lvl_h = n[1] * 16, n[2] * 16, n[3] * 16, n[4] * 16
+  lvl_pw = lvl_w * 8
+  lvl_ph = lvl_h * 8
+  boss_phases = split(n[6], "/")
+  local n = tonum(n[5]) or 1
+  for e, d in inext, split "exit_top,exit_right,exit_bottom,exit_left" do
+    _ENV[d] = n & .5 << e ~= 0
+  end
+  ui_timer = 5
+  if e then
+    if mapdata[lvl_id] then
+      for i = 0, #mapdata[lvl_id] - 1 do
+        mset(i % lvl_w, i \ lvl_w, ord(mapdata[lvl_id][i + 1]) - 1)
+      end
+    end
+    reload()
+  end
+  init_object(spinner_controller, 0, 0)
+  for e = 0, lvl_w - 1 do
+    for d = 0, lvl_h - 1 do
+      local n = tile_at(e, d)
+      if tiles[n] then
+        init_object(tiles[n], e * 8, d * 8, n)
+      end
+      if n >= 224 then
+        init_object(garbage, e * 8, d * 8, n - 224)
+      end
+    end
+  end
+  foreach(objects, function(n)
+    (n.type.end_init or time)(n)
+  end)
+  cam_offx, cam_offy = 0, 0
+  for n in all(camera_offsets[lvl_id]) do
+    local n, e, d, o, f, t = unpack(split(n))
+    local n = init_object(camera_trigger, n * 8, e * 8)
+    n.hitbox, n.offx, n.offy = rectangle("0,0," .. d * 8 .. "," .. o * 8), f, t
+  end
 end
-ui_timer=5
-if e then
-if mapdata[lvl_id] then
-for i=0,#mapdata[lvl_id]-1 do
-  mset(i%lvl_w,i\lvl_w,ord(mapdata[lvl_id][i+1])-1)
-end
-end
-reload()
-end
-init_object(spinner_controller,0,0)
-for e=0,lvl_w-1do
-for d=0,lvl_h-1do
-local n=tile_at(e,d)
-if tiles[n]then
-init_object(tiles[n],e*8,d*8,n)
-end
-if n>=224then
-init_object(garbage,e*8,d*8,n-224)
-end
-end
-end
-foreach(objects,function(n)
-(n.type.end_init or time)(n)
-end)
-cam_offx,cam_offy=0,0
-for n in all(camera_offsets[lvl_id])do
-local n,e,d,o,f,t=unpack(split(n))
-local n=init_object(camera_trigger,n*8,e*8)
-n.hitbox,n.offx,n.offy=rectangle("0,0,"..d*8 ..","..o*8),f,t
-end
-end
+
 function _update()
-frames+=1
-if time_ticking then
-seconds+=frames\30
-minutes+=seconds\60
-seconds%=60
+  frames += 1
+  if time_ticking then
+    seconds += frames \ 30
+    minutes += seconds \ 60
+    seconds %= 60
+  end
+  frames %= 30
+  if music_timer > 0 then
+    music_timer -= 1
+    if music_timer <= 0 then
+      music(10, 0, 7)
+    end
+  end
+  if sfx_timer > 0 then
+    sfx_timer -= 1
+  end
+  if delay_restart > 0 then
+    cam_spdx, cam_spdy = 0, 0
+    delay_restart -= 1
+    if delay_restart == 0 then
+      if full_restart then
+        full_restart = false
+        _init()
+      else
+        load_level(lvl_id)
+      end
+    end
+  end
+  foreach(objects, function(_ENV)
+    move(spd.x, spd.y, type == player and 0 or 1);
+    (type.update or time)(_ENV)
+    draw_seed = rnd()
+  end)
+  foreach(objects, function(_ENV)
+    if type == player or type == player_spawn then
+      move_camera(_ENV)
+      return
+    end
+  end)
 end
-frames%=30
-if music_timer>0then
-music_timer-=1
-if music_timer<=0then
-music(10,0,7)
-end
-end
-if sfx_timer>0then
-sfx_timer-=1
-end
-if delay_restart>0then
-cam_spdx,cam_spdy=0,0
-delay_restart-=1
-if delay_restart==0then
-if full_restart then
-full_restart=false
-_init()
-else
-load_level(lvl_id)
-end
-end
-end
-foreach(objects,function(_ENV)
-move(spd.x,spd.y,type==player and 0or 1);
-(type.update or time)(_ENV)
-draw_seed=rnd()
-end)
-foreach(objects,function(_ENV)
-if type==player or type==player_spawn then
-move_camera(_ENV)
-return
-end
-end)
-end
+
 function _draw()
-pal()
-cls'9'
-palt(0,false)
-sspr(0,64,32,32,0,0,128,128)
-draw_x=round(cam_x)-64
-draw_y=round(cam_y)-64
-camera(draw_x,draw_y)
-if anxiety then
-cls'0'
---fillp'0b0101101001011010'
---for i=0,127,2 do 
---offset=sin(frames/15+i/150)*3
---for j=-16,256,12 do
---local shrink=(150+(sin(j/4.5+frames/30)*30)-i)/16
---if (shrink<=7.5) line(j+offset+shrink,i,j+offset+16-shrink,i,1)
---line(j+offset+shrink,i,j+offset+15-shrink,i,(i>96 or i>80 and i<90 or i>70 and i<75 or i>64 and i<67 or i>60 and i%2==1) and 1 or 2)
---end end	
---fillp()
---palt(2,true)
-
-
-end
-pal''
-palt(2,true)
-palt(0,false)
-map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,4)
-palt()
-if anxiety then
---pa'12,-1,2'
---pa'8,1,2'
-end
-for n=0,15do pal(n,0)end
-pal=time
-foreach(objects,function(n)
-if n.outline then
-for e=-1,1do for d=-1,1do if e==0or d==0then
-camera(draw_x+e,draw_y+d)draw_object(n)
-end end end
-end
-end)
-pal=_pal
-camera(draw_x,draw_y)
-pal()
-palt()
-anxiety=false
-local e={{},{},{}}
-foreach(objects,function(n)
-if n.type.layer==0then
-draw_object(n)
-else
-add(e[n.type.layer or 1],n)
-end
-end)
-pal''
-palt(0,false)
-palt(2,true)
-map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,2)
-palt()
-foreach(e,function(n)
-foreach(n,function(_ENV)
-draw_object(_ENV)
-if bubble and bubbled then
---oval(left()-4,top()-4,right()+4,bottom()+4,7)
-circ(x+4,y+3,8,7) -- 9 tokens smaller, looks off though.
-end
-end)
-end)
-for n=0,lvl_w do
-for e=0,lvl_h do
-if grass[tile_at(n,e)]and not grass[tile_at(n,e-1)]and not not_grass[tile_at(n,e-1)]then
-spr(60,n*8,(e-1)*8)
-end
-end
-end
-map(lvl_x,lvl_y,0,0,lvl_w,lvl_h,8)
-foreach(dead_particles,function(n)
-n.x+=n.dx
-n.y+=n.dy
-n.t-=.2
-if n.t<=0then
-del(dead_particles,n)
-end
-rectfill(n.x-n.t,n.y-n.t,n.x+n.t,n.y+n.t,14+5*n.t%2)
-end)
-if ui_timer>=-30then
-if ui_timer<0then
-end
-ui_timer-=1
-end
-camera()
-color(0)
-if tstate==0then
-tlo+=14
-thi=tlo-320
-po1tri(0,tlo,128,tlo,64,80+tlo)
-rectfill(0,thi,128,tlo)
-po1tri(0,thi-64,0,thi,64,thi)
-po1tri(128,thi-64,128,thi,64,thi)
-if(tlo>474)tstate=-1tlo=-64
-end
-p"9,137"
-p"10,9"
-p"14,131"
-p"13,139"
-p"15,14"
-p"0,129"
-p"6,140"
+  pal()
+  cls '9'
+  palt(0, false)
+  sspr(0, 64, 32, 32, 0, 0, 128, 128)
+  draw_x = round(cam_x) - 64
+  draw_y = round(cam_y) - 64
+  camera(draw_x, draw_y)
+  if anxiety then
+    cls '0'
+  --fillp'0b0101101001011010'
+  --for i=0,127,2 do 
+  --offset=sin(frames/15+i/150)*3
+  --for j=-16,256,12 do
+  --local shrink=(150+(sin(j/4.5+frames/30)*30)-i)/16
+  --if (shrink<=7.5) line(j+offset+shrink,i,j+offset+16-shrink,i,1)
+  --line(j+offset+shrink,i,j+offset+15-shrink,i,(i>96 or i>80 and i<90 or i>70 and i<75 or i>64 and i<67 or i>60 and i%2==1) and 1 or 2)
+  --end end	
+  --fillp()
+  --palt(2,true)
+  end
+  pal ''
+  palt(2, true)
+  palt(0, false)
+  map(lvl_x, lvl_y, 0, 0, lvl_w, lvl_h, 4)
+  palt()
+  if anxiety then
+  --pa'12,-1,2'
+  --pa'8,1,2'
+  end
+  for n = 0, 15 do
+    pal(n, 0)
+  end
+  pal = time
+  foreach(objects, function(n)
+    if n.outline then
+      for e = -1, 1 do
+        for d = -1, 1 do
+          if e == 0 or d == 0 then
+            camera(draw_x + e, draw_y + d)
+            draw_object(n)
+          end
+        end
+      end
+    end
+  end)
+  pal = _pal
+  camera(draw_x, draw_y)
+  pal()
+  palt()
+  anxiety = false
+  local e = {{}, {}, {}}
+  foreach(objects, function(n)
+    if n.type.layer == 0 then
+      draw_object(n)
+    else
+      add(e[n.type.layer or 1], n)
+    end
+  end)
+  pal ''
+  palt(0, false)
+  palt(2, true)
+  map(lvl_x, lvl_y, 0, 0, lvl_w, lvl_h, 2)
+  palt()
+  foreach(e, function(n)
+    foreach(n, function(_ENV)
+      draw_object(_ENV)
+      if bubble and bubbled then
+        --oval(left()-4,top()-4,right()+4,bottom()+4,7)
+        circ(x + 4, y + 3, 8, 7)
+      -- 9 tokens smaller, looks off though.
+      end
+    end)
+  end)
+  for n = 0, lvl_w do
+    for e = 0, lvl_h do
+      if grass[tile_at(n, e)] and not grass[tile_at(n, e - 1)] and not not_grass[tile_at(n, e - 1)] then
+        spr(60, n * 8, (e - 1) * 8)
+      end
+    end
+  end
+  map(lvl_x, lvl_y, 0, 0, lvl_w, lvl_h, 8)
+  foreach(dead_particles, function(n)
+    n.x += n.dx
+    n.y += n.dy
+    n.t -= .2
+    if n.t <= 0 then
+      del(dead_particles, n)
+    end
+    rectfill(n.x - n.t, n.y - n.t, n.x + n.t, n.y + n.t, 14 + 5 * n.t % 2)
+  end)
+  if ui_timer >= -30 then
+    if ui_timer < 0 then
+    end
+    ui_timer -= 1
+  end
+  camera()
+  color(0)
+  if tstate == 0 then
+    tlo += 14
+    thi = tlo - 320
+    po1tri(0, tlo, 128, tlo, 64, 80 + tlo)
+    rectfill(0, thi, 128, tlo)
+    po1tri(0, thi - 64, 0, thi, 64, thi)
+    po1tri(128, thi - 64, 128, thi, 64, thi)
+    if tlo > 474 then
+      tstate = -1
+      tlo = -64
+    end
+  end
+  p "9,137"
+  p "10,9"
+  p "14,131"
+  p "13,139"
+  p "15,14"
+  p "0,129"
+  p "6,140"
 --p"5,15"
 end
+
 function p(n)
-n=split(n)
-pal(n[1],n[2],1)
+  n = split(n)
+  pal(n[1], n[2], 1)
 end
+
 function draw_object(_ENV)
-srand(draw_seed);
-(type.draw or draw_obj_sprite)(_ENV)
+  srand(draw_seed);
+  (type.draw or draw_obj_sprite)(_ENV)
 end
+
 function draw_obj_sprite(_ENV)
-spr(sprite,x,y,1,1,flip.x,flip.y)
+  spr(sprite, x, y, 1, 1, flip.x, flip.y)
 end
+
 function two_digit_str(n)
-return n<10and"0"..n or n
+  return n < 10 and "0" .. n or n
 end
+
 function round(n)
-return flr(n+.5)
+  return flr(n + .5)
 end
-function appr(n,e,d)
-return n>e and max(n-d,e)or min(n+d,e)
+
+function appr(n, e, d)
+  return n > e and max(n - d, e) or min(n + d, e)
 end
+
 function sign(n)
-return n~=0and sgn(n)or 0
+  return n ~= 0 and sgn(n) or 0
 end
+
 function maybe()
-return rnd()<.5
+  return rnd() < .5
 end
-function tile_at(n,e)
-return mget(lvl_x+n,lvl_y+e)
+
+function tile_at(n, e)
+  return mget(lvl_x + n, lvl_y + e)
 end
-tstate,tlo=-1,-64
-function po1tri(n,e,f,d,o,t)
-local i=n+(o-n)/(t-e)*(d-e)
-p01traph(n,n,f,i,e,d)
-p01traph(f,i,o,o,d,t)
+
+tstate, tlo = -1, -64
+
+function po1tri(n, e, f, d, o, t)
+  local i = n + (o - n) / (t - e) * (d - e)
+  p01traph(n, n, f, i, e, d)
+  p01traph(f, i, o, o, d, t)
 end
-function p01traph(n,e,d,o,f,t)
-d,o=(d-n)/(t-f),(o-e)/(t-f)
-for f=f,t do
-rectfill(n,f,e,f)
-n+=d
-e+=o
+
+function p01traph(n, e, d, o, f, t)
+  d, o = (d - n) / (t - f), (o - e) / (t - f)
+  for f = f, t do
+    rectfill(n, f, e, f)
+    n += d
+    e += o
+  end
 end
-end
+
 --function pa(a)
 --local t,q,l=unpack(split(a))
 --for i=1,15 do pal(i,t) end
