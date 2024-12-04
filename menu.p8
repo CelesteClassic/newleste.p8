@@ -1,12 +1,12 @@
 pico-8 cartridge // http://www.pico-8.com
-version 27
+version 42
 __lua__
 
 --TODO
 --camera transition
 --list credits
 
-cheatmode=true
+cheatmode=false
 
 --globals
 levels_unlocked = 1
@@ -69,17 +69,10 @@ menu2={
 	prev='title',
 	level=0
 }
-menu1={
-	items={'play', 'options', 'credits'},
-	sprites={0, 54, 55},
-	actions={
-		function() uidata.uistate='ticket' uianim = cocreate(playui_in) end,
-		function() uidata.uistate='options' uianim = cocreate(menuui_in) end,
-		function() transition_action=function() uidata.uistate='credits' end tstate=0 tcol=0 end
-	},
-	prev='title',
-	level=0
-}
+menu1=menu2
+del(menu1.items,menu1.items[2])
+del(menu1.sprites,menu1.sprites[2])
+del(menu1.actions,menu1.actions[2])
 
 timermodes={'chapter', 'file', 'room', 'frames'}
 
@@ -107,15 +100,33 @@ for i=0,12 do
 	})
 end
 
+function parse_argv()
+	argv = #stat(6)>0 and split(stat(6)) or split("false,title,1,1,false,128")
+ for k, v in all(argv) do
+		if v == "false" then
+			argv[k] = false
+		else if v == "true" then
+			argv[k] = true
+		end
+	end
+	cheatmode,uidata.uistate,sel_level,sel_menu,level_selected,uidata.panel_pos = unpack(argv, 1, #argv)
+	
+	if uidata.uistate ~= "title" then
+		transition_action, tstate, tcol = function() end, 1, 1
+	end
+end
+end
+
 function _init()
 	cartdata("collab_newleste_save")
 	load_gamedata()
 
- 	sel_level = 1
- 	sel_menu = 1
- 	level_selected = false
+ sel_level = 1
+ sel_menu = 1
+ level_selected = false
+ 	parse_argv()
 
- 	idlecamtimer=0
+ idlecamtimer=0
 	cam_x = cam_positions[1][1][1]
 	cam_y = cam_positions[1][1][2]
 	cam_z = cam_positions[1][1][3]
@@ -245,7 +256,7 @@ function load_gamedata()
 
 	-- variables
 	cartnames = {
-		"prologue",
+	 "interludes",
 		"city",
 		"site",
 		"resort",
@@ -253,7 +264,7 @@ function load_gamedata()
 		"temple",
 		"reflection",
 		"summit",
-		"epilogue",
+		"interludes",
 		"core"
 	}
 
@@ -315,12 +326,11 @@ function handle_ui()
 					uianim = cocreate(levelui_out)
 				elseif btnp(4) then
 					transition_action=function()
-						if selected2chap(sel_level) ~= 9 then
-							--load(""..selected2chap(sel_level)..cartnames[sel_level])
-							load(cartnames[sel_level])
-						else
-							load("0interludes")
-						end
+						load(
+						cartnames[sel_level]..".p8",
+							"",
+							"<insert load data here>"
+						)
 					end
 					tstate=0
 					tcol=0
