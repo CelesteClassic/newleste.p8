@@ -7,6 +7,10 @@ __lua__
 _g = _ENV
 poke(24366, 1)
 
+function unsplit(s) 
+	return unpack(split(s)) 
+end
+
 function vector(n, e)
   return {x = n, y = e}
 end
@@ -22,13 +26,13 @@ function rectangle(n)
 end
 
 objects = {}
-freeze, delay_restart, sfx_timer, music_timer, ui_timer = 0, 0, 0, 0, -99
-cam_x, cam_y, cam_spdx, cam_spdy, cam_gain, cam_offx, cam_offy = 0, 0, 0, 0, .25, 0, 0
+freeze, delay_restart, sfx_timer, music_timer, ui_timer =unsplit'0,0,0,0,-99'
+cam_x, cam_y, cam_spdx, cam_spdy, cam_gain, cam_offx, cam_offy =unsplit'0,0,0,0,.25,0,0'
 _pal = pal
 
 function _init()
-  max_djump, deaths, frames, seconds, minutes, music_timer, time_ticking, berry_count = 1, 0, 0, 0, 0, 0, true, 0
-  music(0, 0, 7)
+  max_djump, deaths, frames, seconds, minutes, music_timer, time_ticking, berry_count =unsplit'1, 0, 0, 0, 0, 0,true, 0'
+  music(unsplit'0,0,7')
   load_level(1)
 end
 
@@ -1323,16 +1327,16 @@ function _draw()
   camera(draw_x, draw_y)
   if anxiety then
     cls '0'
-  --fillp'0b0101101001011010'
-  --for i=0,127,2 do 
-  --offset=sin(frames/15+i/150)*3
-  --for j=-16,256,12 do
-  --local shrink=(150+(sin(j/4.5+frames/30)*30)-i)/16
-  --if (shrink<=7.5) line(j+offset+shrink,i,j+offset+16-shrink,i,1)
-  --line(j+offset+shrink,i,j+offset+15-shrink,i,(i>96 or i>80 and i<90 or i>70 and i<75 or i>64 and i<67 or i>60 and i%2==1) and 1 or 2)
-  --end end	
-  --fillp()
-  --palt(2,true)
+--  fillp'0b0101101001011010'
+--  for i=0,127,2 do 
+--  offset=sin(frames/15+i/150)*3
+--  for j=-16,256,12 do
+--  local shrink=(150+(sin(j/4.5+frames/30)*30)-i)/16
+--  if (shrink<=7.5) line(j+offset+shrink,i,j+offset+16-shrink,i,1)
+--  line(j+offset+shrink,i,j+offset+15-shrink,i,(i>96 or i>80 and i<90 or i>70 and i<75 or i>64 and i<67 or i>60 and i%2==1) and 1 or 2)
+--  end end	
+--  fillp()
+--  palt(2,true)
   end
   pal ''
   palt(2, true)
@@ -1340,8 +1344,8 @@ function _draw()
   map(lvl_x, lvl_y, 0, 0, lvl_w, lvl_h, 4)
   palt()
   if anxiety then
-  --pa'12,-1,2'
-  --pa'8,1,2'
+--  pa'12,-1,2'
+--  pa'8,1,2'
   end
   for n = 0, 15 do
     pal(n, 0)
@@ -1489,7 +1493,7 @@ function p01traph(n, e, d, o, f, t)
 end
 
 --function pa(a)
---local t,q,l=unpack(split(a))
+--local t,q,l=unsplit(a)
 --for i=1,15 do pal(i,t) end
 --if l<0 then
 --camera(draw_x+q,draw_y)
