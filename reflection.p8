@@ -1,11 +1,13 @@
 pico-8 cartridge // http://www.pico-8.com
 version 42
 __lua__
-
 --reflection.p8
 --by many contributers
+
 _g = _ENV
 poke(24366, 1)
+
+-- [data structures]
 
 function unsplit(s) 
 	return unpack(split(s)) 
@@ -25,161 +27,203 @@ function rectangle(n)
   return _ENV
 end
 
+-- [globals]
+
 objects = {}
 freeze, delay_restart, sfx_timer, music_timer, ui_timer =unsplit'0,0,0,0,-99'
 cam_x, cam_y, cam_spdx, cam_spdy, cam_gain, cam_offx, cam_offy =unsplit'0,0,0,0,.25,0,0'
 _pal = pal
 
+-- [entry]
+
 function _init()
+  
   max_djump, deaths, frames, seconds, minutes, music_timer, time_ticking, berry_count =unsplit'1, 0, 0, 0, 0, 0,true, 0'
+  
   music(unsplit'0,0,7')
+  
   load_level(1)
+
 end
 
+-- [effects]
+
 dead_particles = {}
-player = {layer = 2, init = function(_ENV)
-  particles, feather, collides, djump, hitbox = {}, false, true, max_djump, rectangle "1,3,6,5"
-  create_hair(_ENV)
-  foreach(split "bouncetimer,grace,jbuffer,dash_time,dash_effect_time,dash_target_x,dash_target_y,dash_accel_x,dash_accel_y,spr_off,berry_timer,_berry_count", function(n)
-    _ENV[n] = 0
-  end)
-end, update = function(_ENV)
-  local n, e = btn(➡️) and 1 or btn(⬅️) and -1 or 0, btn(⬆️) and -1 or btn(⬇️) and 1 or 0
-  foreach(particles, function(n)
-    n.x += n.xspd
-    n.y += n.yspd
-    n.xspd = appr(n.xspd, 0, .03)
-    n.yspd = appr(n.yspd, 0, .03)
-    n.life -= 1
-    if n.life == 0 then
-      del(particles, n)
-    end
-  end)
-  if y > lvl_ph and not exit_bottom then
-    kill_player(_ENV)
-  end
-  if feather then
-    local d = 1
-    if n ~= 0 or e ~= 0 then
-      movedir, d = appr_circ(movedir, atan2(n, e), .04), 1.5
-    end
-    spd = vector(d * cos(movedir), d * sin(movedir))
-    local e = vector(x + 4.5, y + 4.5)
-    foreach(tail, function(n)
-      n.x += (e.x - n.x) / 1.4
-      n.y += (e.y - n.y) / 1.4
-      e = n
-    end)
-    if bouncetimer == 0 then
-      if is_solid(0, 2) or is_solid(0, -2) then
-        movedir *= -1
-        bouncetimer = 2
-        init_smoke()
-      elseif is_solid(2, 0) or is_solid(-2, 0) then
-        movedir = round(movedir) + .5 - movedir
-        bouncetimer = 2
-        init_smoke()
-      end
-    end
-    if bouncetimer > 0 then
-      bouncetimer -= 1
-    end
-    local n = {x = x + rnd(8) - 4, y = y + rnd(8) - 4, life = 10 + flr(rnd(5))}
-    n.xspd = -spd.x / 2 - (x - n.x) / 4
-    n.yspd = -spd.y / 2 - (y - n.y) / 4
-    add(particles, n)
-    lifetime -= 1
-    if lifetime <= 0 or btn(❎) then
-      p_dash = false
-      feather = false
-      init_smoke()
-      player.init(_ENV)
-      spd.x /= 2
-      spd.y = spd.y < 0 and -1.5 or 0
-    end
-  elseif feather_idle then
-    spd.x *= .8
-    spd.y *= .8
-    spawn_timer -= 1
-    if spawn_timer <= 0 then
-      feather_idle = false
-      feather = true
-      if n == 0 and e == 0 then
-        movedir = flip.x and .5 or 0
-      else
-        movedir = atan2(n, e)
-      end
-      lifetime = 60
-      _g.bouncetimer = 0
-      tail, particles = {}, {}
-      for n = 0, 15 do
-        add(tail, {x = x + 4, y = y + 4, size = mid(1, 2, 9 - n)})
-      end
-    end
-  end
-  if not feather and not feather_idle then
-    local d = is_solid(0, 1)
-    if d then
-      berry_timer += 1
-    else
-      berry_timer, _berry_count = 0, 0
-    end
-    if d and not was_on_ground then
-      init_smoke(0, 4)
-    end
-    local f, o = btn(🅾️) and not p_jump, btn(❎) and not p_dash
-    p_jump, p_dash = btn(🅾️), btn(❎)
-    if f then
-      jbuffer = 4
-    elseif jbuffer > 0 then
-      jbuffer -= 1
-    end
-    if d then
-      grace = 6
-      if djump < max_djump then
-        psfx(22)
-        djump = max_djump
-      end
-    elseif grace > 0 then
-      grace -= 1
-    end
-    dash_effect_time -= 1
-    if dash_time > 0 then
-      init_smoke()
-      dash_time -= 1
-      spd = vector(appr(spd.x, dash_target_x, dash_accel_x), appr(spd.y, dash_target_y, dash_accel_y))
-    else
-      local f = d and .6 or .4
-      spd.x = abs(spd.x) <= 1 and appr(spd.x, n * 1, f) or appr(spd.x, sign(spd.x) * 1, .15)
-      if spd.x ~= 0 then
-        flip.x = spd.x < 0
-      end
-      local f = 2
-      if n ~= 0 and is_solid(n, 0) then
-        f = .4
-        if rnd(10) < 2 then
-          init_smoke(n * 6)
-        end
-      end
-      if not d then
-        spd.y = appr(spd.y, f, abs(spd.y) > .15 and .21 or .105)
-      end
-      if jbuffer > 0 then
-        if grace > 0 then
-          psfx(18)
-          jbuffer, grace, spd.y = 0, 0, -2
-          init_smoke(0, 4)
-        else
-          local n = is_solid(-3, 0) and -1 or is_solid(3, 0) and 1 or 0
-          if n ~= 0 then
-            psfx(19)
-            jbuffer = 0
-            spd = vector(n * -2, -2)
-            init_smoke(n * 6)
-          end
-        end
-      end
-      if djump > 0 and o then
+
+-- player object
+
+player = {
+	layer = 2, 
+	init = function(_ENV)
+  	particles, feather, collides, djump, hitbox = {}, false, true, max_djump, rectangle "1,3,6,5"
+  	create_hair(_ENV)
+  	-- <fruitrain>
+  	-- for setting berry vars
+  	foreach(split "bouncetimer,grace,jbuffer,dash_time,dash_effect_time,dash_target_x,dash_target_y,dash_accel_x,dash_accel_y,spr_off,berry_timer,_berry_count", function(n)
+    	_ENV[n] = 0
+	  end)
+	end, 
+	
+	update = function(_ENV)
+		--get input
+  	local n, e = btn(➡️) and 1 or btn(⬅️) and -1 or 0, btn(⬆️) and -1 or btn(⬇️) and 1 or 0
+
+		--<feather>
+
+  	foreach(particles, function(n) --update feather particles
+    	n.x += n.xspd
+    	n.y += n.yspd
+    	n.xspd = appr(n.xspd, 0, .03)
+    	n.yspd = appr(n.yspd, 0, .03)
+    	n.life -= 1
+    	if n.life == 0 then
+      	del(particles, n)
+    	end
+  	end)
+  
+  	--</feather>
+  
+  	-- kill player on lower bounds
+  
+  	if y > lvl_ph and not exit_bottom then
+    	kill_player(_ENV)
+  	end
+  
+  	--<feather>
+  
+  	if feather then
+    	local d = 1
+    	if n ~= 0 or e ~= 0 then --move
+      	movedir, d = appr_circ(movedir, atan2(n, e), .04), 1.5
+    	end
+    	spd = vector(d * cos(movedir), d * sin(movedir))
+    	local e = vector(x + 4.5, y + 4.5)
+    	foreach(tail, function(n) --simulate tail
+      	n.x += (e.x - n.x) / 1.4
+      	n.y += (e.y - n.y) / 1.4
+      	e = n
+    	end)
+    	if bouncetimer == 0 then --bounce on surfaces
+      	if is_solid(0, 2) or is_solid(0, -2) then
+        	movedir *= -1
+        	bouncetimer = 2
+        	init_smoke()
+      	elseif is_solid(2, 0) or is_solid(-2, 0) then
+        	movedir = round(movedir) + .5 - movedir
+        	bouncetimer = 2
+        	init_smoke()
+      	end
+    	end
+    	if bouncetimer > 0 then
+      	bouncetimer -= 1
+    	end
+    	local n = {x = x + rnd(8) - 4, y = y + rnd(8) - 4, life = 10 + flr(rnd(5))}
+    	n.xspd = -spd.x / 2 - (x - n.x) / 4
+    	n.yspd = -spd.y / 2 - (y - n.y) / 4
+    	add(particles, n)
+    	lifetime -= 1
+    	if lifetime <= 0 or btn(❎) then --exit feather
+      	p_dash = false
+      	feather = false
+      	init_smoke()
+      	player.init(_ENV)
+      	spd.x /= 2
+      	spd.y = spd.y < 0 and -1.5 or 0
+    	end
+    
+  	elseif feather_idle then --if idle
+    	spd.x *= .8 --slow effect
+    	spd.y *= .8
+    	spawn_timer -= 1
+    	if spawn_timer <= 0 then
+      	feather_idle = false
+      	feather = true
+      	if n == 0 and e == 0 then
+        	movedir = flip.x and .5 or 0
+      	else
+        	movedir = atan2(n, e)
+      	end
+      	lifetime = 60
+      	_g.bouncetimer = 0
+      	tail, particles = {}, {}
+      	for n = 0, 15 do --add to tail
+        	add(tail, {x = x + 4, y = y + 4, size = mid(1, 2, 9 - n)})
+      	end
+    	end
+  	end
+  	-- </feather>
+  	if not feather and not feather_idle then --not in feather state
+    	--<fruitrain>
+    	local d = is_solid(0, 1) --require safe ground
+    	if d then
+      	berry_timer += 1
+    	else
+      	berry_timer, _berry_count = 0, 0
+    	end
+    	--</fruitrain>
+    	if d and not was_on_ground then
+      	init_smoke(0, 4)
+    	end
+    
+    	--jump and dash
+    	local f, o = btn(🅾️) and not p_jump, btn(❎) and not p_dash
+    	p_jump, p_dash = btn(🅾️), btn(❎)
+    
+    	if f then --jump
+      	jbuffer = 4
+    	elseif jbuffer > 0 then
+      	jbuffer -= 1
+    	end
+    	
+    	if d then --on ground regain grace
+      	grace = 6
+      	if djump < max_djump then
+        	psfx(22)
+        	djump = max_djump
+      	end
+    	elseif grace > 0 then
+      	grace -= 1
+    	end
+    	
+    	dash_effect_time -= 1
+    
+    	if dash_time > 0 then
+      	init_smoke()
+      	dash_time -= 1
+      	spd = vector(appr(spd.x, dash_target_x, dash_accel_x), appr(spd.y, dash_target_y, dash_accel_y))
+    	else
+      	local f = d and .6 or .4
+      	spd.x = abs(spd.x) <= 1 and appr(spd.x, n * 1, f) or appr(spd.x, sign(spd.x) * 1, .15)
+      	if spd.x ~= 0 then
+        	flip.x = spd.x < 0
+      	end
+      	local f = 2
+      	if n ~= 0 and is_solid(n, 0) then
+        	f = .4
+        	if rnd(10) < 2 then
+          	init_smoke(n * 6)
+        	end
+      	end
+      	if not d then
+        	spd.y = appr(spd.y, f, abs(spd.y) > .15 and .21 or .105)
+      	end
+      	if jbuffer > 0 then
+        	if grace > 0 then
+          	psfx(18)
+          	jbuffer, grace, spd.y = 0, 0, -2
+          	init_smoke(0, 4)
+        	else
+          	local n = is_solid(-3, 0) and -1 or is_solid(3, 0) and 1 or 0
+          	if n ~= 0 then
+            	psfx(19)
+            	jbuffer = 0
+            	spd = vector(n * -2, -2)
+            	init_smoke(n * 6)
+          	end
+        	end
+      	end
+      	
+      if djump > 0 and o then --dash
         init_smoke()
         djump -= 1
         dash_time = 4
@@ -196,16 +240,22 @@ end, update = function(_ENV)
         init_smoke()
       end
     end
+    
+    --animation
     spr_off += .25
     sprite = not d and (is_solid(n, 0) and 5 or 3) or btn(⬇️) and 6 or btn(⬆️) and 7 or spd.x ~= 0 and n ~= 0 and 1 + spr_off % 4 or 1
     update_hair(_ENV)
+    
+    --exit level
     if (exit_right and left() >= lvl_pw or exit_top and y < -4 or exit_left and right() < 0 or exit_bottom and top() >= lvl_ph) and levels[lvl_id + 1] then
       next_level()
     end
     was_on_ground = d
   end
-end, draw = function(_ENV)
-  foreach(particles, function(n)
+end, 
+draw = function(_ENV)
+  --<feather>
+  foreach(particles, function(n) --draw small feathers
     if n.big then
       spr(15, n.x - 1, n.y - 1, 1, 1, n.flip.x, n.flip.y)
     else
@@ -226,6 +276,7 @@ end, draw = function(_ENV)
   elseif feather_idle then
     circfill(x + 4, y + 4, 3, spawn_timer % 4 < 2 and 7 or 10)
   else
+  --</feather>
     pal(8, djump == 1 and 8 or 12)
     draw_hair(_ENV)
     draw_obj_sprite(_ENV)
@@ -255,7 +306,8 @@ function draw_hair(_ENV)
   end
 end
 
-player_spawn = {init = function(_ENV)
+player_spawn = {
+init = function(_ENV)
   layer = 2
   sfx "15"
   sprite = 3
@@ -267,13 +319,16 @@ player_spawn = {init = function(_ENV)
   delay = 0
   create_hair(_ENV)
   djump = max_djump
+  --<fruitrain>
   foreach(fruitrain, function(n)
     fruitrain[1].target = _ENV
     add(objects, n)
     n.x, n.y = x, y
     fruit.init(n)
   end)
-end, update = function(_ENV)
+  --</fruitrain>
+end, 
+update = function(_ENV)
   if state == 0 and y < target + 16 then
     state, delay = 1, 3
   elseif state == 1 then
@@ -298,8 +353,14 @@ end, update = function(_ENV)
     end
   end
   update_hair(_ENV)
-end, draw = player.draw}
-camera_trigger = {update = function(_ENV)
+end, 
+draw = player.draw
+}
+
+-- [other objects]
+
+camera_trigger = {
+update = function(_ENV)
   if timer and timer > 0 then
     timer -= 1
     if timer == 0 then
@@ -312,7 +373,9 @@ camera_trigger = {update = function(_ENV)
     timer = 5
   end
 end}
-spring = {update = function(_ENV)
+
+spring = {
+update = function(_ENV)
   delta = delta or 0
   delta *= .75
   local n, e = _ENV, dir
@@ -323,13 +386,17 @@ spring = {update = function(_ENV)
     spd.y = -3
     dash_time, dash_effect_time, n.delta, djump = 0, 0, 4, max_djump
   end
-end, draw = function(_ENV)
+end, 
+draw = function(_ENV)
   local n = flr(delta)
   sspr(64, 0, 8, 8 - n, x, y + n)
 end}
-refill = {init = function(_ENV)
+
+refill = {
+init = function(_ENV)
   offset, timer, hitbox = rnd(), 0, rectangle "-1,-1,10,10"
-end, update = function(_ENV)
+end, 
+update = function(_ENV)
   if timer > 0 then
     timer -= 1
     if timer == 0 then
@@ -345,30 +412,38 @@ end, update = function(_ENV)
       n.djump, timer = max_djump, 60
     end
   end
-end, draw = function(_ENV)
+end, 
+draw = function(_ENV)
   if timer == 0 then
     spr(12, x, y + sin(offset) + .5)
   else
     spr(11, x, y)
   end
 end}
-smoke = {init = function(_ENV)
+
+smoke = {
+init = function(_ENV)
   layer, spd, flip = 3, vector(.3 + rnd "0.2", -.1), vector(rnd() < .5, rnd() < .5)
   x += -1 + rnd "2"
   y += -1 + rnd "2"
-end, update = function(_ENV)
+end, 
+update = function(_ENV)
   sprite += .2
   if sprite >= 27 then
     destroy_object(_ENV)
   end
 end}
+
+--<fruitrain>
 fruitrain = {}
-fruit = {init = function(_ENV)
+fruit = {
+init = function(_ENV)
   golden, y_, off, tx, ty = true, y, 0, x, y
   if deaths > 0 then
     destroy_object(_ENV)
   end
-end, update = function(_ENV)
+end, 
+update = function(_ENV)
   if target then
     tx += .2 * (target.x - tx)
     ty += .2 * (target.y - ty)
@@ -386,19 +461,26 @@ end, update = function(_ENV)
   off += .025
   y = y_ + sin(off) * 2.5
 end}
-lifeup = {init = function(_ENV)
+--</fruitrain>
+
+lifeup = {
+init = function(_ENV)
   spd.y, duration, flash, _g.sfx_timer, outline = -.25, 30, 0, 20
   sfx "9"
-end, update = function(_ENV)
+end,
+update = function(_ENV)
   duration -= 1
   if duration <= 0 then
     destroy_object(_ENV)
   end
   flash += .5
-end, draw = function(_ENV)
+end, 
+draw = function(_ENV)
   ?split "1000,2000,3000,4000,5000,1up" [min(sprite, 6)], x - 4, y - 4, 7 + flash % 2
 end}
-kevin = {init = function(_ENV)
+
+kevin = {
+init = function(_ENV)
   while right() < lvl_pw - 1 and tile_at(right() / 8, y / 8) != 65 do
     hitbox.w += 8
   end
@@ -406,7 +488,8 @@ kevin = {init = function(_ENV)
     hitbox.h += 8
   end
   solid_obj, collides, retrace_list, hit_timer, retrace_timer, shake = true, true, {}, 0, 0, 0
-end, update = function(_ENV)
+end, 
+update = function(_ENV)
   shake = max(0, shake - 1)
   for n = -1, 1 do
     for e = -1, 1 do
@@ -466,7 +549,8 @@ end, update = function(_ENV)
       spd = vector(appr(spd.x, sign(n.x - x), .2), appr(spd.y, sign(n.y - y), .2))
     end
   end
-end, draw = function(_ENV)
+end, 
+draw = function(_ENV)
   local n, e = x, y
   if shake > 0 then
     n += rnd "2" - 1
@@ -494,14 +578,17 @@ end, draw = function(_ENV)
   pal()
   spr(active and 63 or 47, n + hitbox.w / 2 - 4, e + hitbox.h / 2 - 4)
 end}
-bumper = {init = function(_ENV)
+
+bumper = {
+init = function(_ENV)
   hitbox = rectangle "1,1,14,14"
   hittimer = 0
   startx, starty = x, y
   meep = 0
   outline = false
   inc = rnd "1" < .5 and -.02 or .02
-end, update = function(_ENV)
+end, 
+update = function(_ENV)
   x = startx + cos(meep * 1.5) * 2
   y = starty + sin(meep) * 1.5
   if hittimer > 0 then
@@ -521,7 +608,8 @@ end, update = function(_ENV)
       hittimer = 20
     end
   end
-end, draw = function(_ENV)
+end, 
+draw = function(_ENV)
   local n, e = x + 8, y + 8
   if hittimer > 0 then
     pal(12, 1)
@@ -543,18 +631,21 @@ end, draw = function(_ENV)
   end
 end}
 
-function appr_circ(n, e, d)
+function appr_circ(n, e, d) --circular approach
   return (n + sign(sin(n) * cos(e) - cos(n) * sin(e)) * d) % 1
 end
 
-feather = {init = function(_ENV)
+--<feather>
+feather = {
+init = function(_ENV)
   sprtimer = 0
   offset = 0
   starty, startx = y, x
   timer = 0
   bubble = sprite == 27
   bubbled = bubble
-end, update = function(_ENV)
+end, 
+update = function(_ENV)
   if timer > 0 then
     timer -= 1
     if timer == 0 then
@@ -606,13 +697,18 @@ end, update = function(_ENV)
     end
     hitbox = rectangle "0,0,8,8"
   end
-end, draw = function(_ENV)
+end, 
+draw = function(_ENV)
   if timer == 0 then
     local n = flr(sprtimer % 6)
     spr(66 + min(n, 6 - n), x, y, 1, 1, n > 3)
   end
 end}
-garbage = {init = function(_ENV)
+--</feather>
+
+--for badeline fight
+garbage = {
+init = function(_ENV)
   local n = check(osc_plat, 0, -1)
   if n then
     n.badestate = sprite + 1
@@ -638,7 +734,8 @@ garbage = {init = function(_ENV)
       end
     end)
   end
-end, end_init = function(_ENV)
+end, 
+end_init = function(_ENV)
   for n in all(objects) do
     if n.type == badeline then
       n.nodes[sprite + 1] = {x, y}
@@ -646,9 +743,12 @@ end, end_init = function(_ENV)
   end
   destroy_object(_ENV)
 end}
-badeline = {init = function(_ENV)
+
+badeline = {
+init = function(_ENV)
   nodes, next_node, ffreeze, outline, off, target_x, target_y, rx, ry, attack, attack_timer = {}, 1, 0, false, 0, x, y, x, y, boss_phases[1], 0
-end, update = function(_ENV)
+end, 
+update = function(_ENV)
   off += .005
   attack_timer += 1
   x, y = round(rx + 4 * sin(2 * off)), round(ry + 4 * sin(off))
@@ -715,7 +815,8 @@ end, update = function(_ENV)
       end
     end
   end)
-end, draw = function(_ENV)
+end, 
+draw = function(_ENV)
   for n = 1, 2 do
     pal(n, ffreeze == 0 and n or _g.frames % 2 == 0 and 14 or 7)
   end
@@ -729,7 +830,9 @@ end, draw = function(_ENV)
   pal()
   _g.anxiety = true
 end}
-orb = {init = function(_ENV)
+
+orb = {
+init = function(_ENV)
   for n in all(objects) do
     if n.type == player then
       local n, e = n.x + 4 - x, n.y + 4 - y
@@ -762,7 +865,8 @@ end, update = function(_ENV)
       del(particles, n)
     end
   end)
-end, draw = function(_ENV)
+end, 
+draw = function(_ENV)
   foreach(particles, function(n)
     pset(n.x, n.y, n.c)
   end)
@@ -780,7 +884,8 @@ end, draw = function(_ENV)
     end
     pal()
   end
-end}
+end
+}
 
 function find_player()
   for n in all(objects) do
@@ -822,11 +927,14 @@ function get_laser_coords(_ENV)
   return badeline.x + 4, badeline.y - 1, playerx + 4, playery + 6
 end
 
-laser = {layer = 3, init = function(_ENV)
+laser = {
+layer = 3, 
+init = function(_ENV)
   outline = false
   timer = 0
   particles = {}
-end, update = function(_ENV)
+end, 
+update = function(_ENV)
   timer += 1
   local n = find_player()
   if n then
@@ -851,7 +959,8 @@ end, update = function(_ENV)
   else
     destroy_object(_ENV)
   end
-end, draw = function(_ENV)
+end, 
+draw = function(_ENV)
   local d = timer
   if d > 42 and d < 45 then
     return
@@ -937,7 +1046,8 @@ function plat_draw(_ENV)
   pal()
 end
 
-fall_plat = {init = function(_ENV)
+fall_plat = {
+init = function(_ENV)
   while right() < lvl_pw - 1 and tile_at(right() / 8 + 1, y / 8) == 85 do
     hitbox.w += 8
   end
@@ -945,7 +1055,8 @@ fall_plat = {init = function(_ENV)
     hitbox.h += 8
   end
   collides, solid_obj, timer, shake, state, new = true, true, 0, 0, 0, false
-end, update = function(_ENV)
+end, 
+update = function(_ENV)
   if timer > 0 then
     timer -= 1
     if timer == 2 then
@@ -972,8 +1083,13 @@ end, update = function(_ENV)
     end
     spd.y = appr(spd.y, 4, .4)
   end
-end, draw = plat_draw}
-osc_plat = {init = fall_plat.init, end_init = function(_ENV)
+end, 
+draw = plat_draw
+}
+
+osc_plat = {
+init = fall_plat.init, 
+end_init = function(_ENV)
   hitbox.w += 8
   if not badestate then
     timer = 1
@@ -981,7 +1097,8 @@ osc_plat = {init = fall_plat.init, end_init = function(_ENV)
   local n, e = targetx - x, targety - y
   local d = sqrt(n ^ 2 + e ^ 2)
   t, shake, palswap, startx, starty, dirx, diry = 0, 0, not badestate, x, y, n / d, e / d
-end, update = function(_ENV)
+end, 
+update = function(_ENV)
   if timer > 0 then
     timer -= 1
     palswap, start = timer <= 2, timer == 0
@@ -1012,15 +1129,23 @@ end, update = function(_ENV)
     t %= 80
   end
   shake = max(shake - 1)
-end, draw = plat_draw}
-psfx = function(n)
+end, 
+draw = plat_draw}
+
+psfx = function(n) --no clue why this is in the middle of all the objs lol
   if sfx_timer <= 0 then
     sfx(n)
   end
 end
-spinner_controller = {spinners = {}, connectors = {}, layer = 0, init = function()
+
+spinner_controller = {
+spinners = {}, 
+connectors = {}, 
+layer = 0, 
+init = function()
   spinner_controller.spinners, spinner_controller.connectors = {}, {}
-end, end_init = function()
+end, 
+end_init = function()
   for e, n in ipairs(spinner_controller.spinners) do
     for e = 1, e - 1 do
       local e = spinner_controller.spinners[e]
@@ -1030,7 +1155,8 @@ end, end_init = function()
       end
     end
   end
-end, update = function()
+end, 
+update = function()
   local n = find_player()
   if n and n.type == player then
     for e in all(spinner_controller.spinners) do
@@ -1040,7 +1166,8 @@ end, update = function()
       end
     end
   end
-end, draw = function()
+end, 
+draw = function()
   foreach(spinner_controller.connectors, function(n)
     spr(28, n.x, n.y)
   end)
@@ -1048,7 +1175,9 @@ end, draw = function()
     spr(13, n.x, n.y, 2, 2)
   end)
 end}
-spinner = {init = function(_ENV)
+
+spinner = {
+init = function(_ENV)
   if sprite % 2 == 0 then
     x -= 8
   end
@@ -1058,7 +1187,11 @@ spinner = {init = function(_ENV)
   hitbox = rectangle "2,2,12,12"
   add(spinner_controller.spinners, _ENV)
   destroy_object(_ENV)
-end}
+end
+}
+
+--tiles stack
+
 tiles = {}
 foreach(split([[
 1,player_spawn
@@ -1080,6 +1213,8 @@ foreach(split([[
   local n, e = unpack(split(n))
   tiles[n] = _ENV[e]
 end)
+
+--object superclass
 
 function init_object(n, e, d, f)
   local _ENV = setmetatable({}, {__index = _g})
@@ -1110,11 +1245,11 @@ function init_object(n, e, d, f)
     return d > 0 and not is_flag(e, 0, 3) and is_flag(e, d, 3) or is_flag(e, d, 0)
   end
 
-  function oob(n, e)
+  function oob(n, e) --returns if we are out of bounds
     return not exit_left and left() + n < 0 or not exit_right and right() + n >= lvl_pw or top() + e <= -8
   end
 
-  function is_flag(e, d, n)
+  function is_flag(e, d, n) --check for flag
     for o = mid(0, lvl_w - 1, (left() + e) \ 8), mid(0, lvl_w - 1, (right() + e) / 8) do
       for e = mid(0, lvl_h - 1, (top() + d) \ 8), mid(0, lvl_h - 1, (bottom() + d) / 8) do
         local d = tile_at(o, e)
@@ -1143,7 +1278,7 @@ function init_object(n, e, d, f)
     return check(player, 0, 0)
   end
 
-  function move(e, d, t)
+  function move(e, d, t) --physics magic
     for n in all {"x", "y"} do
       rem[n] += vector(e, d)[n]
       local e = round(rem[n])
@@ -1234,24 +1369,29 @@ function load_level(n)
   cam_spdx, cam_spdy = 0, 0
   local e = lvl_id ~= n
   lvl_id = n
+  --set level globals
   local n = split(levels[lvl_id])
   lvl_x, lvl_y, lvl_w, lvl_h = n[1] * 16, n[2] * 16, n[3] * 16, n[4] * 16
   lvl_pw = lvl_w * 8
   lvl_ph = lvl_h * 8
+  --get badeline states
   boss_phases = split(n[6], "/")
   local n = tonum(n[5]) or 1
+  --get level exits
   for e, d in inext, split "exit_top,exit_right,exit_bottom,exit_left" do
     _ENV[d] = n & .5 << e ~= 0
   end
   ui_timer = 5
   if e then
-    if mapdata[lvl_id] then
+    if mapdata[lvl_id] then --replace mapdata
       for i = 0, #mapdata[lvl_id] - 1 do
         mset(i % lvl_w, i \ lvl_w, ord(mapdata[lvl_id][i + 1]) - 1)
       end
     end
     reload()
   end
+  
+  --set spinners
   init_object(spinner_controller, 0, 0)
   for e = 0, lvl_w - 1 do
     for d = 0, lvl_h - 1 do
@@ -1274,6 +1414,8 @@ function load_level(n)
     n.hitbox, n.offx, n.offy = rectangle("0,0," .. d * 8 .. "," .. o * 8), f, t
   end
 end
+
+-- [update loop]
 
 function _update()
   frames += 1
@@ -1304,11 +1446,13 @@ function _update()
       end
     end
   end
+  --update objects
   foreach(objects, function(_ENV)
     move(spd.x, spd.y, type == player and 0 or 1);
     (type.update or time)(_ENV)
     draw_seed = rnd()
   end)
+  --move camera to player
   foreach(objects, function(_ENV)
     if type == player or type == player_spawn then
       move_camera(_ENV)
@@ -1316,6 +1460,8 @@ function _update()
     end
   end)
 end
+
+-- [draw loop]
 
 function _draw()
   pal()
@@ -1325,8 +1471,10 @@ function _draw()
   draw_x = round(cam_x) - 64
   draw_y = round(cam_y) - 64
   camera(draw_x, draw_y)
+  --draw anxiety shader (todo)
   if anxiety then
     cls '0'
+    --too many tokens twt
 --  fillp'0b0101101001011010'
 --  for i=0,127,2 do 
 --  offset=sin(frames/15+i/150)*3
@@ -1343,10 +1491,13 @@ function _draw()
   palt(0, false)
   map(lvl_x, lvl_y, 0, 0, lvl_w, lvl_h, 4)
   palt()
+  --anxiety outlines
   if anxiety then
 --  pa'12,-1,2'
 --  pa'8,1,2'
   end
+  
+  --draw obj outlines
   for n = 0, 15 do
     pal(n, 0)
   end
@@ -1368,6 +1519,8 @@ function _draw()
   pal()
   palt()
   anxiety = false
+  
+  --draw objects
   local e = {{}, {}, {}}
   foreach(objects, function(n)
     if n.type.layer == 0 then
@@ -1381,16 +1534,22 @@ function _draw()
   palt(2, true)
   map(lvl_x, lvl_y, 0, 0, lvl_w, lvl_h, 2)
   palt()
+  
+  --draw objects
   foreach(e, function(n)
     foreach(n, function(_ENV)
       draw_object(_ENV)
+  		--<feather>
       if bubble and bubbled then
         --oval(left()-4,top()-4,right()+4,bottom()+4,7)
         circ(x + 4, y + 3, 8, 7)
       -- 9 tokens smaller, looks off though.
+  		--</feather>
       end
     end)
   end)
+  
+  --draw grass
   for n = 0, lvl_w do
     for e = 0, lvl_h do
       if grass[tile_at(n, e)] and not grass[tile_at(n, e - 1)] and not not_grass[tile_at(n, e - 1)] then
@@ -1415,7 +1574,7 @@ function _draw()
   end
   camera()
   color(0)
-  if tstate == 0 then
+  if tstate == 0 then --transition
     tlo += 14
     thi = tlo - 320
     po1tri(0, tlo, 128, tlo, 64, 80 + tlo)
@@ -1427,6 +1586,7 @@ function _draw()
       tlo = -64
     end
   end
+  --pallette
   p "9,137"
   p "10,9"
   p "14,131"
@@ -1437,7 +1597,9 @@ function _draw()
 --p"5,15"
 end
 
-function p(n)
+-- [helper functions]
+
+function p(n) --set color
   n = split(n)
   pal(n[1], n[2], 1)
 end
@@ -1491,6 +1653,9 @@ function p01traph(n, e, d, o, f, t)
     e += o
   end
 end
+
+-- set color and outline in direction
+-- for anxiety shader (todo)
 
 --function pa(a)
 --local t,q,l=unsplit(a)
