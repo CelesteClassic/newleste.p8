@@ -1466,22 +1466,22 @@ function _draw()
   sspr(unsplit'0, 64, 32, 32, 0, 0, 128, 128')
   draw_x = round(cam_x) - 64
   draw_y = round(cam_y) - 64
-  camera(draw_x, draw_y)
   --draw anxiety shader (todo)
   if anxiety then
     cls '0'
     --too many tokens twt
   fillp'0b0101101001011010'
-  for i=0,127,2 do 
+  for i=0,127,1.75 do 
   offset=sin(frames/15+i/150)*3
-  for j=-16,256,12 do
+  for j=0,127,12 do
   local shrink=(150+(sin(j/4.5+frames/30)*30)-i)/16
-  if (shrink<=7.5) line(j+offset+shrink,i,j+offset+16-shrink,i,1)
+  if (shrink<=7.5) line(j+offset+shrink,i,j+offset+12-shrink,i,1)
   line(j+offset+shrink,i,j+offset+15-shrink,i,(i>96 or i>80 and i<90 or i>70 and i<75 or i>64 and i<67 or i>60 and i%2==1) and 1 or 2)
   end end	
   fillp()
   palt(2,true)
   end
+  camera(draw_x, draw_y)
 
   if anxiety then
   pa'8,1,4'
@@ -1552,7 +1552,7 @@ function _draw()
       draw_object(_ENV)
   		--<feather>
       if bubble and bubbled then
-        --oval(left()-4,top()-4,right()+4,bottom()+4,7)
+--        oval(left()-4,top()-4,right()+4,bottom()+4,7)
         circ(x + 4, y + 3, 8, 7)
       -- 9 tokens smaller, looks off though.
   		--</feather>
@@ -1564,7 +1564,7 @@ function _draw()
   for n = 0, lvl_w do
     for e = 0, lvl_h do
     	
-      if grass[tile_at(n, e)] and not grass[tile_at(n, e - 1)] and not not_grass[tile_at(n, e - 1)] then
+      if grass[tile_at(n, e)] and not grass[tile_at(n, e - 1)] and grass[tile_at(n,e+1)] then
         spr(60, n * 8, (e - 1) * 8)
       end
     end
@@ -1700,7 +1700,7 @@ param_names={"phase/phase/phase/..."}
 
 levels={
   "0,0,2,1,0b0010,0",
-  "2,0,2,1,0b0010,0/1/2"
+  "2,0,2,1,0b0010,2/1/2"
  
 }
 --<camtrigger>--
@@ -1741,15 +1741,9 @@ end
 
 --tiles to draw grass on
 grass={}
-foreach(split'36,37,38,39,52,53,54,55',function(t)
+foreach(split'36,37,38,39,52,53,54,55,21,22,23,42,43,58,59',function(t)
 grass[t]=true
 end)
-
-not_grass={}
-foreach(split'21,22,23,42,43,58,59',function(t)
-not_grass[t]=true
-end)
-
 
 --copy mapdata string to clipboard
 --function get_mapdata(x,y,w,h)
@@ -1870,12 +1864,12 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaad0033d1dea55a11e222e2222222222222222222222222222
 2e33e3ddeddbbde22e333333dddde222ee33e3ddeddbbdeeee333333ddddeeeeed3eedde2222222222222222d1dd1eeeee0011eee13eeee0000000888118888e
 e3e333de1ddddde22ee3e3ddddbde222e3e333de1dddddeeeee3e3ddddbdeeeee3ed3ede2222222222208888dd1d1eeee001111e13eee1e00ee000e88844881e
 ee33d33e3ddbdde222111eeeebbdde22ee33d33e3ddbddeeee111eeeebbddeee1e3deebe2222222222000888888e31eee0000eee3eee13e0ee1e00004a994111
-e33dd3e1ebbddde222ee11111eeebe22e33dd3e1ebbdddeeeeee11111eeebeee0edeeee122222222888808888000e31ee00eeeeeeee13eeee13e110088a888ee
-e3bdee111ebdddde22edeeee1111ee22e3bdee111ebddddeeeedeeee1111eeee01ee11e02222222888809a880088ee3e110111eeeee0008813ee11088884888e
-edee11ee11edbdde22edde33eeee1122edee11ee11edbddeeeedde33eeee11ee00e100e0222222288809a99a0888eeee11001111e0ee088880ee1100880eeee1
-ee11ee3ee11ebbbe2e333333dbddeee2ee11ee3ee11ebbbeee333333dbddeeee00e100e0222222880000449908888ee110000111008849940001110000e01113
-11ee333dbde1ebbe2e33d33dbeeee11211ee333dbde1ebbeee33d33dbeeee11e01ee11e0222222000880000008888ee110000000088889a88001100000011111
-e333d111edbe1eee2eeddd3ee1111122e333d111edbe1eeeeeeddd3ee11111ee0edeeee12222222088808880008eee00000000000884aa8888000000001111ee
+e33dd3e1ebbddde222ee11111eeebe22e33dd3e1ebbdddeeeeee11111eeebeee2edeeee122222222888808888000e31ee00eeeeeeee13eeee13e110088a888ee
+e3bdee111ebdddde22edeeee1111ee22e3bdee111ebddddeeeedeeee1111eeee21ee11e22222222888809a880088ee3e110111eeeee0008813ee11088884888e
+edee11ee11edbdde22edde33eeee1122edee11ee11edbddeeeedde33eeee11ee22e122e2222222288809a99a0888eeee11001111e0ee088880ee1100880eeee1
+ee11ee3ee11ebbbe2e333333dbddeee2ee11ee3ee11ebbbeee333333dbddeeee22e122e2222222880000449908888ee110000111008849940001110000e01113
+11ee333dbde1ebbe2e33d33dbeeee11211ee333dbde1ebbeee33d33dbeeee11e21ee11e2222222000880000008888ee110000000088889a88001100000011111
+e333d111edbe1eee2eeddd3ee1111122e333d111edbe1eeeeeeddd3ee11111ee2edeeee12222222088808880008eee00000000000884aa8888000000001111ee
 1111ee1111bbe11e2eeddee11e11ee221111ee1111bbe11eeeeddee11e11eeee1e3deebe222222228800888801001100000ee00000088848800000000011eee1
 22ee33eee11edde22e3de11eede11ee2eeee33eee11eddeeee3de11eede11eee13dd3ede222222222228888000000000e31eeee010088800010000000111ee13
 e13e333dbee11beee33e11e3ddbe11e2e13e333dbee11beee33e11e3ddbe11ee113eebde222222222222222dd0d00eeeee31eee01100800111110000111ee13e
