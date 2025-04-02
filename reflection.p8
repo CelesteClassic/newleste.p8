@@ -746,7 +746,7 @@ end}
 
 badeline = {
 init = function(_ENV)
-  nodes, next_node, ffreeze, outline, off, target_x, target_y, rx, ry, attack, attack_timer = {}, 1, 0, false, 0, x, y, x, y, boss_phases[1], 0
+  nodes, next_node, ffreeze, outline, off, target_x, target_y, rx, ry, attack, attack_timer = {}, 1, 0, true, 0, x, y, x, y, boss_phases[1], 0
 end, 
 update = function(_ENV)
   off += .005
@@ -826,6 +826,9 @@ draw = function(_ENV)
       circfill(x + (flip.x and 2 or 6) + 1.45 * n * cos(e), y + 3 + 1.45 * n * sin(e) + (ffreeze > 0 and 0 or sin((_g.frames + 3 * n + 4 * e) / 14)), split "2,2,1,1,1,1,1" [n], d)
     end
   end
+  -- internal outline
+  line(x, y, x + 6, y, 0)
+  circfill(x + 6, y + 3, 3, 0)
   draw_obj_sprite(_ENV)
   pal()
   _g.anxiety = true
