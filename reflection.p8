@@ -378,24 +378,6 @@ update = function(_ENV)
   end
 end}
 
-spring = {
-update = function(_ENV)
-  delta = delta or 0
-  delta *= .75
-  local n, e = _ENV, dir
-  local _ENV = player_here() and player_here() or n
-  if _ENV ~= n then
-    move(0, n.y - y - 4, 1)
-    spd.x *= .2
-    spd.y = -3
-    dash_time, dash_effect_time, n.delta, djump = 0, 0, 4, max_djump
-  end
-end, 
-draw = function(_ENV)
-  local n = flr(delta)
-  sspr(64, 0, 8, 8 - n, x, y + n)
-end}
-
 refill = {
 init = function(_ENV)
   offset, timer, hitbox = rnd(), 0, rectangle "-1,-1,10,10"
@@ -1588,6 +1570,14 @@ function _draw()
     end
     ui_timer -= 1
   end
+ 	foreach(smoke,function(Q)
+ 	local _g,_ENV=_ENV,Q
+	 s+=.2
+	 x+=d.x
+	 y+=d.y
+	 _g.spr(s,x-_g.draw_x,y-_g.draw_y)
+	 if (s>=26.9)_g.del(_g.smoke,Q)
+	end)  
   camera()
   color(0)
   if tstate == 0 then --transition
@@ -1602,14 +1592,7 @@ function _draw()
       tlo = -64
     end
   end
- 	foreach(smoke,function(Q)
- 	local _g,_ENV=_ENV,Q
-	 s+=.2
-	 x+=d.x
-	 y+=d.y
-	 _g.spr(s,x-_g.draw_x,y-_g.draw_y)
-	 if (s>=26.9)_g.del(_g.smoke,Q)
-	end)   
+
   --pallette
   p"9,137"
   p"10,9"
@@ -1703,7 +1686,7 @@ param_names={"phase/phase/phase/..."}
 
 levels={
   "0,0,2,1,0b0010,0",
-  "2,0,2,1,0b0010,2/1/2"
+  "2,0,2,1,0b0010,0/1/2"
  
 }
 --<camtrigger>--
