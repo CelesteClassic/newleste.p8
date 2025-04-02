@@ -25,13 +25,16 @@ function rectangle(n)
   local _g, _ENV = _ENV, {}
   x, y, w, h = _g.unpack(_g.split(n))
   return _ENV
+  
 end
 
 -- [globals]
 
 objects = {}
-freeze, delay_restart, sfx_timer, music_timer, ui_timer =unsplit'0,0,0,0,-99'
-cam_x, cam_y, cam_spdx, cam_spdy, cam_gain, cam_offx, cam_offy =unsplit'0,0,0,0,.25,0,0'
+ui_timer,cam_gain = unsplit'-99,.25'
+foreach(split "cam_x,cam_y,cam_spdx,cam_spdy,cam_offx,cam_offy,freeze,delay_restart,sfx_timer,music_timer,", function(n)
+ 	_ENV[n] = 0
+end)
 _pal = pal
 
 -- [entry]
@@ -48,7 +51,7 @@ end
 
 -- [effects]
 
-dead_particles = {}
+dead_particles, smoke = {}, {}
 
 -- player object
 
@@ -71,13 +74,14 @@ player = {
 		--<feather>
 
   	foreach(particles, function(n) --update feather particles
-    	n.x += n.xspd
-    	n.y += n.yspd
-    	n.xspd = appr(n.xspd, 0, .03)
-    	n.yspd = appr(n.yspd, 0, .03)
-    	n.life -= 1
-    	if n.life == 0 then
-      	del(particles, n)
+  	  local _g,_ENV=_ENV,n
+    	x += xspd
+    	y += yspd
+    	xspd = _g.appr(xspd, 0, .03)
+    	yspd = _g.appr(yspd, 0, .03)
+    	life -= 1
+    	if life == 0 then
+      	_g.del(_g.particles, n)
     	end
   	end)
   
@@ -117,7 +121,7 @@ player = {
     	if bouncetimer > 0 then
       	bouncetimer -= 1
     	end
-    	local n = {x = x + rnd(8) - 4, y = y + rnd(8) - 4, life = 10 + flr(rnd(5))}
+    	local n = {x = x + rnd'8' - 4, y = y + rnd'8' - 4, life = 10 + flr(rnd'5')}
     	n.xspd = -spd.x / 2 - (x - n.x) / 4
     	n.yspd = -spd.y / 2 - (y - n.y) / 4
     	add(particles, n)
@@ -178,7 +182,7 @@ player = {
     	if d then --on ground regain grace
       	grace = 6
       	if djump < max_djump then
-        	psfx(22)
+        	psfx'22'
         	djump = max_djump
       	end
     	elseif grace > 0 then
@@ -200,7 +204,7 @@ player = {
       	local f = 2
       	if n ~= 0 and is_solid(n, 0) then
         	f = .4
-        	if rnd(10) < 2 then
+        	if rnd'10' < 2 then
           	init_smoke(n * 6)
         	end
       	end
@@ -209,13 +213,13 @@ player = {
       	end
       	if jbuffer > 0 then
         	if grace > 0 then
-          	psfx(18)
+          	psfx'18'
           	jbuffer, grace, spd.y = 0, 0, -2
           	init_smoke(0, 4)
         	else
           	local n = is_solid(-3, 0) and -1 or is_solid(3, 0) and 1 or 0
           	if n ~= 0 then
-            	psfx(19)
+            	psfx'19'
             	jbuffer = 0
             	spd = vector(n * -2, -2)
             	init_smoke(n * 6)
@@ -230,13 +234,13 @@ player = {
         has_dashed = true
         dash_effect_time = 10
         spd = vector(n ~= 0 and n * (e ~= 0 and 3.53553 or 5) or (e ~= 0 and 0 or flip.x and -1 or 1), e ~= 0 and e * (n ~= 0 and 3.53553 or 5) or 0)
-        psfx(20)
+        psfx'20'
         dash_target_x = 2 * sign(spd.x)
         dash_target_y = (spd.y >= 0 and 2 or 1.5) * sign(spd.y)
         dash_accel_x = spd.y == 0 and 1.5 or 1.06066
         dash_accel_y = spd.x == 0 and 1.5 or 1.06066
       elseif djump <= 0 and o then
-        psfx(21)
+        psfx'21'
         init_smoke()
       end
     end
@@ -320,13 +324,13 @@ init = function(_ENV)
   create_hair(_ENV)
   djump = max_djump
   --<fruitrain>
-  foreach(fruitrain, function(n)
-    fruitrain[1].target = _ENV
-    add(objects, n)
-    n.x, n.y = x, y
-    fruit.init(n)
-  end)
+  	 if fruitrain then
+    fruitrain.target = _ENV
+    add(objects, fruitrain)
+    fruitrain.x, fruitrain.y = x, y
+    fruit.init(fruitrain)
   --</fruitrain>
+  	end
 end, 
 update = function(_ENV)
   if state == 0 and y < target + 16 then
@@ -349,7 +353,7 @@ update = function(_ENV)
     if delay < 0 then
       destroy_object(_ENV)
       local n = init_object(player, x, y);
-      (fruitrain[1] or {}).target = n
+      (fruitrain or {}).target = n
     end
   end
   update_hair(_ENV)
@@ -421,24 +425,12 @@ draw = function(_ENV)
   end
 end}
 
-smoke = {
-init = function(_ENV)
-  layer, spd, flip = 3, vector(.3 + rnd "0.2", -.1), vector(rnd() < .5, rnd() < .5)
-  x += -1 + rnd "2"
-  y += -1 + rnd "2"
-end, 
-update = function(_ENV)
-  sprite += .2
-  if sprite >= 27 then
-    destroy_object(_ENV)
-  end
-end}
 
 --<fruitrain>
-fruitrain = {}
+fruitrain = nil
 fruit = {
 init = function(_ENV)
-  golden, y_, off, tx, ty = true, y, 0, x, y
+  y_, off, tx, ty = y, 0, x, y
   if deaths > 0 then
     destroy_object(_ENV)
   end
@@ -454,8 +446,8 @@ update = function(_ENV)
   else
     local n = player_here()
     if n then
-      n.berry_timer, target, r = 0, fruitrain[#fruitrain] or n, fruitrain[1] and 8 or 12
-      add(fruitrain, _ENV)
+      n.berry_timer, target, r = 0, n, 12
+      _g.fruitrain=_ENV
     end
   end
   off += .025
@@ -673,7 +665,7 @@ update = function(_ENV)
       n.spd = vector(mid(n.spd.x, -1.5, 1.5), mid(n.spd.y, -1.5, 1.5))
       particles = {}
       for e = 0, 10 do
-        local e = {x = x + rnd "8" - 4, y = y + rnd "8" - 4, life = 10 + flr(rnd(5)), big = true}
+        local e = {x = x + rnd "8" - 4, y = y + rnd "8" - 4, life = 10 + flr(rnd'5'), big = true}
         e.xspd = -n.spd.x / 2 - (x - e.x) / 4
         e.yspd = -n.spd.y / 2 - (y - e.y) / 4
         e.flip = vector(rnd "1" > .5, rnd "1" > .5)
@@ -1048,6 +1040,7 @@ end
 
 fall_plat = {
 init = function(_ENV)
+	outline=false
   while right() < lvl_pw - 1 and tile_at(right() / 8 + 1, y / 8) == 85 do
     hitbox.w += 8
   end
@@ -1134,7 +1127,7 @@ draw = plat_draw}
 
 psfx = function(n) --no clue why this is in the middle of all the objs lol
   if sfx_timer <= 0 then
-    sfx(n)
+    sfx'n'
   end
 end
 
@@ -1326,10 +1319,15 @@ function init_object(n, e, d, f)
       end
     end
   end
-
-  function init_smoke(n, e)
-    init_object(smoke, x + (n or 0), y + (e or 0), 24)
-  end
+  
+	function init_smoke(n,e)
+		add(smoke,{
+		x=x+(n or 0),
+		y=y+(e or 0),
+		s=24,
+		d=vector(0.3+rnd"0.2",-0.1),
+		})
+	end	
 
   add(objects, _ENV);
   (type.init or time)(_ENV)
@@ -1342,18 +1340,16 @@ end
 
 function kill_player(_ENV)
   _g.sfx_timer = 12
-  sfx(17)
+  sfx'17'
   _g.deaths += 1
   destroy_object(_ENV)
   for n = 0, .875, .125 do
     add(dead_particles, {x = x + 4, y = y + 4, t = 2, dx = sin(n) * 3, dy = cos(n) * 3})
   end
-  foreach(fruitrain, function(n)
-    if n.golden then
+    if _g.fruitrain then
       _g.full_restart = true
     end
-  end)
-  _g.fruitrain = {}
+  _g.fruitrain = nil
   _g.delay_restart = 15
   _g.tstate = 0
 end
@@ -1467,7 +1463,7 @@ function _draw()
   pal()
   cls '9'
   palt(0, false)
-  sspr(0, 64, 32, 32, 0, 0, 128, 128)
+  sspr(unsplit'0, 64, 32, 32, 0, 0, 128, 128')
   draw_x = round(cam_x) - 64
   draw_y = round(cam_y) - 64
   camera(draw_x, draw_y)
@@ -1475,35 +1471,48 @@ function _draw()
   if anxiety then
     cls '0'
     --too many tokens twt
---  fillp'0b0101101001011010'
---  for i=0,127,2 do 
---  offset=sin(frames/15+i/150)*3
---  for j=-16,256,12 do
---  local shrink=(150+(sin(j/4.5+frames/30)*30)-i)/16
---  if (shrink<=7.5) line(j+offset+shrink,i,j+offset+16-shrink,i,1)
---  line(j+offset+shrink,i,j+offset+15-shrink,i,(i>96 or i>80 and i<90 or i>70 and i<75 or i>64 and i<67 or i>60 and i%2==1) and 1 or 2)
---  end end	
---  fillp()
---  palt(2,true)
+  fillp'0b0101101001011010'
+  for i=0,127,2 do 
+  offset=sin(frames/15+i/150)*3
+  for j=-16,256,12 do
+  local shrink=(150+(sin(j/4.5+frames/30)*30)-i)/16
+  if (shrink<=7.5) line(j+offset+shrink,i,j+offset+16-shrink,i,1)
+  line(j+offset+shrink,i,j+offset+15-shrink,i,(i>96 or i>80 and i<90 or i>70 and i<75 or i>64 and i<67 or i>60 and i%2==1) and 1 or 2)
+  end end	
+  fillp()
+  palt(2,true)
   end
-  pal ''
-  palt(2, true)
-  palt(0, false)
+
+  if anxiety then
+  pa'8,1,4'
+  pa'12,-1,4'  
+  end
+		pal''  
+		palt(2,true)
+		palt(0,false)
   map(lvl_x, lvl_y, 0, 0, lvl_w, lvl_h, 4)
   palt()
   --anxiety outlines
   if anxiety then
---  pa'12,-1,2'
---  pa'8,1,2'
+  pa'8,1,2'
+  pa'12,-1,2'
   end
   
   --draw obj outlines
   for n = 0, 15 do
     pal(n, 0)
   end
+--  pal(unsplit'0,0,0,0,0,0,0,0,0,0,0,0,0,0,0')
   pal = time
   foreach(objects, function(n)
-    if n.outline then
+						if anxiety then
+      		for e = -1, 1, 2 do
+      				pa((e<0 and 8 or 12)..','..e..',-1')
+      				camera(draw_x+e,draw_y)
+      				for qq=0,15 do _pal(qq,e<0 and 8 or 12) end
+      	   draw_object(n)
+      		end
+      elseif n.outline then
       for e = -1, 1 do
         for d = -1, 1 do
           if e == 0 or d == 0 then
@@ -1512,7 +1521,9 @@ function _draw()
           end
         end
       end
+
     end
+      
   end)
   pal = _pal
   camera(draw_x, draw_y)
@@ -1548,16 +1559,18 @@ function _draw()
       end
     end)
   end)
-  
+ 
   --draw grass
   for n = 0, lvl_w do
     for e = 0, lvl_h do
+    	
       if grass[tile_at(n, e)] and not grass[tile_at(n, e - 1)] and not not_grass[tile_at(n, e - 1)] then
         spr(60, n * 8, (e - 1) * 8)
       end
     end
   end
   map(lvl_x, lvl_y, 0, 0, lvl_w, lvl_h, 8)
+
   foreach(dead_particles, function(n)
     n.x += n.dx
     n.y += n.dy
@@ -1586,9 +1599,17 @@ function _draw()
       tlo = -64
     end
   end
+ 	foreach(smoke,function(Q)
+ 	local _g,_ENV=_ENV,Q
+	 s+=.2
+	 x+=d.x
+	 y+=d.y
+	 _g.spr(s,x-_g.draw_x,y-_g.draw_y)
+	 if (s>=26.9)_g.del(_g.smoke,Q)
+	end)   
   --pallette
-  p "9,137"
-  p "10,9"
+  p"9,137"
+  p"10,9"
   p "14,131"
   p "13,139"
   p "15,14"
@@ -1611,10 +1632,6 @@ end
 
 function draw_obj_sprite(_ENV)
   spr(sprite, x, y, 1, 1, flip.x, flip.y)
-end
-
-function two_digit_str(n)
-  return n < 10 and "0" .. n or n
 end
 
 function round(n)
@@ -1657,15 +1674,15 @@ end
 -- set color and outline in direction
 -- for anxiety shader (todo)
 
---function pa(a)
---local t,q,l=unsplit(a)
---for i=1,15 do pal(i,t) end
---if l<0 then
---camera(draw_x+q,draw_y)
---else
---map(lvl_x,lvl_y,q,0,lvl_w,lvl_h,l)
---end
---end
+function pa(a)
+local t,q,l=unsplit(a)
+for i=0,15 do _pal(i,t) end
+if l<0 then
+camera(draw_x+q,draw_y)
+else
+map(lvl_x,lvl_y,q,0,lvl_w,lvl_h,l)
+end
+end
 -->8
 --[map metadata]
 --@conf
@@ -2024,7 +2041,7 @@ __map__
 3933a484000042000dd0d1000000a6a76162676264730d00000e0000d9dadbdc3636374a4b57630000ae000000d2d30000be00969700000000e1006167dddedf00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 3363840000000000000dc3000000b6b761576247630d000000002e0000006167c4c5775a5b6263001fbe000000c0c10e00c800c2c3000000000051752c25262600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 576394000000000d00d2d30d000a00006177676263000e000d00700000517562d4d5656a6b67630000ae00000dd0d1000e00f1d2d3465555f251757b2516151600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-6774531b007a08000ec00d000000000061cdcecf742527222222235252757767a6a771655777745300bef00d00212370000e0dc0c1e100000025262615173a2b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+6774531b007a00000ec00d000000000061cdcecf742527222222235252757767a6a771655777745300bef00d00212370000e0dc0c1e100000025262615173a2b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 6257630000a425271dd040000000004161dddedf251534393829292223574a4bb6b70071654e4f74522527007a203822230d000dd125262626171615172b2b3a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 4c4d630000251615270d000e000e001d61252626172a34282828392930625a5b00000100615e5f11b524152627203829392222252615151615163a2b2b2b3b3b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 5c5d74530124172a172750000e000d00251715173a3a2a272828283930096a6b702122222222222225151716162627283938292417172a2a3a2a2b2b3b3b3b3b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
