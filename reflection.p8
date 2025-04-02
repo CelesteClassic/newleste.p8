@@ -17,15 +17,10 @@ function vector(n, e)
   return {x = n, y = e}
 end
 
-function v0()
-  return vector(0, 0)
-end
-
 function rectangle(n)
   local _g, _ENV = _ENV, {}
-  x, y, w, h = _g.unpack(_g.split(n))
+  x, y, w, h = _g.unsplit(n)
   return _ENV
-  
 end
 
 -- [globals]
@@ -474,7 +469,7 @@ update = function(_ENV)
           d.dash_time = -1
           add(retrace_list, vector(x, y))
           dirx, diry = n, e
-          spd = v0()
+          spd = vector(0,0)
           hit_timer = 10
           active = true
           shake = 4
@@ -517,8 +512,8 @@ update = function(_ENV)
       del(retrace_list, n)
       retrace_timer = 5
       shake = 4
-      spd = v0()
-      rem = v0()
+      spd = vector(0,0)
+      rem = vector(0,0)
     else
       spd = vector(appr(spd.x, sign(n.x - x), .2), appr(spd.y, sign(n.y - y), .2))
     end
@@ -1578,7 +1573,7 @@ function _draw()
 	 if (s>=26.9)_g.del(_g.smoke,Q)
 	end)  
   camera()
-  color(0)
+  color'0'
   if tstate == 0 then --transition
     tlo += 14
     thi = tlo - 320
@@ -1686,8 +1681,17 @@ param_names={"phase/phase/phase/..."}
 levels={
   "0,0,2,1,0b0010,0",
   "2,0,2,1,0b0010,0/1/2"
- 
 }
+
+-- better leveltable (not newlestehorn friendly)
+--foreach(split([[
+--2,0,2,1,0b0010,0/1/2
+--0,0,2,1,0b0010,0
+--]],"\n"),function(l)
+--if (l!="") add(levels,l)
+--end)
+
+
 --<camtrigger>--
 --camera trigger hitboxes
 --"x,y,w,h,off_x,off_y"
