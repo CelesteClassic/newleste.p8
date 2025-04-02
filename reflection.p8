@@ -1569,7 +1569,7 @@ function _draw()
 	 s+=.2
 	 x+=d.x
 	 y+=d.y
-	 _g.spr(s,x-_g.draw_x,y-_g.draw_y)
+	 _g.spr(s,x,y)
 	 if (s>=26.9)_g.del(_g.smoke,Q)
 	end)  
   camera()
