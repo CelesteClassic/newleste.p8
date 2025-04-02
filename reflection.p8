@@ -199,7 +199,7 @@ player = {
       	local f = 2
       	if n ~= 0 and is_solid(n, 0) then
         	f = .4
-        	if rnd'10' < 2 then
+        	if rnd'10' < 2 and not d then
           	init_smoke(n * 6)
         	end
       	end
