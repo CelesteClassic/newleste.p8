@@ -7,10 +7,10 @@ __lua__
 _g = _ENV
 poke(24366, 1)
 
--- [data structures]
+-- [data structures] --
 
 function unsplit(s) 
-	return unpack(split(s)) 
+	 return unpack(split(s)) 
 end
 
 function vector(n, e)
@@ -766,12 +766,15 @@ update = function(_ENV)
           hit.spd.x += hit.left() > right() and -.5 or hit.right() < left() and .5 or 0
           hit.spd.y += hit.top() > bottom() and -.35 or hit.bottom() < top() and .25 or 0
         end
+
         if attack == 1 and attack_timer % 60 == 0 then
           init_object(orb, flip.x and right() or left(), y + 4)
         elseif attack == 2 and attack_timer % 100 == 0 then
           laser = init_object(laser, x, y)
           laser.badeline = _ENV
         end
+      else
+      	destroy_object(_ENV)
       end
     end
   end
@@ -1339,6 +1342,7 @@ function next_level()
 end
 
 function load_level(n)
+	anxiety = false
   has_dashed = false
   foreach(objects, destroy_object)
   cam_spdx, cam_spdy = 0, 0
@@ -1486,10 +1490,10 @@ function _draw()
   foreach(objects, function(n)
 						if anxiety then
       		for e = -1, 1, 2 do
-      				pa((e<0 and 8 or 12)..','..e..',-1')
-      				camera(draw_x+e*2,draw_y)
-      				for qq=0,15 do _pal(qq,e<0 and 8 or 12) end
-      	   draw_object(n)
+      					pa((e<0 and 8 or 12)..','..e..',-1')
+      					camera(draw_x+e*2,draw_y)
+      					for qq=0,15 do _pal(qq,e<0 and 8 or 12) end
+      	   	draw_object(n)
       		end
       elseif n.outline then
       for e = -1, 1 do
@@ -1508,7 +1512,7 @@ function _draw()
   camera(draw_x, draw_y)
   pal()
   palt()
-  anxiety = false
+  
   
   --draw objects
   local e = {{}, {}, {}}
