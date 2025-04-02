@@ -801,8 +801,7 @@ draw = function(_ENV)
     end
   end
   -- internal outline
-  line(x, y, x + 6, y, 0)
-  circfill(x + 6, y + 3, 3, 0)
+  circfill(x + 6, y + 3, 2, 8)
   draw_obj_sprite(_ENV)
   pal()
   _g.anxiety = true
