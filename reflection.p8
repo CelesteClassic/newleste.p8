@@ -51,7 +51,6 @@ dead_particles, smoke = {}, {}
 -- player object
 
 player = {
-	layer = 2, 
 	init = function(_ENV)
   	particles, feather, collides, djump, hitbox = {}, false, true, max_djump, rectangle "1,3,6,5"
   	create_hair(_ENV)
@@ -64,7 +63,7 @@ player = {
 	
 	update = function(_ENV)
 		--get input
-  	local n, e = btn(➡️) and 1 or btn(⬅️) and -1 or 0, btn(⬆️) and -1 or btn(⬇️) and 1 or 0
+  	local n, e = btn'1' and 1 or btn'0' and -1 or 0, btn'2' and -1 or btn'3' and 1 or 0
 
 		--<feather>
 
@@ -72,8 +71,8 @@ player = {
   	  local _g,_ENV=_ENV,n
     	x += xspd
     	y += yspd
-    	xspd = _g.appr(xspd, 0, .03)
-    	yspd = _g.appr(yspd, 0, .03)
+    	xspd,yspd = _g.appr(xspd, 0, .03)
+    	,_g.appr(yspd, 0, .03)
     	life -= 1
     	if life == 0 then
       	_g.del(_g.particles, n)
@@ -108,8 +107,8 @@ player = {
         	bouncetimer = 2
         	init_smoke()
       	elseif is_solid(2, 0) or is_solid(-2, 0) then
-        	movedir = round(movedir) + .5 - movedir
-        	bouncetimer = 2
+        	movedir,bouncetimer = round(movedir) + .5 - movedir
+        	,2
         	init_smoke()
       	end
     	end
@@ -117,17 +116,17 @@ player = {
       	bouncetimer -= 1
     	end
     	local n = {x = x + rnd'8' - 4, y = y + rnd'8' - 4, life = 10 + flr(rnd'5')}
-    	n.xspd = -spd.x / 2 - (x - n.x) / 4
-    	n.yspd = -spd.y / 2 - (y - n.y) / 4
+    	n.xspd,n.yspd = -spd.x / 2 - (x - n.x) / 4
+    	,-spd.y / 2 - (y - n.y) / 4
     	add(particles, n)
     	lifetime -= 1
-    	if lifetime <= 0 or btn(❎) then --exit feather
-      	p_dash = false
-      	feather = false
+    	if lifetime <= 0 or btn'5' then --exit feather
+      	p_dash,feather,spd.y = false
+      	,false
+      	,spd.y < 0 and -1.5 or 0
       	init_smoke()
       	player.init(_ENV)
       	spd.x /= 2
-      	spd.y = spd.y < 0 and -1.5 or 0
     	end
     
   	elseif feather_idle then --if idle
@@ -135,16 +134,16 @@ player = {
     	spd.y *= .8
     	spawn_timer -= 1
     	if spawn_timer <= 0 then
-      	feather_idle = false
-      	feather = true
+      	feather_idle,feather = false
+      	,true
       	if n == 0 and e == 0 then
         	movedir = flip.x and .5 or 0
       	else
         	movedir = atan2(n, e)
       	end
-      	lifetime = 60
-      	_g.bouncetimer = 0
-      	tail, particles = {}, {}
+      	lifetime,_g.bouncetimer,tail,particles = 60
+      	, 0
+      	, {}, {}
       	for n = 0, 15 do --add to tail
         	add(tail, {x = x + 4, y = y + 4, size = mid(1, 2, 9 - n)})
       	end
@@ -165,8 +164,8 @@ player = {
     	end
     
     	--jump and dash
-    	local f, o = btn(🅾️) and not p_jump, btn(❎) and not p_dash
-    	p_jump, p_dash = btn(🅾️), btn(❎)
+    	local f, o = btn'4' and not p_jump, btn'5' and not p_dash
+    	p_jump, p_dash = btn'4', btn'5'
     
     	if f then --jump
       	jbuffer = 4
@@ -215,8 +214,8 @@ player = {
           	local n = is_solid(-3, 0) and -1 or is_solid(3, 0) and 1 or 0
           	if n ~= 0 then
             	psfx'19'
-            	jbuffer = 0
-            	spd = vector(n * -2, -2)
+            	jbuffer,spd = 0
+            	,vector(n * -2, -2)
             	init_smoke(n * 6)
           	end
         	end
@@ -225,10 +224,10 @@ player = {
       if djump > 0 and o then --dash
         init_smoke()
         djump -= 1
-        dash_time = 4
-        has_dashed = true
-        dash_effect_time = 10
-        spd = vector(n ~= 0 and n * (e ~= 0 and 3.53553 or 5) or (e ~= 0 and 0 or flip.x and -1 or 1), e ~= 0 and e * (n ~= 0 and 3.53553 or 5) or 0)
+        dash_time,has_dashed,dash_effect_time,spd = 4
+        ,true
+        ,10
+        ,vector(n ~= 0 and n * (e ~= 0 and 3.53553 or 5) or (e ~= 0 and 0 or flip.x and -1 or 1), e ~= 0 and e * (n ~= 0 and 3.53553 or 5) or 0)
         psfx'20'
         dash_target_x = 2 * sign(spd.x)
         dash_target_y = (spd.y >= 0 and 2 or 1.5) * sign(spd.y)
@@ -277,7 +276,9 @@ draw = function(_ENV)
   else
   --</feather>
     pal(8, djump == 1 and 8 or 12)
-    draw_hair(_ENV)
+    for e, n in inext, hair do --draw hair
+    	circfill(round(n.x), round(n.y), split "2,2,1,1,1" [e], 8)
+    end
     draw_obj_sprite(_ENV)
     pal()
   end
@@ -299,23 +300,17 @@ function update_hair(_ENV)
   end)
 end
 
-function draw_hair(_ENV)
-  for e, n in inext, hair do
-    circfill(round(n.x), round(n.y), split "2,2,1,1,1" [e], 8)
-  end
-end
-
 player_spawn = {
 init = function(_ENV)
-  layer = 2
+  layer,sprite,target = 2
+  , 3
+  , y
   sfx "15"
-  sprite = 3
-  target = y
-  y = min(y + 48, lvl_ph)
-  _g.cam_x, _g.cam_y = mid(x, 64, lvl_pw - 64), mid(y, 64, lvl_ph - 64)
-  spd.y = -4
-  state = 0
-  delay = 0
+  y, 
+  _g.cam_x, _g.cam_y = min(y + 48, lvl_ph),mid(x, 64, lvl_pw - 64), mid(y, 64, lvl_ph - 64)
+  spd.y,state,delay = -4
+ , 0
+ , 0
   create_hair(_ENV)
   djump = max_djump
   --<fruitrain>
@@ -741,10 +736,10 @@ update = function(_ENV)
           ffreeze = 10
         end
         next_node += 1
-        attack = boss_phases[next_node]
-        n.dash_time = 4
-        n.djump = max_djump
-        n.spd = vector(-2, -1)
+        attack,n.dash_time,n.djump,n.spd = boss_phases[next_node]
+        ,4
+        ,max_djump
+        ,vector(-2, -1)
         n.dash_accel_x, n.dash_accel_y = 0, 0
         off = 0
         local e = 20
@@ -839,6 +834,7 @@ end, update = function(_ENV)
       del(particles, n)
     end
   end)
+  if oob(0,0) then destroy_object(_ENV) end
 end, 
 draw = function(_ENV)
   foreach(particles, function(n)
@@ -902,11 +898,10 @@ function get_laser_coords(_ENV)
 end
 
 laser = {
-layer = 3, 
 init = function(_ENV)
-  outline = false
-  timer = 0
-  particles = {}
+  outline,timer,particles = false
+  , 0
+  , {}
 end, 
 update = function(_ENV)
   timer += 1
@@ -1116,7 +1111,6 @@ end
 spinner_controller = {
 spinners = {}, 
 connectors = {}, 
-layer = 0, 
 init = function()
   spinner_controller.spinners, spinner_controller.connectors = {}, {}
 end, 
@@ -1342,17 +1336,15 @@ function next_level()
 end
 
 function load_level(n)
-	anxiety = false
-  has_dashed = false
   foreach(objects, destroy_object)
-  cam_spdx, cam_spdy = 0, 0
+  cam_spdx, cam_spdy  
+	,anxiety,has_dashed = 0, 0, false, false
   local e = lvl_id ~= n
   lvl_id = n
   --set level globals
   local n = split(levels[lvl_id])
   lvl_x, lvl_y, lvl_w, lvl_h = n[1] * 16, n[2] * 16, n[3] * 16, n[4] * 16
-  lvl_pw = lvl_w * 8
-  lvl_ph = lvl_h * 8
+  lvl_pw,lvl_ph = lvl_w * 8, lvl_h * 8
   --get badeline states
   boss_phases = split(n[6], "/")
   local n = tonum(n[5]) or 1
@@ -1407,7 +1399,7 @@ function _update()
   if music_timer > 0 then
     music_timer -= 1
     if music_timer <= 0 then
-      music(10, 0, 7)
+      music(unsplit'10, 0, 7')
     end
   end
   if sfx_timer > 0 then
@@ -1446,23 +1438,39 @@ function _draw()
   pal()
   cls '9'
   palt(0, false)
-  sspr(unsplit'0, 64, 32, 32, 0, 0, 128, 128')
+--  sspr(unsplit'0, 64, 32, 32, 0, 0, 128, 128')
   draw_x = round(cam_x) - 64
   draw_y = round(cam_y) - 64
   --draw anxiety shader (todo)
   if anxiety then
-    cls '0'
-    --too many tokens twt
---  fillp'0b0101101001011010'
-  for i=0,127,5 do 
-  offset=sin(frames/15+i/150)*3
-  for j=0,127,12 do
-  local shrink=(150+(sin(j/4.5+frames/30)*30)-i)/16
-  if (shrink<=7.5) line(j+offset+shrink,i,j+offset+12-shrink,i,1)
-  line(j+offset+shrink,i,j+offset+15-shrink,i,(i>96 or i>80 and i<90 or i>70 and i<75 or i>64 and i<67 or i>60 and i%2==1) and 1 or 2)
-  end end	
-  fillp()
-  palt(2,true)
+    cls(0)
+    fillp'0b0101101001011010'
+    
+    for i=0,127,4 do    
+     offset=sin(frames/15+i/150)*3
+     
+     for j=0,127,12 do
+      shrink = (150+sin(j/4.5+frames/30)*30-i) / 16
+      
+      if shrink <= 7.5 then
+       line(j+offset+shrink+1,i+1,j+offset+16-shrink,i+1,1)
+      
+       
+       line(j+offset+shrink,
+       i,
+       j+offset+15-shrink,
+       i,
+       i<60 and 
+       	(i%2==0 and 2 or 1) or 
+       	 (i>64 and i<67 or 
+       		i>70 and i<75 or 
+       		i>80 and i<90 or 
+       		i>96) and 1 or 2)      
+     end
+    end
+   end
+   fillp()pal()
+   palt(2,true)
   end
   camera(draw_x, draw_y)
 
@@ -1574,6 +1582,13 @@ function _draw()
 	 s+=.2
 	 x+=d.x
 	 y+=d.y
+	 if _g.anxiety then
+	 	pal(7,8)
+	 	_g.spr(s,x+1,y)
+	 	pal(7,12)
+	 	_g.spr(s,x-1,y)
+	 end
+	 pal()
 	 _g.spr(s,x,y)
 	 if (s>=26.9)_g.del(_g.smoke,Q)
 	end)  
@@ -1598,7 +1613,8 @@ function _draw()
   p "14,131"
   p "13,139"
   p "15,14"
-  p "0,129"
+  if not anxiety then
+  p "0,129" end
   p "6,140"
 --p"5,15"
 end
@@ -1685,7 +1701,8 @@ param_names={"phase/phase/phase/..."}
 
 levels={
   "0,0,2,1,0b0010,0",
-  "2,0,2,1,0b0010,2/1/2"
+  "2,0,2,1,0b0010,2/1/2",
+  "0,1,1,1,0b0010,0/0"
 }
 
 -- better leveltable (not newlestehorn friendly)
@@ -2035,6 +2052,22 @@ __map__
 5c5d74530124172a172750000e000d00251715173a3a2a272828283930096a6b702122222222222225151716162627283938292417172a2a3a2a2b2b3b3b3b3b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 2122222225172b3b3a1627222222222224172a2b3b3b3b342828283821236277222938392938292924172b2a3a163428282828353615152b2b3a3b3b3b3b3b3b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 20292526162a3b3b2b17343839293925172a3b3b3b3b3b3428282839293067622928282828282825172a3b3b2b16342828282828282416162b3a3a3b3b3b3b3b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000001f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+2121212121212121212100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+2121212121212121212121210000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
 010100000f0001e000120002200017000260001b0002c000210003100027000360002b0003a000300003e00035000000000000000000000000000000000000000000000000000000000000000000000000000000
 010100000970009700097000970008700077000670005700357003470034700347003470034700347003570035700357003570035700347003470034700337003370033700337000070000700007000070000700
