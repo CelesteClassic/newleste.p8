@@ -1488,7 +1488,7 @@ function _draw()
 --  pal(unsplit'0,0,0,0,0,0,0,0,0,0,0,0,0,0,0')
   pal = time
   foreach(objects, function(n)
-						if anxiety then
+						if anxiety and n.type!=player and n.type!=player_spawn then
       		for e = -1, 1, 2 do
       					pa((e<0 and 8 or 12)..','..e..',-1')
       					camera(draw_x+e*2,draw_y)
@@ -1499,6 +1499,7 @@ function _draw()
       for e = -1, 1 do
         for d = -1, 1 do
           if e == 0 or d == 0 then
+            pa'0,0,-1'
             camera(draw_x + e, draw_y + d)
             draw_object(n)
           end
