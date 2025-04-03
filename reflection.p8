@@ -949,7 +949,7 @@ draw = function(_ENV)
     end
     local t, i, l, c, h = n, e, sqrt(o ^ 2 + f ^ 2) * .1, d > 45 and 2 or .5, d >= 30 and d % 4 < 2 and 7 or 8
     line(n, e, n, e, 8)
-    for n = 0, 10 do
+    for n = 0, lvl_w/1.6 do
       t -= o / l
       i -= f / l
       line(t + (rnd "10" - 5) * c, i + (rnd "10" - 5) * c, maybe() and 0 or d > 45 and h or 2)
@@ -967,7 +967,7 @@ draw = function(_ENV)
       end
     else
       for d = 1, 3 do
-        rectfillr(n + 2, e + split "-4,-4,3" [d], n + 132, e + split "4,-3,4" [d], atan2(r - n, a - e), n, e, split "7,8,8" [d])
+        rectfillr(n + 2, e + split "-4,-4,3" [d], n + lvl_pw, e + split "4,-3,4" [d], atan2(r - n, a - e), n, e, split "7,8,8" [d])
       end
       circfill(n, e, 4, 7)
     end
@@ -1453,8 +1453,8 @@ function _draw()
   if anxiety then
     cls '0'
     --too many tokens twt
-  fillp'0b0101101001011010'
-  for i=0,127,1.75 do 
+--  fillp'0b0101101001011010'
+  for i=0,127,5 do 
   offset=sin(frames/15+i/150)*3
   for j=0,127,12 do
   local shrink=(150+(sin(j/4.5+frames/30)*30)-i)/16
@@ -1491,11 +1491,11 @@ function _draw()
 						if anxiety and n.type!=player and n.type!=player_spawn then
       		for e = -1, 1, 2 do
       					pa((e<0 and 8 or 12)..','..e..',-1')
-      					camera(draw_x+e*2,draw_y)
+--      					camera(draw_x+e*2,draw_y)
       					for qq=0,15 do _pal(qq,e<0 and 8 or 12) end
       	   	draw_object(n)
       		end
-      elseif n.outline then
+      else
       for e = -1, 1 do
         for d = -1, 1 do
           if e == 0 or d == 0 then
@@ -1685,7 +1685,7 @@ param_names={"phase/phase/phase/..."}
 
 levels={
   "0,0,2,1,0b0010,0",
-  "2,0,2,1,0b0010,0/1/2"
+  "2,0,2,1,0b0010,2/1/2"
 }
 
 -- better leveltable (not newlestehorn friendly)
