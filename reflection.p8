@@ -1491,7 +1491,7 @@ function _draw()
 						if anxiety and n.type!=player and n.type!=player_spawn then
       		for e = -1, 1, 2 do
       					pa((e<0 and 8 or 12)..','..e..',-1')
---      					camera(draw_x+e*2,draw_y)
+      					camera(draw_x+e*2,draw_y)
       					for qq=0,15 do _pal(qq,e<0 and 8 or 12) end
       	   	draw_object(n)
       		end
