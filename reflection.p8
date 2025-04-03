@@ -2,7 +2,7 @@ pico-8 cartridge // http://www.pico-8.com
 version 42
 __lua__
 --reflection.p8
---by many contributers
+--by many contributors
 
 _g = _ENV
 poke(24366, 1)
