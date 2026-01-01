@@ -1354,12 +1354,12 @@ function load_level(n)
   end
   ui_timer = 5
   if e then
+    reload()
     if mapdata[lvl_id] then --replace mapdata
       for i = 0, #mapdata[lvl_id] - 1 do
         mset(i % lvl_w, i \ lvl_w, ord(mapdata[lvl_id][i + 1]) - 1)
       end
     end
-    reload()
   end
   
   --set spinners
